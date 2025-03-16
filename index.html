@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Trip Bingo Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Road Trip Bingo Generator</h1>
+        
+        <div class="settings-panel">
+            <div class="form-group">
+                <label for="title">Bingo Card Title:</label>
+                <input type="text" id="title" placeholder="Road Trip Bingo">
+            </div>
+            
+            <div class="form-group">
+                <label for="gridSize">Grid Size:</label>
+                <select id="gridSize">
+                    <option value="3">3x3</option>
+                    <option value="4">4x4</option>
+                    <option value="5" selected>5x5</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="setCount">Number of Sets:</label>
+                <input type="number" id="setCount" min="1" value="1" disabled>
+                <p id="setCountInfo" class="info-text"></p>
+            </div>
+            
+            <div class="form-group">
+                <label for="cardCount">Cards per Set:</label>
+                <input type="number" id="cardCount" min="1" max="20" value="4">
+            </div>
+            
+            <button id="generateBtn">Generate Bingo Cards</button>
+        </div>
+        
+        <div class="icon-manager">
+            <h2>Icon Manager</h2>
+            <div class="icon-controls">
+                <input type="file" id="iconUpload" accept="image/*" multiple>
+                <button id="uploadBtn">Upload Icons</button>
+                <button id="clearIconsBtn">Clear All Icons</button>
+            </div>
+            <p><small>Currently using <span id="iconCount">0</span> icons</small></p>
+            <div id="iconGallery" class="icon-gallery"></div>
+        </div>
+        
+        <div class="preview-section">
+            <h2>Preview</h2>
+            <div id="cardPreview" class="bingo-card">
+                <!-- Preview will be generated here -->
+            </div>
+        </div>
+        
+        <div class="generate-section">
+            <p id="identifier"></p>
+            <button id="downloadBtn" disabled>Download PDF</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
