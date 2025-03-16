@@ -2,6 +2,7 @@
 // Global variables
 let availableIcons = [];
 let generatedCards = [];
+let currentLanguage = 'en'; // Track current language
 
 // DOM Elements
 const titleInput = document.getElementById('title');
@@ -23,7 +24,8 @@ const iconCountElement = document.getElementById('iconCount');
 document.addEventListener('DOMContentLoaded', () => {
     loadIconsFromStorage();
     setupEventListeners();
-    checkIconAvailability();
+    // checkIconAvailability will be called inside loadIconsFromStorage after icons are loaded
+    currentLanguage = document.getElementById('languageSelect').value || 'en';
 });
 
 // Set up event listeners
@@ -36,6 +38,13 @@ function setupEventListeners() {
     // Icon manager event listeners
     uploadBtn.addEventListener('click', uploadIcons);
     clearIconsBtn.addEventListener('click', clearIcons);
+
+    // Language switch event listener
+    const languageSelect = document.getElementById('languageSelect');
+    languageSelect.addEventListener('change', () => {
+        currentLanguage = languageSelect.value;
+        checkIconAvailability(); // Update messages with new language
+    });
 }
 
 // Load icons from localStorage
@@ -47,9 +56,13 @@ function loadIconsFromStorage() {
         availableIcons = storedIcons;
         updateIconGallery();
         console.log(`Loaded ${availableIcons.length} icons from storage`);
+        
+        // Now check icon availability after icons are loaded
+        checkIconAvailability();
     } catch (error) {
         console.error('Error loading icons from storage:', error);
         availableIcons = [];
+        checkIconAvailability();
     }
 }
 
@@ -166,6 +179,23 @@ function clearIcons() {
     }
 }
 
+// Helper to get translated text with replacements
+function getTranslatedText(key, replacements = {}) {
+    const languages = window.languages || { 
+        en: {}, // Fallback empty language
+        de: {}
+    };
+    
+    let text = languages[currentLanguage]?.[key] || key;
+    
+    // Replace placeholders with actual values
+    for (const [placeholder, value] of Object.entries(replacements)) {
+        text = text.replace(`{${placeholder}}`, value);
+    }
+    
+    return text;
+}
+
 // Check if we have enough icons available for the selected grid size and update set count
 function checkIconAvailability() {
     const gridSize = parseInt(gridSizeSelect.value);
@@ -186,7 +216,8 @@ function checkIconAvailability() {
         setCountInput.value = 0;
         setCountInput.disabled = true;
         
-        setCountInfo.textContent = `Need at least ${totalCellsPerSet} icons for a single set`;
+        // Use translated text
+        setCountInfo.textContent = getTranslatedText('needIcons', { count: totalCellsPerSet });
         setCountInfo.style.color = '#ff5722';
         
         generateBtn.disabled = true;
@@ -199,7 +230,10 @@ function checkIconAvailability() {
             gridSizeSelect.parentNode.appendChild(messageElement);
         }
         
-        messageElement.textContent = `Need ${totalCellsPerSet} icons, but only ${availableIcons.length} available`;
+        messageElement.textContent = getTranslatedText('iconsAvailable', { 
+            available: availableIcons.length, 
+            needed: totalCellsPerSet 
+        });
         messageElement.style.color = '#ff5722';
         return;
     }
@@ -226,12 +260,12 @@ function checkIconAvailability() {
     setCountInput.max = maxSets;
     setCountInput.disabled = false;
     
-    if (maxSets < parseInt(setCountInput.value)) {
-        setCountInput.value = Math.max(1, maxSets);
+    if (parseInt(setCountInput.value) < 1 || parseInt(setCountInput.value) > maxSets || isNaN(parseInt(setCountInput.value))) {
+        setCountInput.value = Math.max(1, Math.min(maxSets, parseInt(setCountInput.value) || 1));
     }
     
-    // Update set count info text
-    setCountInfo.textContent = `Many unique sets possible with ${availableIcons.length} icons`;
+    // Update set count info text with translation
+    setCountInfo.textContent = getTranslatedText('manyUniqueSets', { count: availableIcons.length });
     setCountInfo.style.color = '#4CAF50';
     
     // Update generate button status
@@ -244,7 +278,10 @@ function checkIconAvailability() {
     }
     
     generateBtn.disabled = false;
-    messageElement.textContent = `${availableIcons.length} icons available (${totalCellsPerSet} needed per set)`;
+    messageElement.textContent = getTranslatedText('iconsAvailable', { 
+        available: availableIcons.length, 
+        needed: totalCellsPerSet 
+    });
     messageElement.style.color = '#4CAF50';
 }
 

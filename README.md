@@ -45,6 +45,10 @@ A "set" is a unique selection of icons from your library. For example, with 50 i
 
 The application uses your browser's local storage to save your uploaded icons. No data is sent to any server, keeping your content private and accessible even when offline.
 
+## Icon Sources
+
+Icons for your bingo cards can be found at [Flaticon](https://www.flaticon.com/), which offers a wide variety of free and premium icons suitable for bingo card creation.
+
 ## Browser Compatibility
 
 This application works in modern browsers that support:

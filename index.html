@@ -5,19 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Road Trip Bingo Generator</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="languages.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Road Trip Bingo Generator</h1>
-        
+        <h1 data-translate="title">Road Trip Bingo Generator</h1>
+        <div class="language-selector" style="position: absolute; top: 10px; right: 10px;">
+            <select id="languageSelect">
+                <option value="en">EN</option>
+                <option value="de">DE</option>
+            </select>
+        </div>
         <div class="settings-panel">
             <div class="form-group">
-                <label for="title">Bingo Card Title:</label>
+                <label for="title" data-translate="bingoCardTitle">Bingo Card Title:</label>
                 <input type="text" id="title" placeholder="Road Trip Bingo">
             </div>
             
             <div class="form-group">
-                <label for="gridSize">Grid Size:</label>
+                <label for="gridSize" data-translate="gridSize">Grid Size:</label>
                 <select id="gridSize">
                     <option value="3">3x3</option>
                     <option value="4">4x4</option>
@@ -26,32 +32,32 @@
             </div>
             
             <div class="form-group">
-                <label for="setCount">Number of Sets:</label>
+                <label for="setCount" data-translate="numberOfSets">Number of Sets:</label>
                 <input type="number" id="setCount" min="1" value="1" disabled>
                 <p id="setCountInfo" class="info-text"></p>
             </div>
             
             <div class="form-group">
-                <label for="cardCount">Cards per Set:</label>
+                <label for="cardCount" data-translate="cardsPerSet">Cards per Set:</label>
                 <input type="number" id="cardCount" min="1" max="20" value="4">
             </div>
             
-            <button id="generateBtn">Generate Bingo Cards</button>
+            <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
         </div>
         
         <div class="icon-manager">
-            <h2>Icon Manager</h2>
+            <h2 data-translate="iconManager">Icon Manager</h2>
             <div class="icon-controls">
                 <input type="file" id="iconUpload" accept="image/*" multiple>
-                <button id="uploadBtn">Upload Icons</button>
-                <button id="clearIconsBtn">Clear All Icons</button>
+                <button id="uploadBtn" data-translate="uploadIcons">Upload Icons</button>
+                <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
             </div>
-            <p><small>Currently using <span id="iconCount">0</span> icons</small></p>
+            <p><small data-translate="currentlyUsing">Currently using</small> <span id="iconCount">0</span> <small data-translate="icons">icons</small></p>
             <div id="iconGallery" class="icon-gallery"></div>
         </div>
         
         <div class="preview-section">
-            <h2>Preview</h2>
+            <h2 data-translate="preview">Preview</h2>
             <div id="cardPreview" class="bingo-card">
                 <!-- Preview will be generated here -->
             </div>
@@ -59,7 +65,7 @@
         
         <div class="generate-section">
             <p id="identifier"></p>
-            <button id="downloadBtn" disabled>Download PDF</button>
+            <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
         </div>
     </div>
 
