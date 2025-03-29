@@ -15,7 +15,12 @@ const languages = {
         downloadPDF: "Download PDF",
         needIcons: "Need at least {count} icons for a single set",
         manyUniqueSets: "Many unique sets possible with {count} icons",
-        iconsAvailable: "{available} icons available ({needed} needed per set)"
+        iconsAvailable: "{available} icons available ({needed} needed per set)",
+        backupData: "Backup Data",
+        restoreData: "Restore Data",
+        backupSuccess: "Data backup created successfully",
+        restoreSuccess: "Data restored successfully",
+        restoreError: "Failed to restore data. Please make sure you selected a valid backup file."
     },
     de: {
         title: "Auto Bingo Generator",
@@ -33,7 +38,12 @@ const languages = {
         downloadPDF: "PDF herunterladen",
         needIcons: "Mindestens {count} Icons für ein einzelnes Set erforderlich",
         manyUniqueSets: "Viele einzigartige Sets möglich mit {count} Icons",
-        iconsAvailable: "{available} Icons verfügbar ({needed} pro Set erforderlich)"
+        iconsAvailable: "{available} Icons verfügbar ({needed} pro Set erforderlich)",
+        backupData: "Daten sichern",
+        restoreData: "Daten wiederherstellen",
+        backupSuccess: "Datensicherung erfolgreich erstellt",
+        restoreSuccess: "Daten erfolgreich wiederhergestellt",
+        restoreError: "Fehler beim Wiederherstellen der Daten. Bitte stellen Sie sicher, dass Sie eine gültige Sicherungsdatei ausgewählt haben."
     }
 };
 

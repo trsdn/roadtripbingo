@@ -3,34 +3,151 @@
 let availableIcons = [];
 let generatedCards = [];
 let currentLanguage = 'en'; // Track current language
+let currentSettings = {
+    language: 'en',
+    theme: 'light',
+    gridSize: 5,
+    cardsPerSet: 1
+};
 
 // DOM Elements
-const titleInput = document.getElementById('title');
-const gridSizeSelect = document.getElementById('gridSize');
-const setCountInput = document.getElementById('setCount');
-const setCountInfo = document.getElementById('setCountInfo');
-const cardCountInput = document.getElementById('cardCount');
-const generateBtn = document.getElementById('generateBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const cardPreview = document.getElementById('cardPreview');
-const identifierElement = document.getElementById('identifier');
-const iconUploadInput = document.getElementById('iconUpload');
-const uploadBtn = document.getElementById('uploadBtn');
-const clearIconsBtn = document.getElementById('clearIconsBtn');
-const iconGallery = document.getElementById('iconGallery');
-const iconCountElement = document.getElementById('iconCount');
+let titleInput;
+let gridSizeSelect;
+let setCountInput;
+let setCountInfo;
+let cardCountInput;
+let generateBtn;
+let downloadBtn;
+let cardPreview;
+let identifierElement;
+let iconUploadInput;
+let uploadBtn;
+let clearIconsBtn;
+let iconGallery;
+let iconCountElement;
+let backupBtn;
+let restoreBtn;
+let restoreInput;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
-    loadIconsFromStorage();
+    initializeDOMElements();
+    initializeApp();
     setupEventListeners();
-    // checkIconAvailability will be called inside loadIconsFromStorage after icons are loaded
-    currentLanguage = document.getElementById('languageSelect').value || 'en';
 });
+
+// Initialize DOM elements
+function initializeDOMElements() {
+    titleInput = document.getElementById('title');
+    gridSizeSelect = document.getElementById('gridSize');
+    setCountInput = document.getElementById('setCount');
+    setCountInfo = document.getElementById('setCountInfo');
+    cardCountInput = document.getElementById('cardCount');
+    generateBtn = document.getElementById('generateBtn');
+    downloadBtn = document.getElementById('downloadBtn');
+    cardPreview = document.getElementById('cardPreview');
+    identifierElement = document.getElementById('identifier');
+    iconUploadInput = document.getElementById('iconUpload');
+    uploadBtn = document.getElementById('uploadBtn');
+    clearIconsBtn = document.getElementById('clearIconsBtn');
+    iconGallery = document.getElementById('iconGallery');
+    iconCountElement = document.getElementById('iconCount');
+    backupBtn = document.getElementById('backupBtn');
+    restoreBtn = document.getElementById('restoreBtn');
+    restoreInput = document.getElementById('restoreInput');
+
+    // Verify all required elements exist
+    const requiredElements = {
+        titleInput,
+        gridSizeSelect,
+        setCountInput,
+        setCountInfo,
+        cardCountInput,
+        generateBtn,
+        downloadBtn,
+        cardPreview,
+        identifierElement,
+        iconUploadInput,
+        uploadBtn,
+        clearIconsBtn,
+        iconGallery,
+        iconCountElement,
+        backupBtn,
+        restoreBtn,
+        restoreInput
+    };
+
+    const missingElements = Object.entries(requiredElements)
+        .filter(([name, element]) => !element)
+        .map(([name]) => name);
+
+    if (missingElements.length > 0) {
+        console.error('Missing required DOM elements:', missingElements);
+        throw new Error('Required DOM elements not found');
+    }
+
+    // Set initial language
+    const languageSelect = document.getElementById('languageSelect');
+    if (languageSelect) {
+        currentLanguage = languageSelect.value || 'en';
+    }
+}
+
+// Initialize the app and storage
+async function initializeApp() {
+    try {
+        // Initialize the storage system
+        await window.iconDB.init();
+        
+        // Load settings
+        currentSettings = await window.iconDB.loadSettings();
+        
+        // Apply settings
+        applySettings(currentSettings);
+        
+        // Load icons from storage
+        const icons = await loadIconsFromStorage();
+        
+        // Update UI now that icons are loaded
+        checkIconAvailability();
+    } catch (error) {
+        console.error('Error initializing app:', error);
+        // If there's an error, at least attempt to check icon availability
+        checkIconAvailability();
+    }
+}
+
+// Apply settings to the UI
+function applySettings(settings) {
+    // Apply language
+    if (settings.language) {
+        currentLanguage = settings.language;
+        document.getElementById('languageSelect').value = settings.language;
+    }
+    
+    // Apply grid size
+    if (settings.gridSize) {
+        gridSizeSelect.value = settings.gridSize;
+    }
+    
+    // Apply cards per set
+    if (settings.cardsPerSet) {
+        cardCountInput.value = settings.cardsPerSet;
+    }
+    
+    // Apply theme
+    if (settings.theme) {
+        document.body.className = settings.theme;
+    }
+}
 
 // Set up event listeners
 function setupEventListeners() {
-    gridSizeSelect.addEventListener('change', checkIconAvailability);
+    gridSizeSelect.addEventListener('change', () => {
+        checkIconAvailability();
+        saveSettings();
+    });
+    
     setCountInput.addEventListener('change', updateCardGeneration);
     generateBtn.addEventListener('click', generateBingoCards);
     downloadBtn.addEventListener('click', downloadPDF);
@@ -38,31 +155,76 @@ function setupEventListeners() {
     // Icon manager event listeners
     uploadBtn.addEventListener('click', uploadIcons);
     clearIconsBtn.addEventListener('click', clearIcons);
-
+    
+    // Backup/Restore event listeners
+    backupBtn.addEventListener('click', () => {
+        window.iconDB.exportData();
+    });
+    
+    restoreBtn.addEventListener('click', () => {
+        restoreInput.click();
+    });
+    
+    restoreInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            try {
+                await window.iconDB.importData(file);
+                // Reload icons and settings after restore
+                availableIcons = await window.iconDB.loadIcons();
+                currentSettings = await window.iconDB.loadSettings();
+                updateIconGallery();
+                applySettings(currentSettings);
+                alert('Data restored successfully!');
+            } catch (error) {
+                console.error('Error restoring data:', error);
+                alert('Error restoring data. Please check the console for details.');
+            }
+        }
+    });
+    
     // Language switch event listener
     const languageSelect = document.getElementById('languageSelect');
     languageSelect.addEventListener('change', () => {
         currentLanguage = languageSelect.value;
+        currentSettings.language = currentLanguage;
+        saveSettings();
         checkIconAvailability(); // Update messages with new language
     });
+    
+    // Cards per set change listener
+    cardCountInput.addEventListener('change', saveSettings);
 }
 
-// Load icons from localStorage
-function loadIconsFromStorage() {
+// Save current settings
+async function saveSettings() {
+    currentSettings = {
+        language: currentLanguage,
+        theme: document.body.className || 'light',
+        gridSize: parseInt(gridSizeSelect.value),
+        cardsPerSet: parseInt(cardCountInput.value)
+    };
+    await window.iconDB.saveSettings(currentSettings);
+}
+
+// Load icons from storage
+async function loadIconsFromStorage() {
     try {
-        // Get icons from localStorage
-        const storedIcons = JSON.parse(localStorage.getItem('roadTripBingoIcons') || '[]');
+        // Load icons from storage
+        const icons = await window.iconDB.loadIcons();
         
-        availableIcons = storedIcons;
+        // Update global variable
+        availableIcons = icons;
+        
+        // Update UI
         updateIconGallery();
         console.log(`Loaded ${availableIcons.length} icons from storage`);
         
-        // Now check icon availability after icons are loaded
-        checkIconAvailability();
+        return icons;
     } catch (error) {
         console.error('Error loading icons from storage:', error);
         availableIcons = [];
-        checkIconAvailability();
+        return [];
     }
 }
 
@@ -75,6 +237,7 @@ async function uploadIcons() {
     }
     
     try {
+        const newIcons = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             
@@ -85,16 +248,23 @@ async function uploadIcons() {
             }
             
             const iconData = await convertBlobToBase64Icon(file, file.name);
-            availableIcons.push(iconData);
+            newIcons.push(iconData);
         }
         
-        // Save to localStorage and update UI
-        saveIconsToStorage();
-        updateIconGallery();
-        checkIconAvailability(); // Check if we now have enough icons
-        
-        // Reset the file input
-        iconUploadInput.value = '';
+        if (newIcons.length > 0) {
+            // Add new icons to existing ones
+            availableIcons = [...availableIcons, ...newIcons];
+            
+            // Save to storage and update UI
+            await saveIconsToStorage();
+            updateIconGallery();
+            checkIconAvailability(); // Check if we now have enough icons
+            
+            // Reset the file input
+            iconUploadInput.value = '';
+            
+            console.log(`Successfully uploaded ${newIcons.length} icons`);
+        }
     } catch (error) {
         console.error('Error uploading icons:', error);
         alert('There was an error uploading one or more icons');
@@ -116,16 +286,15 @@ function convertBlobToBase64Icon(blob, name) {
     });
 }
 
-// Save icons to localStorage
-function saveIconsToStorage() {
+// Save icons to storage
+async function saveIconsToStorage() {
     try {
-        localStorage.setItem('roadTripBingoIcons', JSON.stringify(availableIcons));
+        await window.iconDB.saveIcons(availableIcons);
         updateIconCount();
+        console.log(`Saved ${availableIcons.length} icons to storage`);
     } catch (error) {
         console.error('Error saving icons to storage:', error);
-        if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-            alert('Storage limit exceeded! Please delete some icons before adding more.');
-        }
+        alert('There was an error saving the icons. Please try again.');
     }
 }
 
@@ -151,7 +320,7 @@ function updateIconGallery() {
         deleteBtn.className = 'delete-icon';
         deleteBtn.textContent = '×';
         deleteBtn.title = 'Remove this icon';
-        deleteBtn.addEventListener('click', () => deleteIcon(index));
+        deleteBtn.addEventListener('click', () => deleteIcon(icon.id, index));
         
         iconElement.appendChild(img);
         iconElement.appendChild(deleteBtn);
@@ -162,20 +331,35 @@ function updateIconGallery() {
 }
 
 // Delete a single icon
-function deleteIcon(index) {
-    availableIcons.splice(index, 1);
-    saveIconsToStorage();
-    updateIconGallery();
-    checkIconAvailability();
+async function deleteIcon(id, index) {
+    try {
+        // Delete from storage
+        await window.iconDB.deleteIcon(id);
+        
+        // Also remove from the local array
+        availableIcons.splice(index, 1);
+        
+        // Update UI
+        updateIconGallery();
+        checkIconAvailability();
+    } catch (error) {
+        console.error('Error deleting icon:', error);
+        alert('Failed to delete the icon. Please try again.');
+    }
 }
 
 // Clear all icons
-function clearIcons() {
+async function clearIcons() {
     if (confirm('Are you sure you want to delete all icons? This cannot be undone.')) {
-        availableIcons = [];
-        saveIconsToStorage();
-        updateIconGallery();
-        checkIconAvailability();
+        try {
+            await window.iconDB.clearIcons();
+            availableIcons = [];
+            updateIconGallery();
+            checkIconAvailability();
+        } catch (error) {
+            console.error('Error clearing icons:', error);
+            alert('Failed to clear icons. Please try again.');
+        }
     }
 }
 
