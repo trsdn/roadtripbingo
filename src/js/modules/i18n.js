@@ -1,3 +1,7 @@
+// Road Trip Bingo - Internationalization
+// Provides language translations and utilities
+
+// Define all supported languages and their translations
 const languages = {
     en: {
         title: "Road Trip Bingo Generator",
@@ -49,9 +53,10 @@ const languages = {
     }
 };
 
-// Expose languages to window for access in script.js
-window.languages = languages;
-
+/**
+ * Apply translations to all elements with data-translate attributes
+ * @param {string} lang - Language code (e.g., 'en', 'de')
+ */
 function setLanguage(lang) {
     const elements = document.querySelectorAll('[data-translate]');
     elements.forEach(el => {
@@ -60,20 +65,65 @@ function setLanguage(lang) {
     });
 }
 
-// Set default language to English and add language selector event listener
-document.addEventListener('DOMContentLoaded', () => {
-    const languageSelect = document.getElementById('languageSelect');
+/**
+ * Get translated text with optional replacements
+ * @param {string} key - The translation key
+ * @param {Object} replacements - Key-value pairs for replacements
+ * @param {string} language - The language code (defaults to 'en')
+ * @returns {string} - The translated text with replacements
+ */
+function getTranslatedText(key, replacements = {}, language = 'en') {
+    if (!languages[language]) {
+        console.warn(`Language '${language}' not found, falling back to English`);
+        language = 'en';
+    }
     
-    // Set initial language
-    const initialLang = 'en';
-    setLanguage(initialLang);
+    let text = languages[language]?.[key] || key;
     
-    // Set the dropdown to match the initial language
-    languageSelect.value = initialLang;
+    // Replace placeholders with actual values
+    for (const [placeholder, value] of Object.entries(replacements)) {
+        text = text.replace(`{${placeholder}}`, value);
+    }
     
-    // Add change event listener
-    languageSelect.addEventListener('change', () => {
-        const selectedLang = languageSelect.value;
-        setLanguage(selectedLang);
+    return text;
+}
+
+/**
+ * Initialize the language selector and set default language
+ * @param {function} onChange - Callback when language changes
+ */
+function initLanguageSelector(onChange) {
+    document.addEventListener('DOMContentLoaded', () => {
+        const languageSelect = document.getElementById('languageSelect');
+        if (!languageSelect) {
+            console.error('Language selector element not found');
+            return;
+        }
+        
+        // Set initial language
+        const initialLang = 'en';
+        setLanguage(initialLang);
+        
+        // Set the dropdown to match the initial language
+        languageSelect.value = initialLang;
+        
+        // Add change event listener
+        languageSelect.addEventListener('change', () => {
+            const selectedLang = languageSelect.value;
+            setLanguage(selectedLang);
+            
+            // Call onChange callback if provided
+            if (typeof onChange === 'function') {
+                onChange(selectedLang);
+            }
+        });
     });
-});
+}
+
+// Export functions and data
+export { 
+    languages,
+    setLanguage,
+    getTranslatedText,
+    initLanguageSelector
+}; 

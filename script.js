@@ -28,6 +28,7 @@ let iconCountElement;
 let backupBtn;
 let restoreBtn;
 let restoreInput;
+let pdfCompression;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,6 +56,7 @@ function initializeDOMElements() {
     backupBtn = document.getElementById('backupBtn');
     restoreBtn = document.getElementById('restoreBtn');
     restoreInput = document.getElementById('restoreInput');
+    pdfCompression = document.getElementById('pdfCompression');
 
     // Verify all required elements exist
     const requiredElements = {
@@ -74,7 +76,8 @@ function initializeDOMElements() {
         iconCountElement,
         backupBtn,
         restoreBtn,
-        restoreInput
+        restoreInput,
+        pdfCompression
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -256,14 +259,23 @@ async function uploadIcons() {
             availableIcons = [...availableIcons, ...newIcons];
             
             // Save to storage and update UI
-            await saveIconsToStorage();
+            const savedSuccessfully = await saveIconsToStorage();
+            
+            // Always update the UI, even if saving to localStorage failed
+            // This way the user can still use the icons in the current session
             updateIconGallery();
-            checkIconAvailability(); // Check if we now have enough icons
+            checkIconAvailability();
             
             // Reset the file input
             iconUploadInput.value = '';
             
             console.log(`Successfully uploaded ${newIcons.length} icons`);
+            
+            // Show success message only if we didn't show an error in saveIconsToStorage
+            if (savedSuccessfully) {
+                // Optionally show a success message
+                // alert(`Successfully uploaded ${newIcons.length} icons`);
+            }
         }
     } catch (error) {
         console.error('Error uploading icons:', error);
@@ -273,16 +285,164 @@ async function uploadIcons() {
 
 // Convert a Blob/File to a base64 encoded icon object
 function convertBlobToBase64Icon(blob, name) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            resolve({
-                name: name,
-                data: e.target.result,
-                id: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
-            });
+    return new Promise((resolve, reject) => {
+        // Check if it's an SVG file - SVGs should not be compressed as they're already small
+        const isSVG = blob.type === 'image/svg+xml';
+        
+        // First check if we need to compress the image (if it's too large and not an SVG)
+        if (!isSVG && blob.size > 500 * 1024) { // If larger than 500KB and not SVG
+            compressImage(blob)
+                .then(compressedBlob => {
+                    console.log(`Compressed image from ${(blob.size/1024).toFixed(2)}KB to ${(compressedBlob.size/1024).toFixed(2)}KB`);
+                    processImage(compressedBlob);
+                })
+                .catch(err => {
+                    console.warn('Image compression failed, using original:', err);
+                    processImage(blob);
+                });
+        } else {
+            if (isSVG) {
+                console.log('SVG file detected, using without compression');
+            }
+            processImage(blob);
+        }
+        
+        function processImage(imageBlob) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                resolve({
+                    name: name,
+                    data: e.target.result,
+                    id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                    // Store the original type to help with future processing
+                    type: imageBlob.type
+                });
+            };
+            reader.onerror = function(e) {
+                reject(e);
+            };
+            reader.readAsDataURL(imageBlob);
+        }
+    });
+}
+
+// Compress an image to reduce its size
+function compressImage(blob) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        let objectUrl = null;
+        
+        // Create cleanup function to ensure URL object is revoked
+        function cleanupUrl() {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+        }
+        
+        img.onload = function() {
+            try {
+                // Create a canvas to resize the image
+                const canvas = document.createElement('canvas');
+                
+                // Calculate new dimensions while maintaining aspect ratio
+                let width = img.width;
+                let height = img.height;
+                const maxDimension = 800; // Maximum width/height in pixels
+                
+                if (width > height && width > maxDimension) {
+                    height = Math.round(height * (maxDimension / width));
+                    width = maxDimension;
+                } else if (height > maxDimension) {
+                    width = Math.round(width * (maxDimension / height));
+                    height = maxDimension;
+                }
+                
+                // Set canvas dimensions to the new size
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Draw the resized image
+                const ctx = canvas.getContext('2d');
+                
+                // Fill with white background if we're going to convert to JPEG
+                // This helps prevent random black backgrounds
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+                
+                // Draw the image
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Check if the image is likely to have transparency
+                let hasTransparency = false;
+                
+                // For PNG files, we need to preserve the original format
+                // Check if the original image is a PNG
+                const isPNG = blob.type === 'image/png';
+                
+                if (isPNG) {
+                    try {
+                        // Try to detect transparency by sampling the image data
+                        const imageData = ctx.getImageData(0, 0, width, height);
+                        const data = imageData.data;
+                        
+                        // Check a sample of pixels for transparency
+                        // We don't check all pixels for performance reasons
+                        const pixelCount = data.length / 4; // RGBA data has 4 values per pixel
+                        const sampleSize = Math.min(pixelCount, 10000); // Check up to 10,000 pixels
+                        const step = Math.max(1, Math.floor(pixelCount / sampleSize));
+                        
+                        for (let i = 3; i < data.length; i += 4 * step) {
+                            if (data[i] < 255) { // Alpha channel value is less than 255 (fully opaque)
+                                hasTransparency = true;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not check for transparency:', e);
+                        // To be safe, assume transparency for PNGs
+                        hasTransparency = isPNG;
+                    }
+                }
+                
+                // Choose the output format based on transparency
+                const outputFormat = hasTransparency ? 'image/png' : 'image/jpeg';
+                const quality = hasTransparency ? 0.8 : 0.7; // Higher quality for PNGs, they compress differently
+                
+                console.log(`Compressing image as ${outputFormat}${hasTransparency ? ' (preserving transparency)' : ''}`);
+                
+                // Convert canvas to blob with appropriate format
+                canvas.toBlob(
+                    compressedBlob => {
+                        try {
+                            cleanupUrl(); // Clean up URL object before resolving
+                            if (!compressedBlob) {
+                                reject(new Error('Failed to compress image'));
+                                return;
+                            }
+                            resolve(compressedBlob);
+                        } catch (error) {
+                            cleanupUrl();
+                            reject(error);
+                        }
+                    }, 
+                    outputFormat, 
+                    quality
+                );
+            } catch (error) {
+                cleanupUrl();
+                reject(error);
+            }
         };
-        reader.readAsDataURL(blob);
+        
+        img.onerror = function(error) {
+            cleanupUrl();
+            reject(new Error('Failed to load image for compression: ' + (error.message || 'Unknown error')));
+        };
+        
+        // Create a URL for the blob
+        objectUrl = URL.createObjectURL(blob);
+        img.src = objectUrl;
     });
 }
 
@@ -292,9 +452,23 @@ async function saveIconsToStorage() {
         await window.iconDB.saveIcons(availableIcons);
         updateIconCount();
         console.log(`Saved ${availableIcons.length} icons to storage`);
+        return true;
     } catch (error) {
         console.error('Error saving icons to storage:', error);
-        alert('There was an error saving the icons. Please try again.');
+        
+        // Check if it's a quota exceeded error
+        if (error.name === 'QuotaExceededError' || 
+            error.toString().includes('quota') || 
+            error.toString().includes('storage')) {
+            alert('Storage limit exceeded. Try removing some icons or using smaller images.');
+        } else {
+            // Even though we got an error, the icons are still in memory
+            // So we don't show an error to the user unless it's a storage limit issue
+            console.warn('Error occurred but icons are still in memory');
+        }
+        
+        // Return false to indicate error but don't alert the user
+        return false;
     }
 }
 
@@ -677,12 +851,27 @@ async function downloadPDF() {
     setTimeout(async () => {
         try {
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            // Get selected compression level
+            const compressionLevel = pdfCompression.value;
+            console.log(`PDF Generation: Using compression level ${compressionLevel}`);
+            
+            // Create PDF
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+                compress: true // This enables PDF level compression
+            });
+            
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             
             // Constants for card sizing and positioning
             const margin = 10;
+            
+            // Log card generation
+            console.log(`PDF Generation: Creating ${generatedCards.length} cards`);
             
             for (let cardIndex = 0; cardIndex < generatedCards.length; cardIndex++) {
                 const card = generatedCards[cardIndex];
@@ -721,7 +910,7 @@ async function downloadPDF() {
                     // Draw cell border
                     pdf.rect(x, y, cellSize, cellSize);
                     
-                    // Add icon image
+                    // Add icon image with compression
                     try {
                         // Calculate icon size (80% of cell size)
                         const iconSize = cellSize * 0.8;
@@ -730,20 +919,25 @@ async function downloadPDF() {
                         const iconX = x + (cellSize - iconSize) / 2;
                         const iconY = y + (cellSize - iconSize) / 2;
                         
-                        // Add image to PDF
+                        // Add image to PDF with appropriate compression
+                        // For jsPDF 2.5.1, compression is specified as the last parameter
                         pdf.addImage(
                             cell.icon.data,
                             'PNG',
                             iconX,
                             iconY,
                             iconSize,
-                            iconSize
+                            iconSize,
+                            undefined, // alias
+                            compressionLevel // compression level: 'NONE', 'FAST', 'MEDIUM', 'SLOW'
                         );
                     } catch (error) {
-                        console.error(`Error adding image to PDF: ${error}`);
+                        console.error(`Error adding image to PDF:`, error);
                     }
                 }
             }
+            
+            console.log(`PDF Generation: Saving PDF file`);
             
             // Save the PDF with Road Trip Bingo name
             pdf.save(`road_trip_bingo_cards.pdf`);

@@ -1,80 +1,126 @@
 # Road Trip Bingo Generator
 
-## Release v1.2
-
-- Switched to JSON import/export for backup/restore
-- Improved error handling
-- UI and workflow fixes
-
-# Road Trip Bingo Generator
-
-A web-based tool for generating custom bingo cards with your own icons, perfect for road trips, travel games, or classroom activities.
+A customizable bingo card generator for road trips. Create, customize, and print bingo cards for your next adventure!
 
 ## Features
 
-- Create bingo cards in 3x3, 4x4, or 5x5 grid sizes
-- Upload and manage your own custom icons
-- Generate multiple sets of unique bingo cards
-- Each set has a unique identifier
-- Download as PDF for easy printing
-- All data stored locally in your browser
+- Generate custom bingo cards with different grid sizes (3x3, 4x4, 5x5, 6x6)
+- Create multiple card sets with unique content
+- Upload custom icons
+- PDF download with adjustable compression
+- Multi-language support (English, German)
+- Data backup and restore
+- Mobile-friendly responsive design
 
-## Screenshots
+## Project Structure
 
-### Main Application Interface
-![Road Trip Bingo Generator Interface](screenshots/road%20trip%20bingo%20generator.png)
+The project has been restructured into a modern, modular architecture:
 
-### Icon Manager
-![Icon Manager](screenshots/icon%20manager.png)
-
-### Example Generated Card
-![Example Bingo Card](screenshots/example.png)
-
-## How to Use
-
-1. **Upload Icons**: Use the Icon Manager to upload your own image files
-2. **Configure Your Cards**:
-   - Enter a title for your bingo cards
-   - Select a grid size (3x3, 4x4, or 5x5)
-   - Choose how many sets to create (each set uses a different selection of icons)
-   - Set how many cards per set you want to generate
-3. **Generate Cards**: Click the "Generate Bingo Cards" button to create your bingo cards
-4. **Download**: Click the "Download PDF" button to save your cards as a printable PDF file
-
-## Set System Explained
-
-A "set" is a unique selection of icons from your library. For example, with 50 icons and a 5x5 grid (requiring 25 icons per card):
-- You can generate multiple sets, each using a different selection of 25 icons
-- Each set will have a unique identifier based on the icons used
-- Cards within the same set use the same icons but in different arrangements
-- Different sets use different selections of icons (with at least one icon difference)
-
-## Local Storage
-
-The application uses your browser's local storage to save your uploaded icons. No data is sent to any server, keeping your content private and accessible even when offline.
-
-## Icon Sources
-
-Icons for your bingo cards can be found at [Flaticon](https://www.flaticon.com/), which offers a wide variety of free and premium icons suitable for bingo card creation.
-
-## Browser Compatibility
-
-This application works in modern browsers that support:
-- HTML5
-- ES6 JavaScript
-- LocalStorage API
-- FileReader API
+```
+roadtripbingo/
+├── src/                  # Source files
+│   ├── js/               # JavaScript modules
+│   │   ├── app.js        # Main application logic
+│   │   └── modules/      # Modular components
+│   │       ├── storage.js        # Storage system
+│   │       ├── i18n.js           # Internationalization 
+│   │       ├── imageUtils.js     # Image handling utilities
+│   │       ├── cardGenerator.js  # Bingo card generation
+│   │       └── pdfGenerator.js   # PDF generation
+│   ├── css/              # CSS styles
+│   │   └── styles.css    # Main stylesheet
+│   ├── assets/           # Static assets
+│   │   └── icons/        # Default icons (if any)
+│   └── index.html        # Main HTML file
+├── dist/                 # Built files (generated)
+├── cypress/              # E2E tests
+│   └── e2e/              # Test specifications
+├── webpack.config.js     # Webpack configuration
+├── server.js             # Simple development server
+└── package.json          # Project dependencies and scripts
+```
 
 ## Development
 
-To run this project locally, simply clone the repository and open the road-trip-bingo.html file in your browser - no server required.
+### Prerequisites
 
+- Node.js (v14+)
+- npm or yarn
+
+### Installation
+
+```bash
+npm install
 ```
-git clone https://github.com/yourusername/road-trip-bingo.git
-cd road-trip-bingo
-open road-trip-bingo.html
+
+### Development Server
+
+Start the development server with hot reload:
+
+```bash
+npm run dev
 ```
+
+Or use the simple HTTP server:
+
+```bash
+npm run start
+```
+
+### Build
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Build for development:
+
+```bash
+npm run build:dev
+```
+
+## Testing
+
+### Unit Tests
+
+Run unit tests:
+
+```bash
+npm test
+```
+
+### E2E Tests
+
+Run Cypress end-to-end tests:
+
+```bash
+npm run cypress:open  # Interactive mode
+npm run cypress:run   # Headless mode
+```
+
+Run all tests:
+
+```bash
+npm run test:all
+```
+
+## PDF Compression Options
+
+The generator offers four levels of PDF compression:
+
+- **None**: Highest quality, largest file size
+- **Light**: Slight compression, good quality
+- **Medium**: Balanced compression (recommended)
+- **High**: Maximum compression, smallest file size
+
+## Languages
+
+Currently supported languages:
+- English
+- German
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+ISC License

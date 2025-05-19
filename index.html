@@ -71,6 +71,15 @@
         
         <div class="generate-section">
             <p id="identifier"></p>
+            <div class="form-group">
+                <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
+                <select id="pdfCompression">
+                    <option value="NONE">None (Largest file)</option>
+                    <option value="FAST">Light (Smaller file)</option>
+                    <option value="MEDIUM" selected>Medium (Recommended)</option>
+                    <option value="SLOW">High (Smallest file)</option>
+                </select>
+            </div>
             <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
         </div>
     </div>

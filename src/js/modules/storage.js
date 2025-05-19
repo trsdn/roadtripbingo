@@ -150,15 +150,8 @@ class Storage {
     }
 }
 
-// Create and export the storage instance
+// Create the storage instance
 const storage = new Storage();
 
-// For browser
-if (typeof window !== 'undefined') {
-  window.iconDB = storage;
-}
-
-// For Jest unit testing
-if (typeof module !== 'undefined') {
-  module.exports = { Storage };
-}
+// Export the storage instance as the default export
+export default storage; 

@@ -122,6 +122,24 @@ button:disabled {
     margin-top: 20px;
 }
 
+.generate-section .form-group {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 10px;
+    margin-bottom: 15px;
+}
+
+.generate-section .form-group label {
+    margin-right: 10px;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.generate-section .form-group select {
+    width: auto;
+    min-width: 100px;
+}
+
 #identifier {
     font-family: monospace;
     margin-bottom: 10px;
