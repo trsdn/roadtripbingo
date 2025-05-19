@@ -1,5 +1,13 @@
 # Road Trip Bingo Generator
 
+## Release v1.2
+
+- Switched to JSON import/export for backup/restore
+- Improved error handling
+- UI and workflow fixes
+
+# Road Trip Bingo Generator
+
 A web-based tool for generating custom bingo cards with your own icons, perfect for road trips, travel games, or classroom activities.
 
 ## Features
