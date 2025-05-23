@@ -139,12 +139,16 @@ class Storage {
 
                     if (!parsedData || typeof parsedData !== 'object') {
                         reject(new Error('Imported data is not an object'));
+                        return;
                     } else if (!Array.isArray(parsedData.icons)) {
                         reject(new Error('Imported data.icons is not an array'));
+                        return;
                     } else if (typeof parsedData.settings !== 'object' || parsedData.settings === null) {
                         reject(new Error('Imported data.settings is not a non-null object'));
+                        return;
                     } else if (!Array.isArray(parsedData.gameStates)) {
                         reject(new Error('Imported data.gameStates is not an array'));
+                        return;
                     } else {
                         // All checks passed
                         this.data = parsedData;
