@@ -135,12 +135,24 @@ class Storage {
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    const data = JSON.parse(event.target.result);
-                    this.data = data;
-                    this.save()
-                        .then(() => resolve(true))
-                        .catch(reject);
-                } catch (error) {
+                    const parsedData = JSON.parse(event.target.result);
+
+                    if (!parsedData || typeof parsedData !== 'object') {
+                        reject(new Error('Imported data is not an object'));
+                    } else if (!Array.isArray(parsedData.icons)) {
+                        reject(new Error('Imported data.icons is not an array'));
+                    } else if (typeof parsedData.settings !== 'object' || parsedData.settings === null) {
+                        reject(new Error('Imported data.settings is not a non-null object'));
+                    } else if (!Array.isArray(parsedData.gameStates)) {
+                        reject(new Error('Imported data.gameStates is not an array'));
+                    } else {
+                        // All checks passed
+                        this.data = parsedData;
+                        this.save()
+                            .then(() => resolve(true))
+                            .catch(reject);
+                    }
+                } catch (error) { // Catches JSON.parse error or others
                     reject(error);
                 }
             };

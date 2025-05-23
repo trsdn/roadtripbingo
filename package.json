@@ -4,7 +4,7 @@
   "description": "Road Trip Bingo Generator - Create custom bingo cards for your next road trip",
   "main": "dist/js/bundle.js",
   "scripts": {
-    "test": "jest",
+    "test": "jest --coverage",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "e2e": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x1024x24\" cypress run",
