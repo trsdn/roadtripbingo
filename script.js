@@ -898,7 +898,9 @@ async function downloadPDF() {
                 pdf.setDrawColor(0);
                 pdf.setLineWidth(0.5);
                 
-                // Draw cells WITH images in the PDF
+                // Draw cells WITH images in the PDF - use Promise.all to wait for all images
+                const imagePromises = [];
+                
                 for (let i = 0; i < card.cells.length; i++) {
                     const cell = card.cells[i];
                     const row = Math.floor(i / card.gridSize);
@@ -911,48 +913,62 @@ async function downloadPDF() {
                     pdf.rect(x, y, cellSize, cellSize);
                     
                     // Add icon image with proper aspect ratio handling
-                    try {
-                        // Create temporary image to get dimensions
-                        const img = new Image();
-                        img.onload = function() {
-                            try {
-                                // Calculate aspect ratio
-                                const aspect = img.width / img.height;
-                                const maxSize = cellSize * 0.8;
-                                
-                                let drawWidth = maxSize;
-                                let drawHeight = maxSize / aspect;
-                                
-                                // Adjust if too tall
-                                if (drawHeight > maxSize) {
-                                    drawHeight = maxSize;
-                                    drawWidth = maxSize * aspect;
+                    const imagePromise = new Promise((resolve, reject) => {
+                        try {
+                            // Create temporary image to get dimensions
+                            const img = new Image();
+                            img.onload = function() {
+                                try {
+                                    // Calculate aspect ratio
+                                    const aspect = img.width / img.height;
+                                    const maxSize = cellSize * 0.8;
+                                    
+                                    let drawWidth = maxSize;
+                                    let drawHeight = maxSize / aspect;
+                                    
+                                    // Adjust if too tall
+                                    if (drawHeight > maxSize) {
+                                        drawHeight = maxSize;
+                                        drawWidth = maxSize * aspect;
+                                    }
+                                    
+                                    // Center icon in cell
+                                    const iconX = x + (cellSize - drawWidth) / 2;
+                                    const iconY = y + (cellSize - drawHeight) / 2;
+                                    
+                                    // Add image to PDF with appropriate compression
+                                    pdf.addImage(
+                                        cell.icon.data,
+                                        'PNG',
+                                        iconX,
+                                        iconY,
+                                        drawWidth,
+                                        drawHeight,
+                                        undefined, // alias
+                                        compressionLevel // compression level: 'NONE', 'FAST', 'MEDIUM', 'SLOW'
+                                    );
+                                    resolve();
+                                } catch (imgErr) {
+                                    console.error(`Error adding image to PDF:`, imgErr);
+                                    reject(imgErr);
                                 }
-                                
-                                // Center icon in cell
-                                const iconX = x + (cellSize - drawWidth) / 2;
-                                const iconY = y + (cellSize - drawHeight) / 2;
-                                
-                                // Add image to PDF with appropriate compression
-                                pdf.addImage(
-                                    cell.icon.data,
-                                    'PNG',
-                                    iconX,
-                                    iconY,
-                                    drawWidth,
-                                    drawHeight,
-                                    undefined, // alias
-                                    compressionLevel // compression level: 'NONE', 'FAST', 'MEDIUM', 'SLOW'
-                                );
-                            } catch (imgErr) {
-                                console.error(`Error adding image to PDF:`, imgErr);
-                            }
-                        };
-                        img.src = cell.icon.data;
-                    } catch (error) {
-                        console.error(`Error adding image to PDF:`, error);
-                    }
+                            };
+                            img.onerror = function() {
+                                console.error(`Failed to load image for PDF`);
+                                reject(new Error('Failed to load image'));
+                            };
+                            img.src = cell.icon.data;
+                        } catch (error) {
+                            console.error(`Error adding image to PDF:`, error);
+                            reject(error);
+                        }
+                    });
+                    
+                    imagePromises.push(imagePromise);
                 }
+                
+                // Wait for all images to be added to the PDF
+                await Promise.all(imagePromises);
             }
             
             console.log(`PDF Generation: Saving PDF file`);
