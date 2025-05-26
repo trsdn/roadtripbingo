@@ -213,9 +213,8 @@ function updateRequiredIconCount() {
     const cellsPerCard = gridSize * gridSize;
     const totalCellsPerSet = cellsPerCard * cardsPerSet;
     
-    // Include adjustment for FREE space
-    const freeSpaceAdjustment = (gridSize === 5) ? cardsPerSet : 0;
-    const iconsNeededPerSet = totalCellsPerSet - freeSpaceAdjustment;
+    // No FREE space - all cells need icons
+    const iconsNeededPerSet = totalCellsPerSet;
     
     // Update info text
     let infoText = '';

@@ -55,16 +55,8 @@ function generateBingoCards(options) {
                 const gridRow = [];
                 for (let col = 0; col < gridSize; col++) {
                     const index = row * gridSize + col;
-                    // For 5x5 grid, make center cell a "FREE" space
-                    if (gridSize === 5 && row === 2 && col === 2) {
-                        gridRow.push({
-                            id: 'free-space',
-                            name: 'FREE',
-                            isFreeSpace: true
-                        });
-                    } else {
-                        gridRow.push(shuffledCardIcons[index]);
-                    }
+                    // No FREE spaces - all cells filled with icons
+                    gridRow.push(shuffledCardIcons[index]);
                 }
                 grid.push(gridRow);
             }
