@@ -69,7 +69,7 @@ function initializeDOMElements() {
     cardPreview = document.getElementById('cardPreview');
     identifierElement = document.getElementById('identifier');
     iconUploadInput = document.getElementById('iconUpload');
-    clearIconsBtn = document.getElementById('clearIcons');
+    clearIconsBtn = document.getElementById('clearIconsBtn');
     iconCount = document.getElementById('iconCount');
     backupBtn = document.getElementById('backupBtn');
     restoreBtn = document.getElementById('restoreBtn');
