@@ -192,7 +192,13 @@
                     { icons: 15, gridSize: 4, shouldEnable: false }, // 15 icons, 4x4 grid (16 cells), should disable
                     { icons: 16, gridSize: 4, shouldEnable: true },  // 16 icons, 4x4 grid (16 cells), should enable
                     { icons: 24, gridSize: 5, shouldEnable: false }, // 24 icons, 5x5 grid (25 cells), should disable
-                    { icons: 25, gridSize: 5, shouldEnable: true }   // 25 icons, 5x5 grid (25 cells), should enable
+                    { icons: 25, gridSize: 5, shouldEnable: true },  // 25 icons, 5x5 grid (25 cells), should enable
+                    { icons: 35, gridSize: 6, shouldEnable: false }, // 35 icons, 6x6 grid (36 cells), should disable
+                    { icons: 36, gridSize: 6, shouldEnable: true },  // 36 icons, 6x6 grid (36 cells), should enable
+                    { icons: 48, gridSize: 7, shouldEnable: false }, // 48 icons, 7x7 grid (49 cells), should disable
+                    { icons: 49, gridSize: 7, shouldEnable: true },  // 49 icons, 7x7 grid (49 cells), should enable
+                    { icons: 63, gridSize: 8, shouldEnable: false }, // 63 icons, 8x8 grid (64 cells), should disable
+                    { icons: 64, gridSize: 8, shouldEnable: true }   // 64 icons, 8x8 grid (64 cells), should enable
                 ];
                 
                 // Create mock functions to test the logic
@@ -228,9 +234,9 @@
             log('Testing card generation...');
             
             try {
-                // Create test icons
+                // Create test icons (need 64 for 8x8 grid)
                 const testIcons = [];
-                for (let i = 1; i <= 25; i++) {
+                for (let i = 1; i <= 64; i++) {
                     testIcons.push({
                         name: `icon${i}.png`,
                         data: `data:test${i}`,
@@ -239,7 +245,7 @@
                 }
                 
                 localStorage.setItem('bingoIcons', JSON.stringify(testIcons));
-                log('Stored 25 test icons');
+                log('Stored 64 test icons for larger grid testing');
                 
                 // Mock the card generation function
                 const mockGenerateCard = (gridSize, title) => {
@@ -258,8 +264,8 @@
                     };
                 };
                 
-                // Test with different grid sizes
-                const grids = [3, 4, 5];
+                // Test with different grid sizes including new larger sizes
+                const grids = [3, 4, 5, 6, 7, 8];
                 let allPassed = true;
                 
                 grids.forEach(size => {
@@ -271,7 +277,9 @@
                     
                     if (!passed) {
                         allPassed = false;
-                        log(`Failed for grid size ${size}`, true);
+                        log(`Failed grid size ${size}: expected ${size * size} cells, got ${card.cells.length}`, true);
+                    } else {
+                        log(`✓ Grid size ${size}x${size} (${size * size} cells) works correctly`);
                     }
                 });
                 
