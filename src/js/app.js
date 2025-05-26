@@ -25,6 +25,7 @@ let restoreBtn;
 let restoreInput;
 let pdfCompression;
 let iconCount;
+let centerBlankToggle;
 
 // Application state
 let availableIcons = [];
@@ -75,6 +76,7 @@ function initializeDOMElements() {
     restoreBtn = document.getElementById('restoreBtn');
     restoreInput = document.getElementById('restoreInput');
     pdfCompression = document.getElementById('pdfCompression');
+    centerBlankToggle = document.getElementById('centerBlankToggle');
 }
 
 // Setup all event listeners
@@ -106,6 +108,11 @@ function setupEventListeners() {
     // Restore data
     restoreBtn.addEventListener('click', () => restoreInput.click());
     restoreInput.addEventListener('change', restoreData);
+    
+    // Center blank toggle
+    if (centerBlankToggle) {
+        centerBlankToggle.addEventListener('change', updateRequiredIconCount);
+    }
     
     // Update the required icon count initially
     updateRequiredIconCount();
@@ -208,13 +215,12 @@ function updateRequiredIconCount() {
     const gridSize = parseInt(gridSizeSelect.value);
     const setCount = parseInt(setCountInput.value);
     const cardsPerSet = parseInt(cardCountInput.value);
-    
-    // Calculate required icons for a single set
-    const cellsPerCard = gridSize * gridSize;
-    const totalCellsPerSet = cellsPerCard * cardsPerSet;
-    
-    // No FREE space - all cells need icons
-    const iconsNeededPerSet = totalCellsPerSet;
+    const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
+    let cellsPerCard = gridSize * gridSize;
+    if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
+        cellsPerCard -= 1;
+    }
+    const iconsNeededPerSet = cellsPerCard * cardsPerSet;
     
     // Update info text
     let infoText = '';
@@ -248,6 +254,7 @@ function generateCards() {
     const setCount = parseInt(setCountInput.value);
     const cardsPerSet = parseInt(cardCountInput.value);
     const title = titleInput.value.trim();
+    const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
     
     try {
         // Generate the cards
@@ -256,7 +263,8 @@ function generateCards() {
             gridSize,
             setCount,
             cardsPerSet,
-            title
+            title,
+            leaveCenterBlank
         });
         
         generatedCards = result;
@@ -312,9 +320,8 @@ function displayCardPreview(card) {
         for (let col = 0; col < card.grid[row].length; col++) {
             const cell = card.grid[row][col];
             const td = document.createElement('td');
-            
             if (cell.isFreeSpace) {
-                td.textContent = 'FREE';
+                td.textContent = '';
                 td.className = 'free-space';
             } else {
                 if (cell.data) {
@@ -329,7 +336,6 @@ function displayCardPreview(card) {
                 label.textContent = cell.name;
                 td.appendChild(label);
             }
-            
             tr.appendChild(td);
         }
         table.appendChild(tr);
@@ -422,4 +428,4 @@ const exports = {
     displayCardPreview
 };
 
-export default exports; 
+export default exports;

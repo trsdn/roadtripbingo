@@ -106,9 +106,8 @@ async function generatePDF(options) {
                     pdf.rect(x, y, cellSize, cellSize, 'S');
                     
                     if (cell.isFreeSpace) {
-                        // Draw FREE space
-                        pdf.setFontSize(14);
-                        pdf.text('FREE', x + cellSize / 2, y + cellSize / 2, { align: 'center', baseline: 'middle' });
+                        // Leave blank (no text, no image)
+                        continue;
                     } else {
                         // Calculate image position
                         const imgPadding = 2;
@@ -206,4 +205,4 @@ function downloadPDFBlob(pdfBlob, filename = 'bingo-cards.pdf') {
 export {
     generatePDF,
     downloadPDFBlob
-}; 
+};

@@ -9,19 +9,22 @@
  * @param {number} options.setCount - Number of sets to generate
  * @param {number} options.cardsPerSet - Number of cards per set
  * @param {string} options.title - Title for the bingo cards
+ * @param {boolean} options.leaveCenterBlank - Leave center cell blank for odd-sized grids
  * @returns {Object} - Generated card sets and identifier
  */
 function generateBingoCards(options) {
-    const { icons, gridSize, setCount, cardsPerSet, title } = options;
+    const { icons, gridSize, setCount, cardsPerSet, title, leaveCenterBlank } = options;
     
     // Validation
     if (!icons || icons.length === 0) {
         throw new Error('No icons available');
     }
     
-    const cellsPerCard = gridSize * gridSize;
+    let cellsPerCard = gridSize * gridSize;
+    if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
+        cellsPerCard -= 1;
+    }
     const iconsNeededPerSet = cellsPerCard * cardsPerSet;
-    
     if (icons.length < iconsNeededPerSet) {
         throw new Error(`Not enough icons. Need at least ${iconsNeededPerSet}`);
     }
@@ -42,21 +45,23 @@ function generateBingoCards(options) {
         
         // Generate cards for this set
         for (let cardIndex = 0; cardIndex < cardsPerSet; cardIndex++) {
-            // For each card, select a subset of icons and arrange them
-            const startIdx = cardIndex * cellsPerCard;
-            const cardIcons = selectedIcons.slice(startIdx, startIdx + cellsPerCard);
-            
-            // Shuffle the icons for this specific card
+            const cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
             const shuffledCardIcons = shuffleArray([...cardIcons]);
-            
-            // Create the grid
             const grid = [];
+            let iconIdx = 0;
             for (let row = 0; row < gridSize; row++) {
                 const gridRow = [];
                 for (let col = 0; col < gridSize; col++) {
-                    const index = row * gridSize + col;
-                    // No FREE spaces - all cells filled with icons
-                    gridRow.push(shuffledCardIcons[index]);
+                    if (
+                        leaveCenterBlank &&
+                        (gridSize === 5 || gridSize === 7 || gridSize === 9) &&
+                        row === Math.floor(gridSize / 2) &&
+                        col === Math.floor(gridSize / 2)
+                    ) {
+                        gridRow.push({ isFreeSpace: true });
+                    } else {
+                        gridRow.push({ ...shuffledCardIcons[iconIdx++] });
+                    }
                 }
                 grid.push(gridRow);
             }
@@ -64,7 +69,7 @@ function generateBingoCards(options) {
             set.cards.push({
                 id: `card-${cardIndex + 1}`,
                 title: title || 'Road Trip Bingo',
-                grid: grid
+                grid
             });
         }
         
@@ -107,4 +112,4 @@ export {
     generateBingoCards,
     generateIdentifier,
     shuffleArray
-}; 
+};

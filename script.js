@@ -828,15 +828,26 @@ function displayCardPreview(card) {
     identifierElement.textContent = `ID: ${card.identifier}`;
     
     // Add card cells
-    card.cells.forEach(cell => {
+    card.cells.forEach((cell, i) => {
         const cellElement = document.createElement('div');
         cellElement.className = 'bingo-cell';
-        
-        const img = document.createElement('img');
-        img.src = cell.icon.data;
-        img.alt = cell.icon.name;
-        cellElement.appendChild(img);
-        
+        if (cell.isFreeSpace) {
+            cellElement.classList.add('free-space');
+            // Add a visually hidden label for accessibility
+            const sr = document.createElement('span');
+            sr.textContent = 'Blank';
+            sr.style.position = 'absolute';
+            sr.style.width = '1px';
+            sr.style.height = '1px';
+            sr.style.overflow = 'hidden';
+            sr.style.clip = 'rect(1px, 1px, 1px, 1px)';
+            cellElement.appendChild(sr);
+        } else {
+            const img = document.createElement('img');
+            img.src = cell.icon.data;
+            img.alt = cell.icon.name;
+            cellElement.appendChild(img);
+        }
         cardPreview.appendChild(cellElement);
     });
 }

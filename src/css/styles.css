@@ -106,8 +106,29 @@ button:disabled {
 }
 
 .free-space {
-    font-weight: bold;
-    background-color: #f8f8f8;
+    background-color: #f3f3f3;
+    border: 1px dashed #bbb;
+    position: relative;
+}
+.free-space::before,
+.free-space::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
+    pointer-events: none;
+}
+.free-space::before {
+    border-top: 2px solid #bdbdbd;
+    border-right: 2px solid #bdbdbd;
+    transform: rotate(45deg);
+}
+.free-space::after {
+    border-top: 2px solid #bdbdbd;
+    border-left: 2px solid #bdbdbd;
+    transform: rotate(-45deg);
 }
 
 .toolbar {
@@ -224,4 +245,4 @@ button:disabled {
         flex-direction: column;
         align-items: center;
     }
-} 
+}
