@@ -1,4 +1,8 @@
-const { Storage } = require('./db');
+/**
+ * @jest-environment jsdom
+ */
+
+import { Storage } from '@/js/modules/db.js';
 
 describe('Storage', () => {
   let storage;

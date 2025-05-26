@@ -30,7 +30,7 @@ roadtripbingo/
 │   ├── css/              # CSS styles
 │   │   └── styles.css    # Main stylesheet
 │   ├── assets/           # Static assets
-│   │   └── icons/        # Default icons (if any)
+│   │   └── public/assets/icons/  # Default icons (if any)
 │   └── index.html        # Main HTML file
 ├── dist/                 # Built files (generated)
 ├── cypress/              # E2E tests
