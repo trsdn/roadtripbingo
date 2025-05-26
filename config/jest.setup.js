@@ -1,28 +1,35 @@
-// Mock localStorage
-class LocalStorageMock {
-  constructor() {
-    this.store = {};
-  }
+// Store for localStorage mock, scoped to this module
+let mockStore = {};
 
-  clear() {
-    this.store = {};
-  }
+const localStorageMock = {
+  setItem: jest.fn((key, value) => {
+    mockStore[key] = String(value);
+  }),
+  getItem: jest.fn(key => mockStore[key] || null),
+  removeItem: jest.fn(key => {
+    delete mockStore[key];
+  }),
+  clear: jest.fn(() => {
+    mockStore = {}; // Reset the store
+  }),
+  // Helper to inspect store during tests, if needed
+  __getStore: () => mockStore
+};
 
-  getItem(key) {
-    return this.store[key] || null;
-  }
+// Forcefully define localStorage on the window object (JSDOM environment)
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  writable: true,    // Allows tests or other code to modify/re-spy if necessary
+  configurable: true // Allows it to be deleted or reconfigured
+});
 
-  setItem(key, value) {
-    this.store[key] = String(value);
-  }
+// Mock IndexedDB with fake-indexeddb
+require('fake-indexeddb/auto');
 
-  removeItem(key) {
-    delete this.store[key];
-  }
+// Add structuredClone polyfill for Node.js
+if (!global.structuredClone) {
+  global.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
 }
-
-// Set up local storage mock
-global.localStorage = new LocalStorageMock();
 
 // Mock document methods for minimal support
 global.document = {
@@ -48,6 +55,7 @@ global.FileReader = class FileReader {
   constructor() {
     this.onload = null;
     this.onerror = null;
+    this.result = null;
   }
 
   readAsText() {
@@ -61,6 +69,15 @@ global.FileReader = class FileReader {
             }) 
           } 
         });
+      }
+    }, 0);
+  }
+
+  readAsDataURL(blob) {
+    setTimeout(() => {
+      this.result = 'data:image/png;base64,mock-base64-data';
+      if (this.onload) {
+        this.onload();
       }
     }, 0);
   }
@@ -79,4 +96,4 @@ global.console = {
   log: jest.fn(),
   error: jest.fn(),
   warn: jest.fn()
-}; 
+};
