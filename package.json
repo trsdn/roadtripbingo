@@ -4,16 +4,17 @@
   "description": "Road Trip Bingo Generator - Create custom bingo cards for your next road trip",
   "main": "dist/js/bundle.js",
   "scripts": {
-    "test": "jest --coverage",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "e2e": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x1024x24\" cypress run",
+    "test": "jest --config=config/jest.config.js --coverage",
+    "test:watch": "jest --config=config/jest.config.js --watch",
+    "cypress:open": "cypress open --config-file config/cypress.config.js",
+    "cypress:run": "cypress run --config-file config/cypress.config.js",
+    "e2e": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x1024x24\" cypress run --config-file config/cypress.config.js",
     "start": "node server.js",
     "test:e2e": "npm run start & sleep 2 && npm run e2e",
     "test:all": "npm test && npm run test:e2e",
-    "dev": "webpack serve --open",
-    "build": "webpack --mode production",
-    "build:dev": "webpack --mode development"
+    "dev": "webpack serve --config config/webpack.config.js --open",
+    "build": "webpack --config config/webpack.config.js --mode production",
+    "build:dev": "webpack --config config/webpack.config.js --mode development"
   },
   "keywords": [
     "bingo",

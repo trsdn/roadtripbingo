@@ -12,6 +12,6 @@ module.exports = defineConfig({
     screenshotOnRunFailure: true,
     video: true,
     // Screenshots folder updated for new structure
-    screenshotsFolder: 'docs/screenshots/cypress',
+    screenshotsFolder: '../docs/screenshots/cypress',
   },
 }); 

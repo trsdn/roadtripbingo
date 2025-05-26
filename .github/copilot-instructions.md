@@ -51,10 +51,11 @@ This file provides GitHub Copilot with the coding style and project conventions 
 * Icons are managed via the Icon Manager; use descriptive `alt` attributes.
 * Store data in `localStorage` under a single namespace: `roadtripBingo`.
 * PDF generation uses `html2pdf.js`; ensure imported via CDN in `index.html`.
+* Configuration files should be stored in `/config` directory (e.g., `jest.config.js`, `cypress.config.js`, `webpack.config.js`).
 
 ## Testing
 
-* Use Jest for unit tests; configure via a `jest.config.js` at project root.
+* Use Jest for unit tests; configure via `config/jest.config.js`.
 * Place tests in a `tests/` directory mirroring `src/` structure; name files with `.test.js` suffix.
 * Write tests using `describe` and `it` blocks; mock `localStorage` and the DOM as needed via `jsdom`.
 * Aim for at least 80% code coverage; coverage reports should output to `coverage/`.
@@ -62,7 +63,7 @@ This file provides GitHub Copilot with the coding style and project conventions 
   * `npm test`: runs tests once.
   * `npm run test:watch`: runs Jest in watch mode.
 * Use Cypress for end-to-end testing:
-  * Configure Cypress via a `cypress.config.js` at project root with `baseUrl` set to `http://localhost:3000`.
+  * Configure Cypress via `config/cypress.config.js` with `baseUrl` set to `http://localhost:3000`.
   * Organize spec files under `cypress/integration/` with `.spec.js` suffix.
   * Write tests using `describe`/`it` syntax and Cypress commands (`cy.visit()`, `cy.get()`, etc.).
   * Enable automatic screenshots on test failure and video recording via default Cypress settings.
