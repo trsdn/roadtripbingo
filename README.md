@@ -18,6 +18,12 @@ The project has been restructured into a modern, modular architecture:
 
 ```
 roadtripbingo/
+├── config/               # Configuration files
+│   ├── .babelrc          # Babel configuration
+│   ├── cypress.config.js # Cypress E2E test configuration
+│   ├── jest.config.js    # Jest unit test configuration
+│   ├── jest.setup.js     # Jest setup file
+│   └── webpack.config.js # Webpack build configuration
 ├── src/                  # Source files
 │   ├── js/               # JavaScript modules
 │   │   ├── app.js        # Main application logic
@@ -26,16 +32,22 @@ roadtripbingo/
 │   │       ├── i18n.js           # Internationalization 
 │   │       ├── imageUtils.js     # Image handling utilities
 │   │       ├── cardGenerator.js  # Bingo card generation
+│   │       ├── db.js             # Database layer
+│   │       ├── languages.js      # Language definitions
 │   │       └── pdfGenerator.js   # PDF generation
 │   ├── css/              # CSS styles
 │   │   └── styles.css    # Main stylesheet
-│   ├── assets/           # Static assets
-│   │   └── public/assets/icons/  # Default icons (if any)
 │   └── index.html        # Main HTML file
-├── dist/                 # Built files (generated)
+├── public/               # Public assets
+│   └── assets/           # Static assets
+│       └── icons/        # Default icons
+├── tests/                # Test files (mirrors src structure)
+│   ├── js/modules/       # Module tests
+│   └── db.test.js        # Database tests
+├── docs/                 # Documentation
+│   └── screenshots/      # Project screenshots
 ├── cypress/              # E2E tests
 │   └── e2e/              # Test specifications
-├── webpack.config.js     # Webpack configuration
 ├── server.js             # Simple development server
 └── package.json          # Project dependencies and scripts
 ```
@@ -85,10 +97,11 @@ npm run build:dev
 
 ### Unit Tests
 
-Run unit tests:
+Run Jest unit tests:
 
 ```bash
-npm test
+npm test              # Run tests once with coverage
+npm run test:watch    # Run tests in watch mode
 ```
 
 ### E2E Tests
