@@ -11,12 +11,8 @@ describe('Road Trip Bingo Storage System', () => {
     
     // Wait for the app to fully initialize
     cy.window().its('iconDB').should('exist');
-    cy.window().then(async (win) => {
-      // Wait for the database to be initialized
-      while (!win.iconDB.db) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-    });
+    // Wait for the database to be initialized
+    cy.window().its('iconDB.db').should('not.be.null');
   });
 
   it('should backup and restore data', () => {
