@@ -21,7 +21,9 @@ const languages = {
         backupSuccess: "Data backup created successfully",
         restoreSuccess: "Data restored successfully",
         restoreError: "Failed to restore data. Please make sure you selected a valid backup file.",
-        pdfCompression: "PDF Compression:"
+        pdfCompression: "PDF Compression:",
+        showLabelsToggle: "Show text labels on icons",
+        centerBlankToggle: "Leave center cell blank (odd grids only)"
     },
     de: {
         title: "Auto Bingo Generator",
@@ -45,7 +47,9 @@ const languages = {
         backupSuccess: "Datensicherung erfolgreich erstellt",
         restoreSuccess: "Daten erfolgreich wiederhergestellt",
         restoreError: "Fehler beim Wiederherstellen der Daten. Bitte stellen Sie sicher, dass Sie eine gültige Sicherungsdatei ausgewählt haben.",
-        pdfCompression: "PDF-Komprimierung:"
+        pdfCompression: "PDF-Komprimierung:",
+        showLabelsToggle: "Textbeschriftungen auf Icons anzeigen",
+        centerBlankToggle: "Mittlere Zelle leer lassen (nur ungerade Raster)"
     }
 };
 

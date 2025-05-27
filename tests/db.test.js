@@ -1,4 +1,8 @@
-const { Storage } = require('./db');
+/**
+ * @jest-environment jsdom
+ */
+
+import { Storage } from '@/js/modules/db.js';
 
 describe('Storage', () => {
   let storage;
@@ -78,43 +82,54 @@ describe('Storage', () => {
     });
 
     test('should resolve with default data if localStorage.getItem returns null', async () => {
-      jest.spyOn(localStorage, 'getItem').mockReturnValue(null);
+      const originalGetItem = window.localStorage.getItem;
+      window.localStorage.getItem = jest.fn().mockReturnValue(null);
+      
       await expect(storage.init()).resolves.toEqual(storage.data); // storage.data is still constructor default
       expect(storage.data.settings.language).toBe('en'); // Confirm default data
+      
+      window.localStorage.getItem = originalGetItem;
     });
   });
 
   describe('save', () => {
-    // Restore default storage.save mock from global beforeEach, then test real save
     beforeEach(() => {
-        if (storage.save.mockRestore) storage.save.mockRestore();
+      if (storage.save.mockRestore) {
+        storage.save.mockRestore();
+      }
+      // Access the mock functions directly from global.localStorage
+      global.localStorage.setItem.mockClear();
+      global.localStorage.getItem.mockClear();
+      global.localStorage.clear.mockClear();
     });
 
     test('should reject with a custom QuotaExceededError when localStorage.setItem fails', async () => {
-      const originalSetItem = localStorage.setItem;
-      localStorage.setItem = jest.fn(() => {
+      global.localStorage.setItem.mockImplementationOnce(() => {
         const error = new Error('Mocked localStorage quota error');
-        error.name = 'QuotaExceededError'; // Simulate a quota error
+        error.name = 'QuotaExceededError';
         throw error;
       });
+      
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       await expect(storage.save()).rejects.toThrow('Storage quota exceeded');
+      expect(global.localStorage.setItem).toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error saving data:', expect.objectContaining({ name: 'QuotaExceededError' }));
       expect(consoleErrorSpy).toHaveBeenCalledWith('Storage quota exceeded. Data not saved.');
       
-      localStorage.setItem = originalSetItem; // Restore original setItem
-      // consoleErrorSpy.mockRestore(); // Restored in global afterEach
+      // consoleErrorSpy is restored by global afterEach
+      // global.localStorage.setItem mock behavior is reset by mockImplementationOnce or next mockClear
     });
 
     test('should resolve true when localStorage.setItem succeeds', async () => {
-      const originalSetItem = localStorage.setItem;
-      localStorage.setItem = jest.fn(); // Mock successful setItem
-      
+      // The default implementation of global.localStorage.setItem (from jest.setup.js) will be used.
       await expect(storage.save()).resolves.toBe(true);
-      expect(localStorage.setItem).toHaveBeenCalledWith('roadtripbingo-data', JSON.stringify(storage.data));
+      expect(global.localStorage.setItem).toHaveBeenCalledWith('roadtripbingo-data', JSON.stringify(storage.data));
       
-      localStorage.setItem = originalSetItem;
+      // Verify that the data was actually stored by the mock
+      // Need to call the actual mock function's implementation, not another mock call.
+      // The mock store is internal to jest.setup.js, but getItem should reflect the setItem call.
+      expect(global.localStorage.getItem('roadtripbingo-data')).toBe(JSON.stringify(storage.data));
     });
   });
 

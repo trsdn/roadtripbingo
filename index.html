@@ -1,101 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Road Trip Bingo Generator</title>
-    <link rel="stylesheet" href="styles.css">
-    <script id="roadtripbingo-data" type="application/json">{}</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Road Trip Bingo Generator</title>
+  <meta name="description" content="Generate customizable bingo cards for road trips">
+  <link rel="stylesheet" href="src/css/styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1 data-translate="title">Road Trip Bingo Generator</h1>
-        <div class="language-selector" style="position: absolute; top: 10px; right: 10px;">
-            <select id="languageSelect">
-                <option value="en">EN</option>
-                <option value="de">DE</option>
-            </select>
-        </div>
-        <div class="settings-panel">
-            <div class="form-group">
-                <label for="title" data-translate="bingoCardTitle">Bingo Card Title:</label>
-                <input type="text" id="title" placeholder="Road Trip Bingo">
+  <h1 data-translate="title">Road Trip Bingo Generator</h1>
+  
+  <div class="toolbar">
+    <div>
+      <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="de">Deutsch</option>
+      </select>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="settings-panel">
+      <div class="form-group">
+        <label for="title" data-translate="bingoCardTitle">Bingo Card Title:</label>
+        <input type="text" id="title" value="Road Trip Bingo">
+      </div>
+      
+      <div class="form-group">
+        <label for="gridSize" data-translate="gridSize">Grid Size:</label>
+        <select id="gridSize">
+          <option value="3">3x3</option>
+          <option value="4">4x4</option>
+          <option value="5" selected>5x5</option>
+          <option value="6">6x6</option>
+          <option value="7">7x7</option>
+          <option value="8">8x8</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="setCount" data-translate="numberOfSets">Number of Sets:</label>
+        <input type="number" id="setCount" min="1" max="10" value="1">
+        <p id="setCountInfo"></p>
+      </div>
+      
+      <div class="form-group">
+        <label for="cardCount" data-translate="cardsPerSet">Cards per Set:</label>
+        <input type="number" id="cardCount" min="1" max="10" value="1">
+      </div>
+      
+      <div class="form-group">
+              <label for="showLabelsToggle">
+                <input type="checkbox" id="showLabelsToggle">
+                Show text labels on icons
+              </label>
             </div>
-            
-            <div class="form-group">
-                <label for="gridSize" data-translate="gridSize">Grid Size:</label>
-                <select id="gridSize">
-                    <option value="3">3x3</option>
-                    <option value="4">4x4</option>
-                    <option value="5" selected>5x5</option>
-                    <option value="6">6x6</option>
-                    <option value="7">7x7</option>
-                    <option value="8">8x8</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="setCount" data-translate="numberOfSets">Number of Sets:</label>
-                <input type="number" id="setCount" min="1" value="1" disabled>
-                <p id="setCountInfo" class="info-text"></p>
-            </div>
-            
-            <div class="form-group">
-                <label for="cardCount" data-translate="cardsPerSet">Cards per Set:</label>
-                <input type="number" id="cardCount" min="1" max="20" value="4">
-            </div>
-            
-            <div class="form-group">
-                <label for="centerBlankToggle">Leave Center Blank (5x5, 7x7, 9x9)</label>
-                <input type="checkbox" id="centerBlankToggle">
-            </div>
-            
-            <div class="form-group">
-                <button id="backupBtn" data-translate="backupData">Backup Data</button>
-                <input type="file" id="restoreInput" accept=".json" style="display: none;">
-                <button id="restoreBtn" data-translate="restoreData">Restore Data</button>
-            </div>
-            
-            <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
-        </div>
-        
-        <div class="icon-manager">
-            <h2 data-translate="iconManager">Icon Manager</h2>
-            <div class="icon-controls">
-                <input type="file" id="iconUpload" accept="image/*" multiple>
-                <button id="uploadBtn" data-translate="uploadIcons">Upload Icons</button>
-                <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
-            </div>
-            <p><small data-translate="currentlyUsing">Currently using</small> <span id="iconCount">0</span> <small data-translate="icons">icons</small></p>
-            <div id="iconGallery" class="icon-gallery"></div>
-        </div>
-        
-        <div class="preview-section">
-            <h2 data-translate="preview">Preview</h2>
-            <div id="cardPreview" class="bingo-card">
-                <!-- Preview will be generated here -->
-            </div>
+            <p id="iconAvailability"></p>
+      
+      <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
+      
+      <div id="iconManager">
+        <h2 data-translate="iconManager">Icon Manager</h2>
+        <div class="icon-tools">
+          <div class="file-input-wrapper">
+            <button id="uploadIconBtn" data-translate="uploadIcons">Upload Icons</button>
+            <input type="file" id="iconUpload" accept="image/*" multiple>
+          </div>
+          <button id="clearIcons" data-translate="clearIcons">Clear All Icons</button>
+          <span class="icon-count">
+            <span data-translate="currentlyUsing">Currently using</span> 
+            <span id="iconCount">0</span> 
+            <span data-translate="icons">icons</span>
+          </span>
         </div>
         
-        <div class="generate-section">
-            <p id="identifier"></p>
-            <div class="form-group">
-                <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
-                <select id="pdfCompression">
-                    <option value="NONE">None (Largest file)</option>
-                    <option value="FAST">Light (Smaller file)</option>
-                    <option value="MEDIUM" selected>Medium (Recommended)</option>
-                    <option value="SLOW">High (Smallest file)</option>
-                </select>
-            </div>
-            <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
-        </div>
+        <div id="iconGallery" class="icon-gallery"></div>
+      </div>
+      
+      <div class="data-management">
+        <button id="backupBtn" data-translate="backupData">Backup Data</button>
+        <button id="restoreBtn" data-translate="restoreData">Restore Data</button>
+        <input type="file" id="restoreInput" accept=".json" class="hidden">
+      </div>
     </div>
     
-    <!-- Load scripts at the end of body -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="languages.js"></script>
-    <script src="db.js"></script>
-    <script src="script.js"></script>
+    <div class="preview-panel">
+      <h2 data-translate="preview">Preview</h2>
+      <div id="cardPreview"></div>
+      
+      <div class="generate-section">
+        <p id="identifier"></p>
+        <div class="form-group">
+          <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
+          <select id="pdfCompression">
+            <option value="NONE">None (Largest file)</option>
+            <option value="FAST">Light (Smaller file)</option>
+            <option value="MEDIUM" selected>Medium (Recommended)</option>
+            <option value="SLOW">High (Smallest file)</option>
+          </select>
+        </div>
+        <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Third-party libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <!-- Main application script -->
+  <script type="module" src="src/js/app.js"></script>
 </body>
 </html>
