@@ -2,7 +2,7 @@ const { defineConfig } = require('cypress');
 
 module.exports = defineConfig({
   e2e: {
-    baseUrl: 'http://localhost:3000',
+    baseUrl: 'http://localhost:8080',
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },
@@ -13,5 +13,7 @@ module.exports = defineConfig({
     video: true,
     // Screenshots folder updated for new structure
     screenshotsFolder: '../docs/screenshots/cypress',
+    // Support for IndexedDB testing
+    experimentalStudio: true,
   },
 }); 

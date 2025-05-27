@@ -50,11 +50,45 @@
       </div>
       
       <div class="form-group">
-              <label for="showLabelsToggle">
+              <label for="showLabelsToggle" class="checkbox-label">
                 <input type="checkbox" id="showLabelsToggle">
-                Show text labels on icons
+                <span data-translate="showLabelsToggle">Show text labels on icons</span>
               </label>
             </div>
+      
+      <div class="form-group">
+        <label for="centerBlankToggle" class="checkbox-label">
+          <input type="checkbox" id="centerBlankToggle" checked>
+          <span data-translate="centerBlankToggle">Leave center cell blank (odd grids only)</span>
+        </label>
+      </div>
+      
+      <div class="form-group">
+        <label for="multiHitToggle" class="checkbox-label">
+          <input type="checkbox" id="multiHitToggle">
+          <span data-translate="multiHitToggle">Enable Multi-Hit Mode</span>
+        </label>
+      </div>
+      
+      <div class="form-group multi-hit-options" id="multiHitOptions" style="display: none;">
+        <label data-translate="difficulty">Difficulty:</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="difficulty" value="LIGHT">
+            <span data-translate="difficultyLight">Light (20-30% tiles, 2-3 hits)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="difficulty" value="MEDIUM" checked>
+            <span data-translate="difficultyMedium">Medium (40-50% tiles, 2-4 hits)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="difficulty" value="HARD">
+            <span data-translate="difficultyHard">Hard (60-70% tiles, 3-5 hits)</span>
+          </label>
+        </div>
+        <p id="multiHitPreview" class="info-text"></p>
+      </div>
+      
             <p id="iconAvailability"></p>
       
       <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>

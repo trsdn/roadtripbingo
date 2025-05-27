@@ -5,7 +5,7 @@ describe('Center Blank Toggle UI Feature', () => {
     cy.clearLocalStorage();
     
     // Visit the app
-    cy.visit('/src');
+    cy.visit('/');
   });
 
   it('should display the center blank toggle checkbox', () => {

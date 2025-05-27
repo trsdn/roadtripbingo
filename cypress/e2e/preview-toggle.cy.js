@@ -2,17 +2,33 @@
 
 describe('Preview label toggle and grid layout', () => {
   beforeEach(() => {
+    // Start with a clean localStorage
     cy.clearLocalStorage();
-    cy.visit('/src/index.html');
-    // Add enough icons for a 3x3 grid
+    
+    // Visit the app
+    cy.visit('/'); // Changed from /src/index.html to /
+    
+    // Wait for the app to fully initialize
+    cy.window().its('iconDB').should('exist');
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    });
+    
+    // Set up test data with enough icons for testing
     cy.window().then(win => {
-      const testIcons = Array.from({ length: 9 }, (_, i) => ({
+      const testIcons = Array.from({ length: 25 }, (_, i) => ({
         id: `test-${i}`,
-        name: `icon-${i}`,
+        name: `test-icon-${i}`,
         data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
       }));
+      
       return win.iconDB.saveIcons(testIcons);
     });
+    
+    // Reload the page to reflect the changes
     cy.reload();
   });
 

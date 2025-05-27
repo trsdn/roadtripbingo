@@ -6,6 +6,15 @@ describe('Road Trip Bingo Card Generation', () => {
     // Visit the app
     cy.visit('/');
     
+    // Wait for the app to fully initialize
+    cy.window().its('iconDB').should('exist');
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    });
+    
     // Set up test data with enough icons for a 3x3 grid
     cy.window().then(win => {
       const testIcons = Array.from({ length: 9 }, (_, i) => ({
@@ -32,6 +41,7 @@ describe('Road Trip Bingo Card Generation', () => {
     cy.get('#cardCount').clear().type('2');
     
     // Generate the cards
+    cy.get('#generateBtn').should('not.be.disabled'); // Ensure button is enabled before clicking
     cy.get('#generateBtn').click();
     
     // Check that the preview shows up
@@ -53,7 +63,7 @@ describe('Road Trip Bingo Card Generation', () => {
     cy.window().then(win => {
       cy.stub(win, 'confirm').returns(true);
     });
-    cy.get('#clearIconsBtn').click();
+    cy.get('#clearIconsBtn').should('be.visible').click(); // Ensure button is visible before clicking
     
     // Select 5x5 grid size (requires 25 icons)
     cy.get('#gridSize').select('5');
@@ -108,4 +118,4 @@ describe('Road Trip Bingo Card Generation', () => {
     // The button text should change during generation and then back
     cy.get('#downloadBtn').should('contain', 'Download PDF');
   });
-}); 
+});

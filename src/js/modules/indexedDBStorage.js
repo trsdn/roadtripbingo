@@ -28,14 +28,17 @@ class IndexedDBStorage {
         reject(request.error);
       };
 
-      request.onsuccess = () => {
-        this.db = request.result;
-        console.log('IndexedDB opened successfully');
-        this.loadSettings().then(() => {
-          this.migrateFromLocalStorage().then(() => {
-            resolve(this.data);
-          });
-        });
+      request.onsuccess = async () => {
+        try {
+          this.db = request.result;
+          console.log('IndexedDB opened successfully');
+          await this.loadSettings();
+          await this.migrateFromLocalStorage();
+          resolve(this.data);
+        } catch (error) {
+          console.error('Error during IndexedDB initialization:', error);
+          reject(error);
+        }
       };
 
       request.onupgradeneeded = (event) => {
@@ -142,6 +145,10 @@ class IndexedDBStorage {
 
   // Icon operations
   async saveIcon(iconData) {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['icons'], 'readwrite');
       const store = transaction.objectStore('icons');
@@ -180,6 +187,10 @@ class IndexedDBStorage {
   }
 
   async loadIcons() {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['icons'], 'readonly');
       const store = transaction.objectStore('icons');
@@ -207,6 +218,10 @@ class IndexedDBStorage {
   }
 
   async deleteIcon(id) {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['icons'], 'readwrite');
       const store = transaction.objectStore('icons');
@@ -218,6 +233,10 @@ class IndexedDBStorage {
   }
 
   async clearIcons() {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['icons'], 'readwrite');
       const store = transaction.objectStore('icons');
@@ -230,6 +249,10 @@ class IndexedDBStorage {
 
   // Settings operations
   async saveSettings(settings) {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    
     this.data.settings = { ...this.data.settings, ...settings };
     
     return new Promise((resolve, reject) => {
@@ -247,6 +270,10 @@ class IndexedDBStorage {
   }
 
   async loadSettings() {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['settings'], 'readonly');
       const store = transaction.objectStore('settings');

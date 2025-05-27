@@ -5,6 +5,15 @@ describe('Road Trip Bingo - Larger Grid Sizes (6x6, 7x7, 8x8)', () => {
     
     // Visit the app
     cy.visit('/');
+    
+    // Wait for the app to fully initialize
+    cy.window().its('iconDB').should('exist');
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    });
   });
 
   // Test data setup for different grid sizes
@@ -18,7 +27,12 @@ describe('Road Trip Bingo - Larger Grid Sizes (6x6, 7x7, 8x8)', () => {
     describe(`${label} Tests`, () => {
       beforeEach(() => {
         // Set up test data with enough icons for the specific grid size
-        cy.window().then(win => {
+        cy.window().then(async (win) => {
+          // Wait for the database to be initialized
+          while (!win.iconDB.db) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          
           const testIcons = Array.from({ length: cells }, (_, i) => ({
             id: `test-${i}`,
             name: `test-icon-${i}`,
@@ -166,7 +180,12 @@ describe('Road Trip Bingo - Larger Grid Sizes (6x6, 7x7, 8x8)', () => {
 
   it('should maintain performance with larger grids', () => {
     // Set up maximum icons
-    cy.window().then(win => {
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
       const maxIcons = Array.from({ length: 64 }, (_, i) => ({
         id: `test-${i}`,
         name: `test-icon-${i}`,

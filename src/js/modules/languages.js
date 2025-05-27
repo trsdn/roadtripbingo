@@ -23,7 +23,12 @@ const languages = {
         restoreError: "Failed to restore data. Please make sure you selected a valid backup file.",
         pdfCompression: "PDF Compression:",
         showLabelsToggle: "Show text labels on icons",
-        centerBlankToggle: "Leave center cell blank (odd grids only)"
+        centerBlankToggle: "Leave center cell blank (odd grids only)",
+        multiHitToggle: "Enable Multi-Hit Mode",
+        difficulty: "Difficulty:",
+        difficultyLight: "Light (20-30% tiles, 2-3 hits)",
+        difficultyMedium: "Medium (40-50% tiles, 2-4 hits)",
+        difficultyHard: "Hard (60-70% tiles, 3-5 hits)"
     },
     de: {
         title: "Auto Bingo Generator",
@@ -49,7 +54,12 @@ const languages = {
         restoreError: "Fehler beim Wiederherstellen der Daten. Bitte stellen Sie sicher, dass Sie eine gültige Sicherungsdatei ausgewählt haben.",
         pdfCompression: "PDF-Komprimierung:",
         showLabelsToggle: "Textbeschriftungen auf Icons anzeigen",
-        centerBlankToggle: "Mittlere Zelle leer lassen (nur ungerade Raster)"
+        centerBlankToggle: "Mittlere Zelle leer lassen (nur ungerade Raster)",
+        multiHitToggle: "Multi-Hit-Modus aktivieren",
+        difficulty: "Schwierigkeit:",
+        difficultyLight: "Leicht (20-30% Felder, 2-3 Treffer)",
+        difficultyMedium: "Mittel (40-50% Felder, 2-4 Treffer)",
+        difficultyHard: "Schwer (60-70% Felder, 3-5 Treffer)"
     }
 };
 
