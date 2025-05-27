@@ -9,6 +9,10 @@ A customizable bingo card generator for road trips. Create, customize, and print
 - Upload custom icons with intelligent compression
 - **Center blank toggle**: Leave center cell blank for odd-sized grids (5x5, 7x7, 9x9)
 - **Icon labels toggle**: Show/hide text labels on icons for cleaner cards
+- **Multi-Hit Mode**: Add challenge with tiles requiring multiple hits to complete
+  - Three difficulty levels: Light (20-30% tiles), Medium (40-50% tiles), Hard (60-70% tiles)
+  - Smart hit count assignment (2-5 hits per multi-hit tile)
+  - Visual counters in both preview and PDF output
 - PDF download with adjustable compression
 - Multi-language support (English, German)
 - Data backup and restore

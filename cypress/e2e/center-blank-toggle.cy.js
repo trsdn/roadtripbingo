@@ -4,7 +4,16 @@ describe('Center Blank Toggle Feature', () => {
     cy.clearLocalStorage();
     
     // Visit the app
-    cy.visit('/src');
+    cy.visit('/');
+    
+    // Wait for the app to fully initialize
+    cy.window().its('iconDB').should('exist');
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    });
     
     // Set up test data with enough icons for testing
     cy.window().then(win => {

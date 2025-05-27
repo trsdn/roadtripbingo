@@ -5,6 +5,15 @@ describe('Road Trip Bingo Icon Management', () => {
     
     // Visit the app
     cy.visit('/');
+    
+    // Wait for the app to fully initialize
+    cy.window().its('iconDB').should('exist');
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    });
   });
 
   it('should display empty icon gallery initially', () => {

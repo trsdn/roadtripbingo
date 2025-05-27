@@ -5,7 +5,7 @@
 import storage from './modules/indexedDBStorage.js';
 import { setLanguage, getTranslatedText, initLanguageSelector } from './modules/i18n.js';
 import { convertBlobToBase64Icon } from './modules/imageUtils.js';
-import { generateBingoCards } from './modules/cardGenerator.js';
+import { generateBingoCards, calculateExpectedMultiHitCount } from './modules/cardGenerator.js';
 import { generatePDF, downloadPDFBlob } from './modules/pdfGenerator.js';
 
 // DOM elements
@@ -30,6 +30,10 @@ let pdfCompression;
 let iconCount;
 let centerBlankToggle;
 let showLabelsToggle;
+let multiHitToggle;
+let difficultyRadios;
+let multiHitOptions;
+let multiHitPreview;
 
 // Application state
 let availableIcons = [];
@@ -49,10 +53,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.iconDB = storage; // For backward compatibility
         await storage.init();
         console.log('Storage initialized');
+        // ----- Load persisted settings *before* any long async work -----
+        const settings = await storage.loadSettings();
+        console.log('Settings loaded');
+
+        // Extract values so we can apply them once the DOM elements exist
+        showLabels = settings.showLabels !== false;          // default true
+        const centerBlank     = settings.centerBlank !== false; // default true
+        const multiHitMode    = settings.multiHitMode || false; // default false
+        const multiHitDifficulty = settings.multiHitDifficulty || 'MEDIUM'; // default MEDIUM
         
         // Initialize DOM elements
         initializeDOMElements();
         console.log('DOM elements initialized');
+        // ----- Apply the loaded settings to UI controls -----
+        if (showLabelsToggle) showLabelsToggle.checked = showLabels;
+        if (centerBlankToggle) centerBlankToggle.checked = centerBlank;
+
+        if (multiHitToggle) {
+            multiHitToggle.checked = multiHitMode;
+            if (multiHitOptions) {
+                multiHitOptions.style.display = multiHitMode ? 'block' : 'none';
+            }
+        }
+        if (difficultyRadios) {
+            difficultyRadios.forEach(radio => {
+                radio.checked = radio.value === multiHitDifficulty;
+            });
+        }
         
         // Initialize language selector
         initLanguageSelector((language) => {
@@ -63,17 +91,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Language selector initialized');
 
         // Load saved icons
-        loadIcons();
-        console.log('Icons loading initiated');
+        await loadIcons();
+        console.log('Icons loading completed');
         
-        // Load showLabels setting from storage
-        const settings = await storage.loadSettings();
-        showLabels = settings.showLabels !== false; // default true
-        if (showLabelsToggle) showLabelsToggle.checked = showLabels;
-        
-        // Load centerBlank setting from storage (default true for odd grids)
-        const centerBlank = settings.centerBlank !== false; // default true
-        if (centerBlankToggle) centerBlankToggle.checked = centerBlank;
+        // Update UI after icons are loaded
+        updateUI();
         
         // Add event listeners
         setupEventListeners();
@@ -111,6 +133,10 @@ function initializeDOMElements() {
     pdfCompression = document.getElementById('pdfCompression');
     centerBlankToggle = document.getElementById('centerBlankToggle');
     showLabelsToggle = document.getElementById('showLabelsToggle');
+    multiHitToggle = document.getElementById('multiHitToggle');
+    multiHitOptions = document.getElementById('multiHitOptions');
+    multiHitPreview = document.getElementById('multiHitPreview');
+    difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
     
     // Debug: Check if critical elements are found
     console.log('Upload button found:', !!uploadIconBtn);
@@ -134,7 +160,10 @@ function setupEventListeners() {
     console.log('Setting up event listeners...');
     
     // Grid size change
-    gridSizeSelect.addEventListener('change', updateRequiredIconCount);
+    gridSizeSelect.addEventListener('change', () => {
+        updateRequiredIconCount();
+        updateMultiHitPreview();
+    });
     
     // Set count change
     setCountInput.addEventListener('change', updateRequiredIconCount);
@@ -180,6 +209,7 @@ function setupEventListeners() {
         centerBlankToggle.addEventListener('change', () => {
             storage.saveSettings({ centerBlank: centerBlankToggle.checked });
             updateRequiredIconCount();
+            updateMultiHitPreview();
         });
     }
     
@@ -192,10 +222,40 @@ function setupEventListeners() {
         });
     }
     
+    // Multi-hit mode toggle
+    if (multiHitToggle) {
+        multiHitToggle.addEventListener('change', () => {
+            const isEnabled = multiHitToggle.checked;
+            if (multiHitOptions) {
+                multiHitOptions.style.display = isEnabled ? 'block' : 'none';
+            }
+            storage.saveSettings({ multiHitMode: isEnabled });
+            updateMultiHitPreview();
+        });
+        
+        // Tell the Cypress hook that listeners are ready
+        multiHitToggle._hasEventListeners = true;
+    }
+    
+    // Difficulty radio buttons
+    if (difficultyRadios) {
+        difficultyRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    storage.saveSettings({ multiHitDifficulty: radio.value });
+                    updateMultiHitPreview();
+                }
+            });
+        });
+    }
+    
     console.log('Event listeners setup complete');
     
     // Update the required icon count initially
     updateRequiredIconCount();
+    
+    // Update multi-hit preview initially
+    updateMultiHitPreview();
 }
 
 // Load icons from storage
@@ -204,6 +264,7 @@ async function loadIcons() {
         availableIcons = await storage.loadIcons();
         updateIconGallery();
         updateStorageInfo();
+        updateRequiredIconCount(); // Update UI state after loading icons
         console.log(`Loaded ${availableIcons.length} icons from storage`);
     } catch (error) {
         console.error('Error loading icons:', error);
@@ -466,6 +527,37 @@ function updateRequiredIconCount() {
     document.getElementById('iconAvailability').textContent = availabilityText;
 }
 
+// Update multi-hit preview display
+function updateMultiHitPreview() {
+    if (!multiHitToggle || !multiHitPreview) return;
+    
+    if (!multiHitToggle.checked) {
+        multiHitPreview.textContent = '';
+        return;
+    }
+    
+    const gridSize = parseInt(gridSizeSelect.value);
+    const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
+    
+    // Get selected difficulty
+    let selectedDifficulty = 'MEDIUM';
+    if (difficultyRadios) {
+        for (const radio of difficultyRadios) {
+            if (radio.checked) {
+                selectedDifficulty = radio.value;
+                break;
+            }
+        }
+    }
+    
+    const expectedCount = calculateExpectedMultiHitCount(gridSize, leaveCenterBlank, selectedDifficulty);
+    const totalCells = leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9) 
+        ? gridSize * gridSize - 1 
+        : gridSize * gridSize;
+    
+    multiHitPreview.textContent = `Expected: ~${expectedCount} of ${totalCells} tiles will require multiple hits`;
+}
+
 // Generate Bingo cards
 function generateCards() {
     const gridSize = parseInt(gridSizeSelect.value);
@@ -473,6 +565,18 @@ function generateCards() {
     const cardsPerSet = parseInt(cardCountInput.value);
     const title = titleInput.value.trim();
     const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
+    
+    // Get multi-hit settings
+    const multiHitMode = multiHitToggle && multiHitToggle.checked;
+    let difficulty = 'MEDIUM';
+    if (difficultyRadios) {
+        for (const radio of difficultyRadios) {
+            if (radio.checked) {
+                difficulty = radio.value;
+                break;
+            }
+        }
+    }
     
     try {
         // Generate the cards
@@ -482,7 +586,9 @@ function generateCards() {
             setCount,
             cardsPerSet,
             title,
-            leaveCenterBlank
+            leaveCenterBlank,
+            multiHitMode,
+            difficulty
         });
         
         generatedCards = result;
@@ -574,6 +680,31 @@ function displayCardPreview(card) {
         img.style.objectFit = 'contain';
         img.style.margin = '0 auto';
         cellDiv.appendChild(img);
+        
+        // Add multi-hit badge if applicable
+        if (cell.isMultiHit && cell.hitCount > 1) {
+          const badge = document.createElement('div');
+          badge.className = 'multi-hit-badge';
+          badge.textContent = cell.hitCount;
+          badge.style.position = 'absolute';
+          badge.style.top = '4px';
+          badge.style.right = '4px';
+          badge.style.width = '20px';
+          badge.style.height = '20px';
+          badge.style.borderRadius = '50%';
+          badge.style.backgroundColor = '#ff4444';
+          badge.style.color = 'white';
+          badge.style.fontSize = '11px';
+          badge.style.fontWeight = 'bold';
+          badge.style.display = 'flex';
+          badge.style.alignItems = 'center';
+          badge.style.justifyContent = 'center';
+          badge.style.border = '2px solid white';
+          badge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+          badge.style.zIndex = '10';
+          cellDiv.appendChild(badge);
+        }
+        
         if (showLabels) {
           const label = document.createElement('div');
           label.className = 'icon-label';

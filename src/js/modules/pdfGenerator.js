@@ -185,6 +185,37 @@ async function generatePDF(options) {
                                     { align: 'center', baseline: 'middle', maxWidth: cellSize - 4 }
                                 );
                             }
+                            
+                            // Add multi-hit badge if applicable
+                            if (cell.isMultiHit && cell.hitCount > 1) {
+                                const badgeSize = 6; // Size in mm
+                                const badgeX = x + cellSize - badgeSize - 1;
+                                const badgeY = y + 1;
+                                
+                                // Draw red circle for badge background
+                                pdf.setFillColor(255, 68, 68); // Red color
+                                pdf.setDrawColor(255, 255, 255); // White border
+                                pdf.circle(badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2, 'FD');
+                                
+                                // Add hit count text centered in the circle
+                                pdf.setFontSize(8);
+                                pdf.setTextColor(255, 255, 255); // White text
+                                
+                                // Calculate center position for text
+                                const textX = badgeX + badgeSize/2;
+                                const textY = badgeY + badgeSize/2;
+                                
+                                // Use text() method with align: center, but adjust Y manually for better centering
+                                pdf.text(
+                                    cell.hitCount.toString(),
+                                    textX,
+                                    textY + 1, // Small adjustment for better visual centering
+                                    { align: 'center' }
+                                );
+                                
+                                // Reset text color back to black for other elements
+                                pdf.setTextColor(0, 0, 0);
+                            }
                         } catch (cellErr) {
                             console.error('Error rendering cell:', cellErr);
                         }

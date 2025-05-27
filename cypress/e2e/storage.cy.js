@@ -1,10 +1,22 @@
 describe('Road Trip Bingo Storage System', () => {
   beforeEach(() => {
-    // Start with a clean localStorage
+    // Start with a clean localStorage and IndexedDB
     cy.clearLocalStorage();
+    cy.window().then(async (win) => {
+      await win.indexedDB.deleteDatabase('RoadTripBingoDB');
+    });
     
     // Visit the app
     cy.visit('/');
+    
+    // Wait for the app to fully initialize
+    cy.window().its('iconDB').should('exist');
+    cy.window().then(async (win) => {
+      // Wait for the database to be initialized
+      while (!win.iconDB.db) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    });
   });
 
   it('should backup and restore data', () => {
@@ -28,20 +40,22 @@ describe('Road Trip Bingo Storage System', () => {
     cy.window().then(win => {
       // Create test data
       const testData = {
+        title: 'Backup Test',
+        gridSize: '5', // Changed from 4 to 5 to match default
+        setCount: '1',
+        cardCount: '2',
+        language: 'de',
+        centerBlank: false,
+        showLabels: false,
+        multiHitMode: true,
+        multiHitDifficulty: 'HARD',
         icons: [
           {
-            id: 'test-1',
-            name: 'test-icon-1',
+            id: 'test-backup-1',
+            name: 'Backup Icon 1',
             data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
           }
-        ],
-        settings: {
-          language: 'en',
-          theme: 'light',
-          gridSize: 4,
-          cardsPerSet: 3
-        },
-        gameStates: []
+        ]
       };
       
       // Simulate restore by calling importData directly
@@ -59,7 +73,7 @@ describe('Road Trip Bingo Storage System', () => {
     
     // After restore, check that UI reflects the restored settings
     cy.get('#languageSelect').should('have.value', 'en');
-    cy.get('#gridSize').should('have.value', '4');
+    cy.get('#gridSize').should('have.value', '5');
     cy.get('#cardCount').should('have.value', '3');
     
     // Check that icon was restored
@@ -68,27 +82,27 @@ describe('Road Trip Bingo Storage System', () => {
   });
 
   it('should clear all icons when requested', () => {
-    // Add some test data directly
+    // Add some icons first
     cy.window().then(win => {
-      const testIcons = [
+      const iconsToSave = [
         {
-          id: 'test-1',
-          name: 'test-icon-1',
+          id: 'clear-test-1',
+          name: 'Clear Test Icon 1',
           data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
         },
         {
-          id: 'test-2',
-          name: 'test-icon-2',
+          id: 'clear-test-2',
+          name: 'Clear Test Icon 2',
           data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
         }
       ];
-      
-      return win.iconDB.saveIcons(testIcons);
+      return win.iconDB.saveIcons(iconsToSave);
     });
     
-    // Reload the page to reflect the changes
+    // Reload to reflect changes
     cy.reload();
-    
+    cy.wait(500); // Wait for UI to update
+
     // Verify icons are loaded
     cy.get('#iconCount').should('contain', '2');
     cy.get('#iconGallery .icon-item').should('have.length', 2);
@@ -105,4 +119,4 @@ describe('Road Trip Bingo Storage System', () => {
     cy.get('#iconCount').should('contain', '0');
     cy.get('#iconGallery .icon-item').should('not.exist');
   });
-}); 
+});

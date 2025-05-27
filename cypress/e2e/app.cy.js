@@ -36,10 +36,14 @@ describe('Road Trip Bingo Generator', () => {
   it('updates UI language when changed', () => {
     // Test language switching
     cy.get('#languageSelect').select('de');
+    // Wait for the language to be applied
+    cy.wait(500); // Add a short wait for UI update
     cy.get('h1').should('contain', 'Auto Bingo Generator');
     
     // Switch back to English
     cy.get('#languageSelect').select('en');
+    // Wait for the language to be applied
+    cy.wait(500); // Add a short wait for UI update
     cy.get('h1').should('contain', 'Road Trip Bingo Generator');
   });
-}); 
+});
