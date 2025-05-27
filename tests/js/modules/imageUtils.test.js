@@ -20,15 +20,16 @@ describe('Image Utils', () => {
       
       global.FileReader = jest.fn(() => mockFileReader);
       
-      const promise = convertBlobToBase64Icon(mockFile);
+      const promise = convertBlobToBase64Icon(mockFile, 'test.png');
       
-      // Simulate successful read
-      mockFileReader.onload();
+      // Simulate successful read with proper event structure
+      mockFileReader.onload({ target: { result: 'data:image/png;base64,dGVzdA==' } });
       
       const result = await promise;
       expect(result).toEqual({
-        data: 'data:image/png;base64,dGVzdA==',
-        name: 'test.png'
+        id: expect.any(String),
+        name: 'test',
+        data: 'data:image/png;base64,dGVzdA=='
       });
     });
 
@@ -44,12 +45,12 @@ describe('Image Utils', () => {
       
       global.FileReader = jest.fn(() => mockFileReader);
       
-      const promise = convertBlobToBase64Icon(mockFile);
+      const promise = convertBlobToBase64Icon(mockFile, 'test.png');
       
-      // Simulate error
-      mockFileReader.onerror(new Error('Read error'));
+      // Simulate error - the function doesn't pass the error object, just calls onerror
+      mockFileReader.onerror();
       
-      await expect(promise).rejects.toThrow('Read error');
+      await expect(promise).rejects.toThrow('Failed to read image file');
     });
   });
 });

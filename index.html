@@ -49,7 +49,13 @@
         <input type="number" id="cardCount" min="1" max="10" value="1">
       </div>
       
-      <p id="iconAvailability"></p>
+      <div class="form-group">
+              <label for="showLabelsToggle">
+                <input type="checkbox" id="showLabelsToggle">
+                Show text labels on icons
+              </label>
+            </div>
+            <p id="iconAvailability"></p>
       
       <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
       
@@ -67,6 +73,8 @@
             <span data-translate="icons">icons</span>
           </span>
         </div>
+        
+        <div id="iconGallery" class="icon-gallery"></div>
       </div>
       
       <div class="data-management">

@@ -164,6 +164,100 @@ button:disabled {
     color: #4CAF50;
 }
 
+/* Icon Gallery Styles */
+.icon-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background: white;
+    border-radius: 4px;
+}
+
+.icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.icon-item img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border: 1px solid #eee;
+    padding: 5px;
+    border-radius: 3px;
+    background: #fafafa;
+}
+
+.icon-item .delete-icon {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff5722;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid white;
+    transition: background-color 0.3s;
+}
+
+.icon-item .delete-icon:hover {
+    background: #d32f2f;
+}
+
+.icon-label {
+  font-size: 0.9em;
+  color: #333;
+  margin-top: 4px;
+  text-align: center;
+  word-break: break-word;
+  width: 100%;
+}
+
+/* Bingo Card Preview Grid Styles */
+.bingo-card-preview-grid {
+  display: grid;
+  gap: 6px;
+  background: #fff;
+  padding: 12px;
+  border: 2px solid #000;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.bingo-card-preview-grid .bingo-cell {
+  background: #fff;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1/1;
+  position: relative;
+  overflow: hidden;
+}
+
+.bingo-card-preview-grid .bingo-cell.free-space {
+  background: #f5f5f5;
+}
+
+/* Ensure toggle is always visible */
+#showLabelsToggle, label[for="showLabelsToggle"] {
+  display: inline-block !important;
+}
+
 .generate-section {
     text-align: center;
     margin-top: 20px;
@@ -221,6 +315,55 @@ button:disabled {
 
 .hidden {
     display: none;
+}
+
+/* Storage management styles */
+.storage-btn {
+  background-color: #ff9800 !important;
+}
+
+.storage-btn:hover {
+  background-color: #f57c00 !important;
+}
+
+.storage-warning {
+  background: #ff6b6b;
+  color: white;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.storage-info {
+  background: #fff3cd;
+  color: #856404;
+  padding: 8px;
+  margin: 8px 0;
+  border-radius: 4px;
+  font-size: 0.9em;
+  border: 1px solid #ffeaa7;
+}
+
+/* Checkbox label alignment */
+.checkbox-label {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 0 !important;
+    font-weight: 400 !important;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto !important;
+    margin-right: 8px !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0;
+}
+
+.checkbox-label span {
+    flex: 1;
+    user-select: none;
 }
 
 @media (max-width: 768px) {

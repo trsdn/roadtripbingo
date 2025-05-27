@@ -49,6 +49,20 @@
                 <input type="number" id="cardCount" min="1" max="10" value="1">
             </div>
             
+            <div class="form-group">
+                <label for="showLabelsToggle" class="checkbox-label">
+                  <input type="checkbox" id="showLabelsToggle">
+                  <span data-translate="showLabelsToggle">Show text labels on icons</span>
+                </label>
+              </div>
+            
+            <div class="form-group">
+                <label for="centerBlankToggle" class="checkbox-label">
+                  <input type="checkbox" id="centerBlankToggle" checked>
+                  <span data-translate="centerBlankToggle">Leave center cell blank (odd grids only)</span>
+                </label>
+              </div>
+            
             <p id="iconAvailability"></p>
             
             <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
@@ -61,12 +75,16 @@
                         <input type="file" id="iconUpload" accept="image/*" multiple>
                     </div>
                     <button id="clearIcons" data-translate="clearIcons">Clear All Icons</button>
+                    <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
                     <span class="icon-count">
                         <span data-translate="currentlyUsing">Currently using</span> 
                         <span id="iconCount">0</span> 
                         <span data-translate="icons">icons</span>
+                        <small style="color: #666; margin-left: 8px;">(IndexedDB)</small>
                     </span>
                 </div>
+                
+                <div id="iconGallery" class="icon-gallery"></div>
             </div>
             
             <div class="data-management">

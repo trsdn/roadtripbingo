@@ -49,7 +49,11 @@ This file provides GitHub Copilot with the coding style and project conventions 
 
 * All front‑end code is vanilla HTML, CSS, and JavaScript; do not introduce frameworks.
 * Icons are managed via the Icon Manager; use descriptive `alt` attributes.
-* Store data in `localStorage` under a single namespace: `roadtripBingo`.
+* **Data Storage**: Use IndexedDB via `indexedDBStorage.js` module for all persistent data:
+  * Store images as binary Blobs (not base64 strings)
+  * Use the storage module's methods for get/set/delete operations
+  * Always handle storage quota errors gracefully
+  * Legacy localStorage code exists in `storage.js` but is deprecated
 * PDF generation uses `html2pdf.js`; ensure imported via CDN in `index.html`.
 * Configuration files should be stored in `/config` directory (e.g., `jest.config.js`, `cypress.config.js`, `webpack.config.js`).
 
@@ -57,7 +61,8 @@ This file provides GitHub Copilot with the coding style and project conventions 
 
 * Use Jest for unit tests; configure via `config/jest.config.js`.
 * Place tests in a `tests/` directory mirroring `src/` structure; name files with `.test.js` suffix.
-* Write tests using `describe` and `it` blocks; mock `localStorage` and the DOM as needed via `jsdom`.
+* Write tests using `describe` and `it` blocks; mock IndexedDB and the DOM as needed via `jsdom`.
+* For IndexedDB testing, use `fake-indexeddb` library to simulate browser storage.
 * Aim for at least 80% code coverage; coverage reports should output to `coverage/`.
 * Provide npm scripts:
   * `npm test`: runs tests once.

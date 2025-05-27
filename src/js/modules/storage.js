@@ -46,8 +46,13 @@ class Storage {
                 console.log(`Data size: ~${estimatedSizeMB.toFixed(2)} MB`);
                 
                 // Check if approaching localStorage limits (typically 5-10MB)
-                if (estimatedSizeMB > 4.5) {
+                if (estimatedSizeMB > 3.0) {
                     console.warn('Warning: Data size approaching localStorage limits');
+                }
+                
+                if (estimatedSizeMB > 4.5) {
+                    console.error('Warning: Data size too large for localStorage');
+                    throw new Error('Data size exceeds safe localStorage limits');
                 }
                 
                 localStorage.setItem('roadtripbingo-data', dataString);
@@ -78,11 +83,70 @@ class Storage {
         return this.save().then(() => {
             console.log(`Saved ${icons.length} icons to storage`);
             return icons;
+        }).catch(error => {
+            if (error.name === 'QuotaExceededError' || error.message.includes('quota')) {
+                console.warn('Storage quota exceeded, attempting to reduce icon data size');
+                return this.optimizeIconsAndRetry(icons);
+            }
+            throw error;
         });
     }
-
+    
+    // Optimize icons by reducing their count or size
+    optimizeIconsAndRetry(icons) {
+        return new Promise((resolve, reject) => {
+            // First try: keep only the first 30 icons
+            const reducedIcons = icons.slice(0, 30);
+            this.data.icons = reducedIcons;
+            
+            this.save().then(() => {
+                console.warn(`Storage optimized: Reduced icons from ${icons.length} to ${reducedIcons.length}`);
+                alert(`Storage space was full. Only the first ${reducedIcons.length} icons were saved. Please use smaller images or fewer icons.`);
+                resolve(reducedIcons);
+            }).catch(stillError => {
+                // If that still fails, try with even fewer icons
+                const veryReducedIcons = icons.slice(0, 15);
+                this.data.icons = veryReducedIcons;
+                
+                this.save().then(() => {
+                    console.warn(`Storage heavily optimized: Reduced icons from ${icons.length} to ${veryReducedIcons.length}`);
+                    alert(`Storage space was severely limited. Only ${veryReducedIcons.length} icons could be saved. Please use much smaller images.`);
+                    resolve(veryReducedIcons);
+                }).catch(finalError => {
+                    console.error('Unable to save any icons due to storage constraints');
+                    alert('Unable to save icons due to storage limitations. Please use smaller images or clear existing data.');
+                    reject(finalError);
+                });
+            });
+        });
+    }
+    
     loadIcons() {
         return Promise.resolve(this.data.icons || []);
+    }
+    
+    // Get storage usage information
+    getStorageInfo() {
+        try {
+            const dataString = JSON.stringify(this.data);
+            const sizeMB = (dataString.length * 2) / (1024 * 1024);
+            const iconCount = this.data.icons?.length || 0;
+            
+            return {
+                totalSizeMB: sizeMB,
+                iconCount: iconCount,
+                isNearLimit: sizeMB > 3.0,
+                isOverLimit: sizeMB > 4.5
+            };
+        } catch (error) {
+            return {
+                totalSizeMB: 0,
+                iconCount: 0,
+                isNearLimit: false,
+                isOverLimit: false,
+                error: error.message
+            };
+        }
     }
 
     deleteIcon(id) {
@@ -154,4 +218,4 @@ class Storage {
 const storage = new Storage();
 
 // Export the storage instance as the default export
-export default storage; 
+export default storage;

@@ -27,7 +27,7 @@ function compressImage(blob) {
                 // Calculate new dimensions while maintaining aspect ratio
                 let width = img.width;
                 let height = img.height;
-                const maxDimension = 800; // Maximum width/height in pixels
+                const maxDimension = 400; // Reduced from 800 to 400px for smaller storage size
                 
                 if (width > height && width > maxDimension) {
                     height = Math.round(height * (maxDimension / width));
@@ -61,7 +61,7 @@ function compressImage(blob) {
                         }
                     },
                     isPNG ? 'image/png' : 'image/jpeg',
-                    isPNG ? 0.9 : 0.8 // Quality setting (0.8 = 80% quality)
+                    isPNG ? 0.8 : 0.7 // Increased compression: 0.8 for PNG, 0.7 for JPEG
                 );
             } catch (error) {
                 cleanupUrl();
@@ -92,7 +92,7 @@ function convertBlobToBase64Icon(blob, name) {
         const isSVG = blob.type === 'image/svg+xml';
         
         // First check if we need to compress the image (if it's too large and not an SVG)
-        if (!isSVG && blob.size > 500 * 1024) { // If larger than 500KB and not SVG
+        if (!isSVG && blob.size > 200 * 1024) { // Reduced threshold from 500KB to 200KB
             compressImage(blob)
                 .then(compressedBlob => {
                     console.log(`Compressed image from ${(blob.size/1024).toFixed(2)}KB to ${(compressedBlob.size/1024).toFixed(2)}KB`);

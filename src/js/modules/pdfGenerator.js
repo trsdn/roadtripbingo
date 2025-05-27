@@ -9,10 +9,11 @@ import { createImageFromBase64 } from './imageUtils.js';
  * @param {Array} options.cardSets - The generated card sets to include in the PDF
  * @param {string} options.identifier - The unique identifier for this set
  * @param {string} options.compressionLevel - PDF compression level ('NONE', 'FAST', 'MEDIUM', 'SLOW')
+ * @param {boolean} options.showLabels - Whether to show labels on the bingo cards
  * @returns {Promise<Blob>} - Promise that resolves with the generated PDF blob
  */
 async function generatePDF(options) {
-    const { cardSets, identifier, compressionLevel = 'MEDIUM' } = options;
+    const { cardSets, identifier, compressionLevel = 'MEDIUM', showLabels = true } = options;
     
     // Get the jsPDF library from window global
     const { jsPDF } = window.jspdf;
@@ -109,12 +110,13 @@ async function generatePDF(options) {
                         // Leave blank (no text, no image)
                         continue;
                     } else {
-                        // Calculate image position
+                        // Calculate image position - adjust based on whether labels are shown
                         const imgPadding = 2;
+                        const labelSpace = showLabels ? 8 : 0; // Reserve space for labels only if they're shown
                         const imgX = x + imgPadding;
                         const imgY = y + imgPadding;
                         const imgWidth = cellSize - (2 * imgPadding);
-                        const imgHeight = cellSize - (2 * imgPadding) - 8; // Leave space for text
+                        const imgHeight = cellSize - (2 * imgPadding) - labelSpace;
                         
                         try {
                             // Add the image
@@ -135,9 +137,17 @@ async function generatePDF(options) {
                                             drawWidth = imgHeight * aspect;
                                         }
                                         
-                                        // Center the image
+                                        // Center the image both horizontally and vertically
                                         const centerX = imgX + (imgWidth - drawWidth) / 2;
-                                        const centerY = imgY + (imgHeight - drawHeight) / 2;
+                                        let centerY;
+                                        
+                                        if (showLabels) {
+                                            // When labels are shown, center in the available image space (top portion)
+                                            centerY = imgY + (imgHeight - drawHeight) / 2;
+                                        } else {
+                                            // When no labels, center in the entire cell
+                                            centerY = y + (cellSize - drawHeight) / 2;
+                                        }
                                         
                                         // Add the image to PDF
                                         pdf.addImage(
@@ -165,14 +175,16 @@ async function generatePDF(options) {
                                 }
                             }
                             
-                            // Add the label
-                            pdf.setFontSize(8);
-                            pdf.text(
-                                cell.name,
-                                x + cellSize / 2,
-                                y + cellSize - 4,
-                                { align: 'center', baseline: 'middle', maxWidth: cellSize - 4 }
-                            );
+                            // Add the label if showLabels is true
+                            if (showLabels) {
+                                pdf.setFontSize(8);
+                                pdf.text(
+                                    cell.name,
+                                    x + cellSize / 2,
+                                    y + cellSize - 4,
+                                    { align: 'center', baseline: 'middle', maxWidth: cellSize - 4 }
+                                );
+                            }
                         } catch (cellErr) {
                             console.error('Error rendering cell:', cellErr);
                         }
