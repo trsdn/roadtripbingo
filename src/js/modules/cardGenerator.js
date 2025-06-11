@@ -239,11 +239,13 @@ function calculateExpectedMultiHitCount(gridSize, leaveCenterBlank, difficulty) 
  * @returns {string} - The generated identifier
  */
 function generateIdentifier() {
-    // Generate a unique set identifier (date + random)
-    const date = new Date();
-    const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-    const randomStr = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `ID:${dateStr}-${randomStr}`;
+    // Generate a short 3-character alphanumeric identifier
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let id = '';
+    for (let i = 0; i < 3; i++) {
+        id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `ID:${id}`;
 }
 
 /**
