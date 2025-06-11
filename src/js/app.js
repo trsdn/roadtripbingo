@@ -82,12 +82,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        // Initialize language selector
+        // Initialize language selector with persisted language if available
         initLanguageSelector((language) => {
             // Save language preference
             storage.saveSettings({ language });
             updateUI();
-        });
+        }, settings.language || 'en');
         console.log('Language selector initialized');
 
         // Load saved icons
