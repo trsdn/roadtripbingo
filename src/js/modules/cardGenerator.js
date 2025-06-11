@@ -11,11 +11,12 @@
  * @param {string} options.title - Title for the bingo cards
  * @param {boolean} options.leaveCenterBlank - Leave center cell blank for odd-sized grids
  * @param {boolean} options.multiHitMode - Enable multi-hit mode for increased difficulty
+ * @param {boolean} options.sameCard - Generate identical cards for each set
  * @param {string} options.difficulty - Multi-hit difficulty level (LIGHT, MEDIUM, HARD)
  * @returns {Object} - Generated card sets and identifier
  */
 function generateBingoCards(options) {
-    const { icons, gridSize, setCount, cardsPerSet, title, leaveCenterBlank, multiHitMode = false, difficulty = 'MEDIUM' } = options;
+    const { icons, gridSize, setCount, cardsPerSet, title, leaveCenterBlank, sameCard = false, multiHitMode = false, difficulty = 'MEDIUM' } = options;
     
     // Validation
     if (!icons || icons.length === 0) {
@@ -26,7 +27,7 @@ function generateBingoCards(options) {
     if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
         cellsPerCard -= 1;
     }
-    const iconsNeededPerSet = cellsPerCard * cardsPerSet;
+    const iconsNeededPerSet = cellsPerCard * (sameCard ? 1 : cardsPerSet);
     if (icons.length < iconsNeededPerSet) {
         throw new Error(`Not enough icons. Need at least ${iconsNeededPerSet}`);
     }
@@ -43,45 +44,33 @@ function generateBingoCards(options) {
         };
         
         // Select icons for this set - randomly shuffle and pick needed amount
-        const selectedIcons = shuffleArray([...icons]).slice(0, iconsNeededPerSet);            // Generate cards for this set
-            for (let cardIndex = 0; cardIndex < cardsPerSet; cardIndex++) {
-                const cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
-                const shuffledCardIcons = shuffleArray([...cardIcons]);
-                const grid = [];
-                let iconIdx = 0;
-                for (let row = 0; row < gridSize; row++) {
-                    const gridRow = [];
-                    for (let col = 0; col < gridSize; col++) {
-                        if (
-                            leaveCenterBlank &&
-                            (gridSize === 5 || gridSize === 7 || gridSize === 9) &&
-                            row === Math.floor(gridSize / 2) &&
-                            col === Math.floor(gridSize / 2)
-                        ) {
-                            gridRow.push({ isFreeSpace: true });
-                        } else {
-                            const cell = { ...shuffledCardIcons[iconIdx++] };
-                            // Initialize multi-hit properties
-                            cell.isMultiHit = false;
-                            cell.hitCount = 1;
-                            cell.hitCountDisplay = 1;
-                            gridRow.push(cell);
-                        }
+        const selectedIcons = shuffleArray([...icons]).slice(0, iconsNeededPerSet);
+        let baseGrid = null;
+        for (let cardIndex = 0; cardIndex < cardsPerSet; cardIndex++) {
+            let grid;
+            if (sameCard) {
+                if (!baseGrid) {
+                    const cardIcons = selectedIcons.slice(0, cellsPerCard);
+                    baseGrid = buildGrid(cardIcons, gridSize, leaveCenterBlank);
+                    if (multiHitMode) {
+                        applyMultiHitMode(baseGrid, gridSize, difficulty);
                     }
-                    grid.push(gridRow);
                 }
-                
-                // Apply multi-hit mode if enabled
+                grid = cloneGrid(baseGrid);
+            } else {
+                const cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
+                grid = buildGrid(cardIcons, gridSize, leaveCenterBlank);
                 if (multiHitMode) {
                     applyMultiHitMode(grid, gridSize, difficulty);
                 }
-                
-                set.cards.push({
-                    id: `card-${cardIndex + 1}`,
-                    title: title || 'Road Trip Bingo',
-                    grid
-                });
             }
+
+            set.cards.push({
+                id: `card-${cardIndex + 1}`,
+                title: title || 'Road Trip Bingo',
+                grid
+            });
+        }
         
         cardSets.push(set);
     }
@@ -211,6 +200,45 @@ function selectMultiHitPositions(availablePositions, count, gridSize) {
  */
 function getRandomHitCount(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Build a bingo grid from a list of icons
+ * @param {Array} icons - Icons for the grid
+ * @param {number} gridSize - Grid size
+ * @param {boolean} leaveCenterBlank - Whether center cell should be blank
+ * @returns {Array} grid - 2D array of cells
+ */
+function buildGrid(icons, gridSize, leaveCenterBlank) {
+    const shuffledCardIcons = shuffleArray([...icons]);
+    const grid = [];
+    let iconIdx = 0;
+    for (let row = 0; row < gridSize; row++) {
+        const gridRow = [];
+        for (let col = 0; col < gridSize; col++) {
+            if (
+                leaveCenterBlank &&
+                (gridSize === 5 || gridSize === 7 || gridSize === 9) &&
+                row === Math.floor(gridSize / 2) &&
+                col === Math.floor(gridSize / 2)
+            ) {
+                gridRow.push({ isFreeSpace: true });
+            } else {
+                const cell = { ...shuffledCardIcons[iconIdx++] };
+                cell.isMultiHit = false;
+                cell.hitCount = 1;
+                cell.hitCountDisplay = 1;
+                gridRow.push(cell);
+            }
+        }
+        grid.push(gridRow);
+    }
+    return grid;
+}
+
+// Deep clone grid object
+function cloneGrid(grid) {
+    return grid.map(row => row.map(cell => ({ ...cell })));
 }
 
 /**
