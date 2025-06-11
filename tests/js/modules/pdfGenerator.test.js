@@ -4,6 +4,11 @@
 
 import { generatePDF, downloadPDFBlob } from '@/js/modules/pdfGenerator.js';
 
+// Mock createImageFromBase64 to return a loaded image
+jest.mock('@/js/modules/imageUtils.js', () => ({
+  createImageFromBase64: jest.fn(() => ({ width: 100, height: 100, complete: true }))
+}));
+
 // Mock jsPDF - it's accessed via window.jspdf.jsPDF
 const mockJsPDF = jest.fn().mockImplementation(() => ({
   addImage: jest.fn(),
@@ -42,7 +47,7 @@ describe('PDF Generator', () => {
             {
               title: 'Test Bingo',
               grid: [
-                [{ icon: null, text: 'Item 1', isFreeSpace: false }, { icon: null, text: 'Item 2', isFreeSpace: false }, { icon: null, text: 'Item 3', isFreeSpace: false }, { icon: null, text: 'Item 4', isFreeSpace: false }, { icon: null, text: 'Item 5', isFreeSpace: false }],
+                [{ id: 1, name: 'Item 1', data: 'data:image/jpeg;base64,mock', icon: null, text: 'Item 1', isFreeSpace: false }, { icon: null, text: 'Item 2', isFreeSpace: false }, { icon: null, text: 'Item 3', isFreeSpace: false }, { icon: null, text: 'Item 4', isFreeSpace: false }, { icon: null, text: 'Item 5', isFreeSpace: false }],
                 [{ icon: null, text: 'Item 6', isFreeSpace: false }, { icon: null, text: 'Item 7', isFreeSpace: false }, { icon: null, text: 'Item 8', isFreeSpace: false }, { icon: null, text: 'Item 9', isFreeSpace: false }, { icon: null, text: 'Item 10', isFreeSpace: false }],
                 [{ icon: null, text: 'Item 11', isFreeSpace: false }, { icon: null, text: 'Item 12', isFreeSpace: false }, { icon: null, text: 'FREE', isFreeSpace: true }, { icon: null, text: 'Item 13', isFreeSpace: false }, { icon: null, text: 'Item 14', isFreeSpace: false }],
                 [{ icon: null, text: 'Item 15', isFreeSpace: false }, { icon: null, text: 'Item 16', isFreeSpace: false }, { icon: null, text: 'Item 17', isFreeSpace: false }, { icon: null, text: 'Item 18', isFreeSpace: false }, { icon: null, text: 'Item 19', isFreeSpace: false }],
@@ -61,8 +66,13 @@ describe('PDF Generator', () => {
       };
 
       const result = await generatePDF(options);
-      
+
       expect(mockJsPDF).toHaveBeenCalled();
+      const pdfInstance = mockJsPDF.mock.results[0].value;
+      expect(pdfInstance.addImage).toHaveBeenCalled();
+      const addImageArgs = pdfInstance.addImage.mock.calls;
+      const hasExpectedCall = addImageArgs.some(([imageData, format, x, y, width, height, alias]) => format === 'JPEG' && alias.startsWith('img-'));
+      expect(hasExpectedCall).toBe(true);
       expect(result).toBe('mock-blob');
     });
 
