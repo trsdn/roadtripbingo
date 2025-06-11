@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { generateBingoCards, calculateExpectedMultiHitCount, getDifficultySettings } from '@/js/modules/cardGenerator.js';
+import { generateBingoCards, generateIdentifier, calculateExpectedMultiHitCount, getDifficultySettings } from '@/js/modules/cardGenerator.js';
 
 describe('Card Generator', () => {
   beforeEach(() => {
@@ -340,6 +340,11 @@ describe('Card Generator', () => {
       // 5x5 grid with center blank = 24 cells, medium difficulty = 45%
       const expectedWithBlank = calculateExpectedMultiHitCount(5, true, 'MEDIUM');
       expect(expectedWithBlank).toBe(11); // 24 * 0.45 = 10.8, rounded to 11
+    });
+
+    it('should generate a short alphanumeric identifier', () => {
+      const id = generateIdentifier();
+      expect(id).toMatch(/^ID:[A-Z0-9]{3}$/);
     });
 
     it('should return correct difficulty settings', () => {
