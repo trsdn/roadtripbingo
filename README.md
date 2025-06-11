@@ -55,8 +55,6 @@ roadtripbingo/
 │   │   ├── indexedDBStorage.test.js # IndexedDB storage tests
 │   │   └── ...           # Other module tests
 │   └── db.test.js        # Database tests
-├── docs/                 # Documentation
-│   └── screenshots/      # Project screenshots
 ├── cypress/              # E2E tests
 │   └── e2e/              # Test specifications
 ├── server.js             # Simple development server
