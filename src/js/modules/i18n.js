@@ -110,16 +110,15 @@ function getTranslatedText(key, replacements = {}, language = 'en') {
  * Initialize the language selector and set default language
  * @param {function} onChange - Callback when language changes
  */
-function initLanguageSelector(onChange) {
+function initLanguageSelector(onChange, initialLang = 'en') {
     document.addEventListener('DOMContentLoaded', () => {
         const languageSelect = document.getElementById('languageSelect');
         if (!languageSelect) {
             console.error('Language selector element not found');
             return;
         }
-        
+
         // Set initial language
-        const initialLang = 'en';
         setLanguage(initialLang);
         
         // Set the dropdown to match the initial language
