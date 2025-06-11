@@ -71,7 +71,7 @@ describe('PDF Generator', () => {
       const pdfInstance = mockJsPDF.mock.results[0].value;
       expect(pdfInstance.addImage).toHaveBeenCalled();
       const addImageArgs = pdfInstance.addImage.mock.calls;
-      const hasExpectedCall = addImageArgs.some(call => call[1] === 'JPEG' && call[6].startsWith('img-'));
+      const hasExpectedCall = addImageArgs.some(([imageData, format, x, y, width, height, alias]) => format === 'JPEG' && alias.startsWith('img-'));
       expect(hasExpectedCall).toBe(true);
       expect(result).toBe('mock-blob');
     });
