@@ -158,8 +158,8 @@ async function generatePDF(options) {
                                             drawWidth,
                                             drawHeight,
                                             `img-${cell.id}`,
-                                            'FAST',
-                                            imgQuality
+                                            imgQuality,
+                                            'FAST'
                                         );
                                     } catch (imgErr) {
                                         console.error('Error adding image to PDF:', imgErr);

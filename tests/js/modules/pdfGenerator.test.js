@@ -2,6 +2,11 @@
  * @jest-environment jsdom
  */
 
+// Mock image utility before importing module under test
+jest.mock('@/js/modules/imageUtils.js', () => ({
+  createImageFromBase64: jest.fn(() => ({ width: 50, height: 50, complete: true }))
+}));
+
 import { generatePDF, downloadPDFBlob } from '@/js/modules/pdfGenerator.js';
 
 // Mock jsPDF - it's accessed via window.jspdf.jsPDF
@@ -64,6 +69,41 @@ describe('PDF Generator', () => {
       
       expect(mockJsPDF).toHaveBeenCalled();
       expect(result).toBe('mock-blob');
+    });
+
+    it('should pass image quality before compression', async () => {
+      const mockCardSets = [
+        {
+          cards: [
+            {
+              title: 'Image Bingo',
+              grid: [[{ id: '1', data: 'data:image/jpeg;base64,abcd', name: 'Item', isFreeSpace: false }]]
+            }
+          ]
+        }
+      ];
+
+      const options = {
+        cardSets: mockCardSets,
+        identifier: 'test-id',
+        compressionLevel: 'FAST',
+        showLabels: true
+      };
+
+      await generatePDF(options);
+
+      const instance = mockJsPDF.mock.results[0].value;
+      expect(instance.addImage).toHaveBeenCalledWith(
+        'data:image/jpeg;base64,abcd',
+        'JPEG',
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+        'img-1',
+        0.9,
+        'FAST'
+      );
     });
 
     it('should handle empty cards array', async () => {
