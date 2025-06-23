@@ -164,9 +164,9 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
                 pdf.setFontSize(16);
                 pdf.setTextColor(100, 100, 100);
                 // Right side identifier
-                pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+                pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
                 // Left side identifier
-                pdf.text(displayIdentifier, margin, margin - 5, { align: 'left' });
+                pdf.text(displayIdentifier, margin, margin + 5, { align: 'left' });
                 
                 // Calculate position to center the card on the page for consistent rendering
                 const availableWidth = pageWidth - (2 * margin);
@@ -299,14 +299,6 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
 
                         pageCount++;
                         
-                        // Add identifier on each page - right side of both halves
-                        pdf.setFontSize(16);
-                        pdf.setTextColor(100, 100, 100);
-                        // Right side of page
-                        pdf.text(setIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
-                        // Right side of left half
-                        pdf.text(setIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
-                        
                         // Log dimensions after adding page to verify
                         console.log(`New page dimensions: Width=${pdf.internal.pageSize.getWidth()}, Height=${pdf.internal.pageSize.getHeight()}`);
                     } catch (pageError) {
@@ -320,8 +312,8 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                 if (cardPosition === 0) {
                     pdf.setFontSize(16);
                     pdf.setTextColor(100, 100, 100);
-                    pdf.text(setIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
-                    pdf.text(setIdentifier, leftMargin + cardWidth, margin - 5, { align: 'right' });
+                    pdf.text(setIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
+                    pdf.text(setIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
                 }
                 
                 // Position cards differently based on environment
