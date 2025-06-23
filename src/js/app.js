@@ -27,6 +27,7 @@ let backupBtn;
 let restoreBtn;
 let restoreInput;
 let pdfCompression;
+let pdfLayout;
 let iconCount;
 let centerBlankToggle;
 let showLabelsToggle;
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const centerBlank     = settings.centerBlank !== false; // default true
         const multiHitMode    = settings.multiHitMode || false; // default false
         const multiHitDifficulty = settings.multiHitDifficulty || 'MEDIUM'; // default MEDIUM
+        const iconDistribution = settings.iconDistribution || 'same-icons'; // default same-icons
         
         // Initialize DOM elements
         initializeDOMElements();
@@ -79,6 +81,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (difficultyRadios) {
             difficultyRadios.forEach(radio => {
                 radio.checked = radio.value === multiHitDifficulty;
+            });
+        }
+        
+        // Set icon distribution option
+        const iconDistributionRadios = document.querySelectorAll('input[name="iconDistribution"]');
+        if (iconDistributionRadios) {
+            iconDistributionRadios.forEach(radio => {
+                radio.checked = radio.value === iconDistribution;
             });
         }
         
@@ -131,6 +141,7 @@ function initializeDOMElements() {
     restoreBtn = document.getElementById('restoreBtn');
     restoreInput = document.getElementById('restoreInput');
     pdfCompression = document.getElementById('pdfCompression');
+    pdfLayout = document.getElementById('pdfLayout');
     centerBlankToggle = document.getElementById('centerBlankToggle');
     showLabelsToggle = document.getElementById('showLabelsToggle');
     multiHitToggle = document.getElementById('multiHitToggle');
@@ -244,6 +255,19 @@ function setupEventListeners() {
                 if (radio.checked) {
                     storage.saveSettings({ multiHitDifficulty: radio.value });
                     updateMultiHitPreview();
+                }
+            });
+        });
+    }
+    
+    // Icon distribution radio buttons
+    const iconDistributionRadios = document.querySelectorAll('input[name="iconDistribution"]');
+    if (iconDistributionRadios) {
+        iconDistributionRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    storage.saveSettings({ iconDistribution: radio.value });
+                    updateRequiredIconCount();
                 }
             });
         });
@@ -495,11 +519,33 @@ function updateRequiredIconCount() {
     const setCount = parseInt(setCountInput.value);
     const cardsPerSet = parseInt(cardCountInput.value);
     const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
+    
     let cellsPerCard = gridSize * gridSize;
     if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
         cellsPerCard -= 1;
     }
-    const iconsNeededPerSet = cellsPerCard * cardsPerSet;
+    
+    // Get the current icon distribution mode
+    let iconDistribution = 'same-icons'; // default
+    const iconDistributionRadios = document.querySelectorAll('input[name="iconDistribution"]');
+    if (iconDistributionRadios) {
+        for (const radio of iconDistributionRadios) {
+            if (radio.checked) {
+                iconDistribution = radio.value;
+                break;
+            }
+        }
+    }
+    
+    // Calculate icons needed based on distribution mode
+    let iconsNeededPerSet;
+    if (iconDistribution === 'different-icons') {
+        // For different-icons mode, we need unique icons for each card
+        iconsNeededPerSet = cellsPerCard * cardsPerSet;
+    } else {
+        // For same-icons mode, we reuse the same icons on each card
+        iconsNeededPerSet = cellsPerCard;
+    }
     
     // Update info text
     let infoText = '';
@@ -578,6 +624,18 @@ function generateCards() {
         }
     }
     
+    // Get icon distribution mode
+    let iconDistribution = 'same-icons'; // default
+    const iconDistributionRadios = document.querySelectorAll('input[name="iconDistribution"]');
+    if (iconDistributionRadios) {
+        for (const radio of iconDistributionRadios) {
+            if (radio.checked) {
+                iconDistribution = radio.value;
+                break;
+            }
+        }
+    }
+    
     try {
         // Generate the cards
         const result = generateBingoCards({
@@ -588,7 +646,8 @@ function generateCards() {
             title,
             leaveCenterBlank,
             multiHitMode,
-            difficulty
+            difficulty,
+            iconDistribution
         });
         
         generatedCards = result;
@@ -732,14 +791,16 @@ async function downloadPDF() {
     // Use setTimeout to allow the UI to update before starting PDF generation
     setTimeout(async () => {
         try {
-            // Get selected compression level
+            // Get selected compression level and layout
             const compressionLevel = pdfCompression.value;
+            const layout = pdfLayout.value;
             
             // Generate the PDF
             const pdfBlob = await generatePDF({
                 cardSets: generatedCards.cardSets,
                 identifier: generatedCards.identifier,
                 compressionLevel,
+                layout,
                 showLabels // include toggle state
             });
             

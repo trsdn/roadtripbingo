@@ -15,7 +15,17 @@
  * @returns {Object} - Generated card sets and identifier
  */
 function generateBingoCards(options) {
-    const { icons, gridSize, setCount, cardsPerSet, title, leaveCenterBlank, multiHitMode = false, difficulty = 'MEDIUM' } = options;
+    const { 
+        icons, 
+        gridSize, 
+        setCount, 
+        cardsPerSet, 
+        title, 
+        leaveCenterBlank, 
+        multiHitMode = false, 
+        difficulty = 'MEDIUM',
+        iconDistribution = 'same-icons' 
+    } = options;
     
     // Validation
     if (!icons || icons.length === 0) {
@@ -26,9 +36,21 @@ function generateBingoCards(options) {
     if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
         cellsPerCard -= 1;
     }
-    const iconsNeededPerSet = cellsPerCard * cardsPerSet;
+    
+    // Calculate needed icons based on distribution mode
+    let iconsNeededPerSet;
+    if (iconDistribution === 'different-icons') {
+        // For different-icons mode, we need unique icons for each card
+        iconsNeededPerSet = cellsPerCard * cardsPerSet;
+    } else {
+        // For same-icons mode, we reuse the same icons on each card
+        iconsNeededPerSet = cellsPerCard;
+    }
+    
+    // Validate we have enough icons
     if (icons.length < iconsNeededPerSet) {
-        throw new Error(`Not enough icons. Need at least ${iconsNeededPerSet}`);
+        const modeInfo = iconDistribution === 'different-icons' ? 'for different-icons mode' : 'for same-icons mode';
+        throw new Error(`Not enough icons. Need at least ${iconsNeededPerSet} ${modeInfo}`);
     }
     
     // Generate a unique identifier for this set
@@ -42,13 +64,31 @@ function generateBingoCards(options) {
             cards: []
         };
         
-        // Select icons for this set - randomly shuffle and pick needed amount
-        const selectedIcons = shuffleArray([...icons]).slice(0, iconsNeededPerSet);            // Generate cards for this set
-            for (let cardIndex = 0; cardIndex < cardsPerSet; cardIndex++) {
-                const cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
-                const shuffledCardIcons = shuffleArray([...cardIcons]);
-                const grid = [];
-                let iconIdx = 0;
+        // Handle icon distribution based on mode
+        let selectedIcons;
+        if (iconDistribution === 'different-icons') {
+            // For different-icons, select enough icons for all cards with no overlaps
+            selectedIcons = shuffleArray([...icons]).slice(0, iconsNeededPerSet);
+        } else {
+            // For same-icons, select just enough for one card (they will be reused)
+            selectedIcons = shuffleArray([...icons]).slice(0, cellsPerCard);
+        }
+        
+        // Generate cards for this set
+        for (let cardIndex = 0; cardIndex < cardsPerSet; cardIndex++) {
+            let cardIcons;
+            
+            if (iconDistribution === 'different-icons') {
+                // Get unique icons for this card
+                cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
+            } else {
+                // Reuse the same icons for each card (with different arrangements)
+                cardIcons = [...selectedIcons];
+            }
+            
+            const shuffledCardIcons = shuffleArray([...cardIcons]);
+            const grid = [];
+            let iconIdx = 0;
                 for (let row = 0; row < gridSize; row++) {
                     const gridRow = [];
                     for (let col = 0; col < gridSize; col++) {

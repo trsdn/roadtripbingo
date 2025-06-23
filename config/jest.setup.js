@@ -31,6 +31,23 @@ if (!global.structuredClone) {
   global.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
 }
 
+// Mock Blob constructor for JSDOM
+if (!global.Blob) {
+  // Use Node.js buffer-based Blob if available, otherwise create a simple mock
+  try {
+    const { Blob } = require('buffer');
+    global.Blob = Blob;
+  } catch {
+    global.Blob = class MockBlob {
+      constructor(parts, options = {}) {
+        this.parts = parts || [];
+        this.type = options.type || '';
+        this.size = this.parts.reduce((total, part) => total + (part.length || 0), 0);
+      }
+    };
+  }
+}
+
 // Mock document methods for minimal support
 global.document = {
   createElement: () => ({
@@ -83,12 +100,7 @@ global.FileReader = class FileReader {
   }
 };
 
-// Mock Blob for exportData test
-global.Blob = class Blob {
-  constructor() {
-    return {};
-  }
-};
+// Note: Blob is already mocked above, no need to override it again
 
 // Silence console during tests
 global.console = {

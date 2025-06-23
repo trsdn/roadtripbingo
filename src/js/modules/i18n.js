@@ -34,7 +34,11 @@ const languages = {
         difficultyMedium: "Medium (40-50% tiles, 2-4 hits)",
         difficultyHard: "Hard (60-70% tiles, 3-5 hits)",
         multiHitPreview: "Expected multi-hit tiles: {count}",
-        multiHitInstructions: "Multi-Hit Mode Instructions"
+        multiHitInstructions: "Multi-Hit Mode Instructions",
+        iconDistributionLabel: "Icon Distribution:",
+        sameIcons: "Same icons (different arrangements)",
+        differentIcons: "Different icons for each card",
+        iconDistributionInfo: "Choose how icons are distributed across cards within each set."
     },
     de: {
         title: "Auto Bingo Generator",
@@ -67,7 +71,11 @@ const languages = {
         difficultyMedium: "Mittel (40-50% Felder, 2-4 Treffer)",
         difficultyHard: "Schwer (60-70% Felder, 3-5 Treffer)",
         multiHitPreview: "Erwartete Multi-Hit-Felder: {count}",
-        multiHitInstructions: "Multi-Hit-Modus Anweisungen"
+        multiHitInstructions: "Multi-Hit-Modus Anweisungen",
+        iconDistributionLabel: "Icon-Verteilung:",
+        sameIcons: "Gleiche Icons (unterschiedliche Anordnungen)",
+        differentIcons: "Verschiedene Icons für jede Karte",
+        iconDistributionInfo: "Wählen Sie, wie Icons auf Karten innerhalb eines Sets verteilt werden."
     }
 };
 
