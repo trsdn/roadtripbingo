@@ -209,15 +209,15 @@ describe('PDF Generator', () => {
 
       const instance = mockJsPDF.mock.results[0].value;
       expect(instance.addImage).toHaveBeenCalledWith(
-        'abcd',
+        'data:image/jpeg;base64,abcd',
         'JPEG',
         expect.any(Number),
         expect.any(Number),
         expect.any(Number),
         expect.any(Number),
-        null,
-        'SLOW',
-        0.9
+        'img-1',
+        0.9,
+        'FAST'
       );
     });
 

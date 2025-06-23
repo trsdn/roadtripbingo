@@ -146,9 +146,9 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
         pdf.setFontSize(16);
         pdf.setTextColor(100, 100, 100);
         // Right side identifier
-        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
         // Left side identifier
-        pdf.text(displayIdentifier, margin, margin - 5, { align: 'left' });
+        pdf.text(displayIdentifier, margin, margin + 5, { align: 'left' });
         
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
@@ -167,9 +167,9 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
                         pdf.setFontSize(16);
                         pdf.setTextColor(100, 100, 100);
                         // Right side identifier
-                        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+                        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
                         // Left side identifier
-                        pdf.text(displayIdentifier, margin, margin - 5, { align: 'left' });
+                        pdf.text(displayIdentifier, margin, margin + 5, { align: 'left' });
                     } catch (pageError) {
                         console.error('Error adding new page:', pageError);
                     }
@@ -271,9 +271,9 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
         pdf.setFontSize(16);
         pdf.setTextColor(100, 100, 100);
         // Right side of page
-        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
         // Right side of left half
-        pdf.text(displayIdentifier, leftMargin + cardWidth, margin - 5, { align: 'right' });
+        pdf.text(displayIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
         
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
@@ -322,9 +322,9 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                         pdf.setFontSize(16);
                         pdf.setTextColor(100, 100, 100);
                         // Right side of page
-                        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+                        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
                         // Right side of left half
-                        pdf.text(displayIdentifier, leftMargin + cardWidth, margin - 5, { align: 'right' });
+                        pdf.text(displayIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
                         
                         // Log dimensions after adding page to verify
                         console.log(`New page dimensions: Width=${pdf.internal.pageSize.getWidth()}, Height=${pdf.internal.pageSize.getHeight()}`);
