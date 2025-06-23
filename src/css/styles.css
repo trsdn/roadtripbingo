@@ -255,8 +255,8 @@ button:disabled {
 
 /* Ensure toggle is always visible and aligned */
 #showLabelsToggle, label[for="showLabelsToggle"] {
-  display: flex !important;
-  align-items: center !important;
+  display: flex;
+  align-items: center;
 }
 
 .generate-section {
