@@ -551,6 +551,58 @@ describe('PDF Generator', () => {
       const leftIdentifier = identifierElements.find(el => el.options.align === 'left');
       expect(leftIdentifier).toBeUndefined();
     });
+
+    it('should start a new page when a new set begins mid-page', async () => {
+      const multiSet = [
+        {
+          identifier: 'SET1',
+          cards: [
+            sampleCardSets[0].cards[0],
+            sampleCardSets[0].cards[1],
+            {
+              title: 'Card 3',
+              identifier: 'C03',
+              grid: sampleCardSets[0].cards[0].grid
+            }
+          ]
+        },
+        {
+          identifier: 'SET2',
+          cards: [
+            {
+              title: 'Card 4',
+              identifier: 'D01',
+              grid: sampleCardSets[0].cards[0].grid
+            },
+            {
+              title: 'Card 5',
+              identifier: 'D02',
+              grid: sampleCardSets[0].cards[0].grid
+            },
+            {
+              title: 'Card 6',
+              identifier: 'D03',
+              grid: sampleCardSets[0].cards[0].grid
+            }
+          ]
+        }
+      ];
+
+      const options = {
+        cardSets: multiSet,
+        identifier: 'TEST-SET',
+        layout: 'two-per-page'
+      };
+
+      await generatePDF(options);
+
+      // Expect one page break for set1 third card and one for starting set2
+      // plus one for set2 third card => 3 additional pages
+      expect(mockPDFInstance.addPage).toHaveBeenCalledTimes(3);
+
+      const set2Ids = mockPDFInstance.elements.filter(el => el.type === 'text' && el.text === 'SET2');
+      expect(set2Ids.length).toBeGreaterThan(0);
+    });
   });
 
   describe('Error handling', () => {
