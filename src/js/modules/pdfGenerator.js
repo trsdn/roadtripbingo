@@ -1,7 +1,7 @@
 // Road Trip Bingo - PDF Generator
 // Provides functions for generating PDF files of bingo cards
 
-import { createImageFromBase64 } from './imageUtils.js';
+import { createImageFromBase64, getImageDimensions } from './imageUtils.js';
 
 /**
  * Generate a PDF with bingo cards
@@ -81,10 +81,10 @@ async function generatePDF(options) {
         
         // Choose the appropriate layout function based on the layout option
         if (layout === 'two-per-page') {
-            return generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels);
+            return generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel);
         } else {
             // Default to one-per-page layout for any other value
-            return generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels);
+            return generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel);
         }
     } catch (error) {
         console.error('Error generating PDF:', error);
@@ -101,7 +101,7 @@ async function generatePDF(options) {
  * @param {boolean} showLabels - Whether to show labels
  * @returns {Promise<Blob>} - PDF blob
  */
-async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels) {
+async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel) {
     try {
         // Detect if we're in a test environment to handle layout differently
         const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -179,16 +179,17 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
                 const xCenter = margin + (availableWidth - cardWidth) / 2;
                 
                 // Render card on the page with proper centering and square aspect ratio
-                renderCard(
-                    pdf, 
-                    card, 
-                    xCenter, 
-                    yOffset, 
-                    cardWidth, 
+                await renderCard(
+                    pdf,
+                    card,
+                    xCenter,
+                    yOffset,
+                    cardWidth,
                     16,  // title font size
                     8,   // label font size
                     showLabels, 
-                    imgQuality
+                    imgQuality,
+                    compressionLevel
                 );
             }
         }
@@ -209,7 +210,7 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
  * @param {boolean} showLabels - Whether to show labels
  * @returns {Promise<Blob>} - PDF blob
  */
-async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels) {
+async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel) {
     try {
         // Detect if we're in a test environment to handle layout differently
         const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -346,7 +347,7 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                 }
                 
                 // Render card on the page
-                renderCard(
+                await renderCard(
                     pdf,
                     card,
                     xOffset,
@@ -355,7 +356,8 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                     14, // title font size (smaller for two-per-page)
                     6,  // label font size (smaller for two-per-page)
                     showLabels,
-                    imgQuality
+                    imgQuality,
+                    compressionLevel
                 );
                 
                 cardCount++;
@@ -380,8 +382,9 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
  * @param {number} labelFontSize - Font size for the labels
  * @param {boolean} showLabels - Whether to show labels
  * @param {number} imgQuality - Image quality (0-1)
+ * @param {string} compressionLevel - Compression level for jsPDF
  */
-async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelFontSize, showLabels, imgQuality) {
+async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelFontSize, showLabels, imgQuality, compressionLevel) {
     // Use the provided width directly - calculations are now done in the layout functions
     const cardWidth = availableWidth;
     // Calculate cell size based on grid dimensions (assumes square cells and grid)
@@ -437,27 +440,54 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
                     });
                 }
             } else if (cell.data) {
-                // Calculate image dimensions
+                // Calculate padding and maximum image size
                 const padding = cellSize * 0.1;
-                const imgWidth = cellSize - (padding * 2);
-                const imgHeight = cellSize - (padding * 2);
-                
-                // Draw image
+                const maxSize = cellSize - (padding * 2);
+
+                // Draw image with preserved aspect ratio
                 try {
-                    // Extract base64 data
-                    const imgData = cell.data.split(',')[1];
-                    
+                    // Use full data URL for jsPDF
+                    const imgData = cell.data;
+
+                    const format = cell.data.includes('image/png') ? 'PNG' : 'JPEG';
+
+                    // Get natural image dimensions if utility is available
+                    let imgW = maxSize;
+                    let imgH = maxSize;
+                    if (typeof getImageDimensions === 'function') {
+                        try {
+                            const dims = await getImageDimensions(cell.data);
+                            imgW = dims.width;
+                            imgH = dims.height;
+                        } catch (e) {
+                            imgW = maxSize;
+                            imgH = maxSize;
+                        }
+                    }
+
+                    // Scale image to fit within maxSize while preserving aspect ratio
+                    let drawWidth = maxSize;
+                    let drawHeight = maxSize;
+                    if (imgW > imgH) {
+                        drawHeight = maxSize * (imgH / imgW);
+                    } else if (imgH > imgW) {
+                        drawWidth = maxSize * (imgW / imgH);
+                    }
+
+                    const offsetX = cellX + ((cellSize - drawWidth) / 2);
+                    const offsetY = cellY + ((cellSize - drawHeight) / 2);
+
                     // Add image to PDF
                     pdf.addImage(
                         imgData,
-                        'JPEG',
-                        cellX + padding,
-                        cellY + padding,
-                        imgWidth,
-                        imgHeight,
-                        null,
-                        'SLOW',
-                        imgQuality
+                        format,
+                        offsetX,
+                        offsetY,
+                        drawWidth,
+                        drawHeight,
+                        `img-${cell.id}`,
+                        imgQuality,
+                        compressionLevel
                     );
                     
                     // Show hit count for multi-hit cells
