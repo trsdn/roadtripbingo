@@ -152,7 +152,7 @@ function getImageDimensions(base64Data) {
                 resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
             };
             img.onerror = function() {
-                resolve({ width: 1, height: 1 });
+                resolve({ width: 100, height: 100 });
             };
         }
     });
