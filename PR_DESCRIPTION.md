@@ -34,8 +34,7 @@ This PR implements the complete Multi-Hit Mode feature for Road Trip Bingo Gener
 - Improved icon loading synchronization
 - Enhanced UI state management
 
-### Test Infrastructure Improvements
-- Fixed Cypress E2E test server errors (changed `/src` to `/` URLs)
+- Migrated from Cypress to Playwright for E2E tests
 - Added consistent IndexedDB initialization patterns across all test files
 - Improved test timing and synchronization
 - Enhanced button interaction safety
@@ -188,8 +187,8 @@ All implementation follows the detailed task list and specifications from the te
 
 ### Testing & Infrastructure
 - `tests/js/modules/cardGenerator.test.js` - Comprehensive multi-hit tests
-- Multiple Cypress test files - IndexedDB initialization fixes
-- `config/cypress.config.js` - Test configuration improvements
+- Multiple Playwright spec files - IndexedDB initialization fixes
+- `config/playwright.config.js` - Test configuration
 
 ### Documentation
 - `CHANGELOG.md` - Complete change documentation

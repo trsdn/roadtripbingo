@@ -25,9 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All methods now throw meaningful errors when database is not initialized
 
 #### Test Infrastructure Improvements
-- **Fixed Cypress E2E test server errors**
-  - Changed test visit URLs from `/src` to `/` to resolve 500 server errors
-  - Updated affected test files: `center-blank-toggle.cy.js`, `center-blank-ui.cy.js`, `preview-toggle.cy.js`
+- Migrated E2E tests from Cypress to Playwright
+- Updated visit URLs from `/src` to `/` to resolve 500 server errors
+- Converted spec files to `.spec.js` format
 
 - **Added IndexedDB initialization waiting patterns** across multiple test files:
   - `cards.cy.js`: Added proper IndexedDB initialization wait with button state checks

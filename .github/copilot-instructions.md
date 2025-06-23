@@ -70,7 +70,7 @@ This file provides GitHub Copilot with the coding style and project conventions 
   * Currently supports English and German
   * All UI elements are localized including new features
   * Language selection persists across sessions
-* Configuration files should be stored in `/config` directory (e.g., `jest.config.js`, `cypress.config.js`, `webpack.config.js`).
+* Configuration files should be stored in `/config` directory (e.g., `jest.config.js`, `playwright.config.js`, `webpack.config.js`).
 
 ## Key Modules and Architecture
 
@@ -108,14 +108,14 @@ This file provides GitHub Copilot with the coding style and project conventions 
 * Provide npm scripts:
   * `npm test`: runs tests once.
   * `npm run test:watch`: runs Jest in watch mode.
-* Use Cypress for end-to-end testing:
-  * Configure Cypress via `config/cypress.config.js` with `baseUrl` set to `http://localhost:3000`.
-  * Organize spec files under `cypress/e2e/` with `.cy.js` suffix.
-  * Write tests using `describe`/`it` syntax and Cypress commands (`cy.visit()`, `cy.get()`, etc.).
-  * Enable automatic screenshots on test failure and video recording via default Cypress settings.
+* Use Playwright for end-to-end testing:
+  * Configure Playwright via `config/playwright.config.js` with `baseURL` set to `http://localhost:8080`.
+  * Place spec files in the `playwright/` directory with `.spec.js` suffix.
+  * Write tests using `@playwright/test`'s `test` API and `expect` assertions.
+  * Generate HTML reports automatically and capture screenshots on failure.
   * Provide npm scripts:
-    * `npm run cypress:open`: opens Cypress Test Runner in interactive mode.
-    * `npm run cypress:run`: executes tests headlessly.
+    * `npm run e2e`: runs tests headlessly.
+    * `npm run e2e:headed`: runs tests with the browser UI.
 
 ---
 
