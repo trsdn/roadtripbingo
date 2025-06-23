@@ -284,6 +284,7 @@ button:disabled {
 
 #identifier {
     font-family: monospace;
+    font-size: 2em;
     margin-bottom: 10px;
     text-align: right; /* Align ID to the right to match PDF */
 }

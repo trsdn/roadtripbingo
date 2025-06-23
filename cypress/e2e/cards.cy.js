@@ -55,7 +55,7 @@ describe('Road Trip Bingo Card Generation', () => {
     
     // The identifier should be displayed
     cy.get('#identifier').should('not.be.empty');
-    cy.get('#identifier').should('contain', 'ID:');
+    cy.get('#identifier').should('not.contain', 'ID:');
   });
 
   it('should handle insufficient icons gracefully', () => {

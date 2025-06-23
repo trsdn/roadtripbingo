@@ -70,7 +70,7 @@ describe('Road Trip Bingo - Larger Grid Sizes (6x6, 7x7, 8x8)', () => {
         
         // The identifier should be displayed
         cy.get('#identifier').should('not.be.empty');
-        cy.get('#identifier').should('contain', 'ID:');
+        cy.get('#identifier').should('not.contain', 'ID:');
       });
 
       it(`should show warning when insufficient icons for ${label}`, () => {
