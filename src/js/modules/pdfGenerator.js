@@ -257,11 +257,43 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
         
         let cardCount = 0;
         let pageCount = 0;
-        
+
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
             const set = cardSets[s];
             const setIdentifier = (set.identifier || identifier).replace(/^ID:/, '');
+
+            // Start a new page for each additional set to keep identifiers distinct
+            if (s > 0) {
+                try {
+                    if (isTestEnvironment) {
+                        pdf.addPage();
+                    } else {
+                        try {
+                            pdf.addPage('a4', 'landscape');
+                        } catch (e) {
+                            console.warn('First addPage method failed, trying alternative:', e);
+                            try {
+                                pdf.addPage([0, 0, pageWidth, pageHeight], 'landscape');
+                            } catch (e2) {
+                                console.warn('Second addPage method failed, using simple fallback:', e2);
+                                pdf.addPage();
+                                if (typeof pdf.setPageFormat === 'function') {
+                                    pdf.setPageFormat([pageWidth, pageHeight], 'landscape');
+                                }
+                            }
+                        }
+                    }
+
+                    pageCount++;
+                    cardCount = 0; // reset count for new set
+                } catch (pageError) {
+                    console.error('Error adding new page at set boundary:', pageError);
+                    pdf.addPage();
+                    cardCount = 0;
+                }
+            }
+
             // Process each card in the set
             for (let c = 0; c < set.cards.length; c++) {
                 const card = set.cards[c];
