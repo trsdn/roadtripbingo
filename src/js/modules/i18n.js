@@ -119,29 +119,27 @@ function getTranslatedText(key, replacements = {}, language = 'en') {
  * @param {function} onChange - Callback when language changes
  */
 function initLanguageSelector(onChange, initialLang = 'en') {
-    document.addEventListener('DOMContentLoaded', () => {
-        const languageSelect = document.getElementById('languageSelect');
-        if (!languageSelect) {
-            console.error('Language selector element not found');
-            return;
-        }
+    const languageSelect = document.getElementById('languageSelect');
+    if (!languageSelect) {
+        console.error('Language selector element not found');
+        return;
+    }
 
-        // Set initial language
-        setLanguage(initialLang);
-        
-        // Set the dropdown to match the initial language
-        languageSelect.value = initialLang;
-        
-        // Add change event listener
-        languageSelect.addEventListener('change', () => {
-            const selectedLang = languageSelect.value;
-            setLanguage(selectedLang);
-            
-            // Call onChange callback if provided
-            if (typeof onChange === 'function') {
-                onChange(selectedLang);
-            }
-        });
+    // Set initial language
+    setLanguage(initialLang);
+
+    // Set the dropdown to match the initial language
+    languageSelect.value = initialLang;
+
+    // Add change event listener
+    languageSelect.addEventListener('change', () => {
+        const selectedLang = languageSelect.value;
+        setLanguage(selectedLang);
+
+        // Call onChange callback if provided
+        if (typeof onChange === 'function') {
+            onChange(selectedLang);
+        }
     });
 }
 
