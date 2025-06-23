@@ -54,8 +54,42 @@ This file provides GitHub Copilot with the coding style and project conventions 
   * Use the storage module's methods for get/set/delete operations
   * Always handle storage quota errors gracefully
   * Legacy localStorage code exists in `storage.js` but is deprecated
-* PDF generation uses `html2pdf.js`; ensure imported via CDN in `index.html`.
+* **PDF Generation**: Uses `html2pdf.js` with enhanced features:
+  * Multiple layout options: one-per-page and two-per-page
+  * Compression levels for file size optimization
+  * Per-set unique identifiers displayed on every page
+  * Support for showing/hiding icon labels
+  * Proper aspect ratio preservation for icons
+* **Card Generation Features**:
+  * **Unique Set Identifiers**: Each bingo card set gets a unique alphanumeric ID
+  * **Identical Cards Option**: Toggle to generate same card layout for all players
+  * **Multi-Hit Mode**: Configurable difficulty levels for repeated icon marking
+  * **Center Blank**: Option to leave center cell blank for odd-sized grids (5x5, 7x7, 9x9)
+  * **Icon Distribution**: Same-icons vs different-icons modes for variety control
+* **Internationalization**: Full i18n support via `i18n.js` and `languages.js`:
+  * Currently supports English and German
+  * All UI elements are localized including new features
+  * Language selection persists across sessions
 * Configuration files should be stored in `/config` directory (e.g., `jest.config.js`, `cypress.config.js`, `webpack.config.js`).
+
+## Key Modules and Architecture
+
+* **Core Modules** (located in `src/js/modules/`):
+  * `cardGenerator.js`: Main card generation logic with support for all features
+  * `pdfGenerator.js`: Enhanced PDF generation with multiple layouts and compression
+  * `indexedDBStorage.js`: Modern storage solution for persistent data
+  * `i18n.js`: Internationalization system for multi-language support
+  * `languages.js`: Language definitions and translations
+  * `imageUtils.js`: Image processing and optimization utilities
+* **Feature Modules**:
+  * Unique set identifiers: Implemented in `cardGenerator.js` via `generateSetIdentifier()`
+  * Identical cards: Controlled by `sameCard` parameter in `generateBingoCards()`
+  * Multi-hit mode: Configured through difficulty settings and `multiHitMode` parameter
+  * Center blank: Handled by `leaveCenterBlank` parameter for odd-sized grids
+* **UI State Management**: 
+  * All settings persist via IndexedDB storage
+  * UI updates handled through event listeners in `app.js`
+  * Dynamic control visibility based on current settings
 
 ## Testing
 
@@ -63,13 +97,20 @@ This file provides GitHub Copilot with the coding style and project conventions 
 * Place tests in a `tests/` directory mirroring `src/` structure; name files with `.test.js` suffix.
 * Write tests using `describe` and `it` blocks; mock IndexedDB and the DOM as needed via `jsdom`.
 * For IndexedDB testing, use `fake-indexeddb` library to simulate browser storage.
+* **Current Test Coverage**: 112 tests across 9 test suites covering:
+  * Card generation logic (including sameCard, multiHit, centerBlank features)
+  * PDF generation with all layout options
+  * Storage operations (both legacy and IndexedDB)
+  * Internationalization system
+  * Image utilities and processing
+  * Feature-specific test suites for new functionality
 * Aim for at least 80% code coverage; coverage reports should output to `coverage/`.
 * Provide npm scripts:
   * `npm test`: runs tests once.
   * `npm run test:watch`: runs Jest in watch mode.
 * Use Cypress for end-to-end testing:
   * Configure Cypress via `config/cypress.config.js` with `baseUrl` set to `http://localhost:3000`.
-  * Organize spec files under `cypress/integration/` with `.spec.js` suffix.
+  * Organize spec files under `cypress/e2e/` with `.cy.js` suffix.
   * Write tests using `describe`/`it` syntax and Cypress commands (`cy.visit()`, `cy.get()`, etc.).
   * Enable automatic screenshots on test failure and video recording via default Cypress settings.
   * Provide npm scripts:
