@@ -141,40 +141,32 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
         
         let pageCount = 0;
         
-        // Add set identifier on first page - display without "ID:" prefix
-        const displayIdentifier = identifier.replace(/^ID:/, '');
-        pdf.setFontSize(16);
-        pdf.setTextColor(100, 100, 100);
-        // Right side identifier
-        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
-        // Left side identifier
-        pdf.text(displayIdentifier, margin, margin + 5, { align: 'left' });
-        
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
             const set = cardSets[s];
-            
+            const displayIdentifier = (set.identifier || identifier).replace(/^ID:/, '');
+
             // Process each card in the set
             for (let c = 0; c < set.cards.length; c++) {
                 const card = set.cards[c];
-                
+
                 // Add a new page for each card except the first one
                 if (pageCount > 0) {
                     try {
                         pdf.addPage();
-                        // Add identifier on each page - display without "ID:" prefix
-                        const displayIdentifier = identifier.replace(/^ID:/, '');
-                        pdf.setFontSize(16);
-                        pdf.setTextColor(100, 100, 100);
-                        // Right side identifier
-                        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
-                        // Left side identifier
-                        pdf.text(displayIdentifier, margin, margin + 5, { align: 'left' });
                     } catch (pageError) {
                         console.error('Error adding new page:', pageError);
                     }
                 }
                 pageCount++;
+
+                // Add identifier on each page - display without "ID:" prefix
+                pdf.setFontSize(16);
+                pdf.setTextColor(100, 100, 100);
+                // Right side identifier
+                pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+                // Left side identifier
+                pdf.text(displayIdentifier, margin, margin - 5, { align: 'left' });
                 
                 // Calculate position to center the card on the page for consistent rendering
                 const availableWidth = pageWidth - (2 * margin);
@@ -266,19 +258,10 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
         let cardCount = 0;
         let pageCount = 0;
         
-        // Add set identifier on first page - on both halves (right aligned)
-        const displayIdentifier = identifier.replace(/^ID:/, '');
-        pdf.setFontSize(16);
-        pdf.setTextColor(100, 100, 100);
-        // Right side of page
-        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
-        // Right side of left half
-        pdf.text(displayIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
-        
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
             const set = cardSets[s];
-            
+            const setIdentifier = (set.identifier || identifier).replace(/^ID:/, '');
             // Process each card in the set
             for (let c = 0; c < set.cards.length; c++) {
                 const card = set.cards[c];
@@ -307,24 +290,22 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                                     console.warn('Second addPage method failed, using simple fallback:', e2);
                                     // Last resort - simple addPage and manually set orientation
                                     pdf.addPage();
-                                    // Some versions of jsPDF need this to maintain landscape orientation
                                     if (typeof pdf.setPageFormat === 'function') {
                                         pdf.setPageFormat([pageWidth, pageHeight], 'landscape');
                                     }
                                 }
                             }
                         }
-                        
+
                         pageCount++;
                         
                         // Add identifier on each page - right side of both halves
-                        const displayIdentifier = identifier.replace(/^ID:/, '');
                         pdf.setFontSize(16);
                         pdf.setTextColor(100, 100, 100);
                         // Right side of page
-                        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
+                        pdf.text(setIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
                         // Right side of left half
-                        pdf.text(displayIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
+                        pdf.text(setIdentifier, leftMargin + cardWidth, margin + 5, { align: 'right' });
                         
                         // Log dimensions after adding page to verify
                         console.log(`New page dimensions: Width=${pdf.internal.pageSize.getWidth()}, Height=${pdf.internal.pageSize.getHeight()}`);
@@ -333,6 +314,14 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                         // If all specific methods fail, try simplest version
                         pdf.addPage();
                     }
+                }
+
+                // Add identifier at the top of each new page
+                if (cardPosition === 0) {
+                    pdf.setFontSize(16);
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.text(setIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+                    pdf.text(setIdentifier, leftMargin + cardWidth, margin - 5, { align: 'right' });
                 }
                 
                 // Position cards differently based on environment

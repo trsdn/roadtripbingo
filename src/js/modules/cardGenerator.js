@@ -53,14 +53,15 @@ function generateBingoCards(options) {
         throw new Error(`Not enough icons. Need at least ${iconsNeededPerSet} ${modeInfo}`);
     }
     
-    // Generate a unique identifier for this set
+    // Generate an overall identifier for this batch
     const identifier = generateIdentifier();
-    
+
     // Generate the sets
     const cardSets = [];
     for (let setIndex = 0; setIndex < setCount; setIndex++) {
         const set = {
             id: `set-${setIndex + 1}`,
+            identifier: generateIdentifier(),
             cards: []
         };
         
