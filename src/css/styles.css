@@ -253,9 +253,10 @@ button:disabled {
   background: #f5f5f5;
 }
 
-/* Ensure toggle is always visible */
+/* Ensure toggle is always visible and aligned */
 #showLabelsToggle, label[for="showLabelsToggle"] {
-  display: inline-block !important;
+  display: flex;
+  align-items: center;
 }
 
 .generate-section {
