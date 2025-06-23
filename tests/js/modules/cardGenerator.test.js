@@ -39,6 +39,11 @@ describe('Card Generator', () => {
     });
 
     it('should assign a unique identifier to each set', () => {
+      // Mock generateIdentifier to return deterministic values
+      const mockGenerateIdentifier = jest.fn()
+        .mockReturnValueOnce('ID:AAA')
+        .mockReturnValueOnce('ID:BBB');
+      jest.spyOn(require('@/js/modules/cardGenerator.js'), 'generateIdentifier').mockImplementation(mockGenerateIdentifier);
       const mockIcons = Array.from({ length: 9 }, (_, i) => ({
         id: i + 1,
         data: `data:image/png;base64,test${i + 1}`,
