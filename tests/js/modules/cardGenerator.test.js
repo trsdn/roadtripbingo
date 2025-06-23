@@ -38,6 +38,31 @@ describe('Card Generator', () => {
       expect(result.cardSets.length).toBe(1); // 1 set requested
     });
 
+    it('should assign a unique identifier to each set', () => {
+      const mockIcons = Array.from({ length: 9 }, (_, i) => ({
+        id: i + 1,
+        data: `data:image/png;base64,test${i + 1}`,
+        name: `test${i + 1}.png`
+      }));
+
+      const options = {
+        icons: mockIcons,
+        gridSize: 3,
+        setCount: 2,
+        cardsPerSet: 1,
+        title: 'Test Bingo',
+        leaveCenterBlank: false
+      };
+
+      const result = generateBingoCards(options);
+      expect(result.cardSets.length).toBe(2);
+      const id1 = result.cardSets[0].identifier;
+      const id2 = result.cardSets[1].identifier;
+      expect(id1).toMatch(/^ID:[A-Z0-9]{3}$/);
+      expect(id2).toMatch(/^ID:[A-Z0-9]{3}$/);
+      expect(id1).not.toBe(id2);
+    });
+
     it('should handle empty icons array', () => {
       const options = {
         icons: [],
