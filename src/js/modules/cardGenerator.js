@@ -10,6 +10,7 @@
  * @param {number} options.cardsPerSet - Number of cards per set
  * @param {string} options.title - Title for the bingo cards
  * @param {boolean} options.leaveCenterBlank - Leave center cell blank for odd-sized grids
+ * @param {boolean} options.sameCard - Generate identical cards for each set
  * @param {boolean} options.multiHitMode - Enable multi-hit mode for increased difficulty
  * @param {string} options.difficulty - Multi-hit difficulty level (LIGHT, MEDIUM, HARD)
  * @returns {Object} - Generated card sets and identifier
@@ -22,6 +23,7 @@ function generateBingoCards(options) {
         cardsPerSet, 
         title, 
         leaveCenterBlank, 
+        sameCard = false,
         multiHitMode = false, 
         difficulty = 'MEDIUM',
         iconDistribution = 'same-icons' 
@@ -37,9 +39,12 @@ function generateBingoCards(options) {
         cellsPerCard -= 1;
     }
     
-    // Calculate needed icons based on distribution mode
+    // Calculate needed icons based on sameCard option and distribution mode
     let iconsNeededPerSet;
-    if (iconDistribution === 'different-icons') {
+    if (sameCard) {
+        // If using identical cards, we only need icons for one card
+        iconsNeededPerSet = cellsPerCard;
+    } else if (iconDistribution === 'different-icons') {
         // For different-icons mode, we need unique icons for each card
         iconsNeededPerSet = cellsPerCard * cardsPerSet;
     } else {
@@ -49,7 +54,12 @@ function generateBingoCards(options) {
     
     // Validate we have enough icons
     if (icons.length < iconsNeededPerSet) {
-        const modeInfo = iconDistribution === 'different-icons' ? 'for different-icons mode' : 'for same-icons mode';
+        let modeInfo;
+        if (sameCard) {
+            modeInfo = 'for identical cards mode';
+        } else {
+            modeInfo = iconDistribution === 'different-icons' ? 'for different-icons mode' : 'for same-icons mode';
+        }
         throw new Error(`Not enough icons. Need at least ${iconsNeededPerSet} ${modeInfo}`);
     }
     
@@ -65,9 +75,12 @@ function generateBingoCards(options) {
             cards: []
         };
         
-        // Handle icon distribution based on mode
+        // Handle icon selection and card generation based on sameCard option
         let selectedIcons;
-        if (iconDistribution === 'different-icons') {
+        if (sameCard) {
+            // For identical cards, select icons once and reuse for all cards in the set
+            selectedIcons = shuffleArray([...icons]).slice(0, cellsPerCard);
+        } else if (iconDistribution === 'different-icons') {
             // For different-icons, select enough icons for all cards with no overlaps
             selectedIcons = shuffleArray([...icons]).slice(0, iconsNeededPerSet);
         } else {
@@ -76,53 +89,44 @@ function generateBingoCards(options) {
         }
         
         // Generate cards for this set
+        let baseGrid = null;
         for (let cardIndex = 0; cardIndex < cardsPerSet; cardIndex++) {
-            let cardIcons;
+            let grid;
             
-            if (iconDistribution === 'different-icons') {
-                // Get unique icons for this card
-                cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
-            } else {
-                // Reuse the same icons for each card (with different arrangements)
-                cardIcons = [...selectedIcons];
-            }
-            
-            const shuffledCardIcons = shuffleArray([...cardIcons]);
-            const grid = [];
-            let iconIdx = 0;
-                for (let row = 0; row < gridSize; row++) {
-                    const gridRow = [];
-                    for (let col = 0; col < gridSize; col++) {
-                        if (
-                            leaveCenterBlank &&
-                            (gridSize === 5 || gridSize === 7 || gridSize === 9) &&
-                            row === Math.floor(gridSize / 2) &&
-                            col === Math.floor(gridSize / 2)
-                        ) {
-                            gridRow.push({ isFreeSpace: true });
-                        } else {
-                            const cell = { ...shuffledCardIcons[iconIdx++] };
-                            // Initialize multi-hit properties
-                            cell.isMultiHit = false;
-                            cell.hitCount = 1;
-                            cell.hitCountDisplay = 1;
-                            gridRow.push(cell);
-                        }
+            if (sameCard) {
+                // Generate identical cards
+                if (!baseGrid) {
+                    baseGrid = buildGrid(selectedIcons, gridSize, leaveCenterBlank);
+                    if (multiHitMode) {
+                        applyMultiHitMode(baseGrid, gridSize, difficulty);
                     }
-                    grid.push(gridRow);
                 }
+                grid = cloneGrid(baseGrid);
+            } else {
+                // Generate different cards based on icon distribution
+                let cardIcons;
+                if (iconDistribution === 'different-icons') {
+                    // Get unique icons for this card
+                    cardIcons = selectedIcons.slice(cardIndex * cellsPerCard, (cardIndex + 1) * cellsPerCard);
+                } else {
+                    // Reuse the same icons for each card (with different arrangements)
+                    cardIcons = [...selectedIcons];
+                }
+                
+                grid = buildGrid(cardIcons, gridSize, leaveCenterBlank);
                 
                 // Apply multi-hit mode if enabled
                 if (multiHitMode) {
                     applyMultiHitMode(grid, gridSize, difficulty);
                 }
-                
-                set.cards.push({
-                    id: `card-${cardIndex + 1}`,
-                    title: title || 'Road Trip Bingo',
-                    grid
-                });
             }
+            
+            set.cards.push({
+                id: `card-${cardIndex + 1}`,
+                title: title || 'Road Trip Bingo',
+                grid
+            });
+        }
         
         cardSets.push(set);
     }
@@ -300,6 +304,49 @@ function shuffleArray(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+/**
+ * Build a bingo grid from a list of icons
+ * @param {Array} icons - Icons for the grid
+ * @param {number} gridSize - Grid size
+ * @param {boolean} leaveCenterBlank - Whether center cell should be blank
+ * @returns {Array} grid - 2D array of cells
+ */
+function buildGrid(icons, gridSize, leaveCenterBlank) {
+    const shuffledCardIcons = shuffleArray([...icons]);
+    const grid = [];
+    let iconIdx = 0;
+    for (let row = 0; row < gridSize; row++) {
+        const gridRow = [];
+        for (let col = 0; col < gridSize; col++) {
+            if (
+                leaveCenterBlank &&
+                (gridSize === 5 || gridSize === 7 || gridSize === 9) &&
+                row === Math.floor(gridSize / 2) &&
+                col === Math.floor(gridSize / 2)
+            ) {
+                gridRow.push({ isFreeSpace: true });
+            } else {
+                const cell = { ...shuffledCardIcons[iconIdx++] };
+                cell.isMultiHit = false;
+                cell.hitCount = 1;
+                cell.hitCountDisplay = 1;
+                gridRow.push(cell);
+            }
+        }
+        grid.push(gridRow);
+    }
+    return grid;
+}
+
+/**
+ * Deep clone grid object
+ * @param {Array} grid - 2D array to clone
+ * @returns {Array} cloned grid
+ */
+function cloneGrid(grid) {
+    return grid.map(row => row.map(cell => ({ ...cell })));
 }
 
 // Export functions

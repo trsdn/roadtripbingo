@@ -30,6 +30,7 @@ let pdfCompression;
 let pdfLayout;
 let iconCount;
 let centerBlankToggle;
+let sameCardToggle;
 let showLabelsToggle;
 let multiHitToggle;
 let difficultyRadios;
@@ -61,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Extract values so we can apply them once the DOM elements exist
         showLabels = settings.showLabels !== false;          // default true
         const centerBlank     = settings.centerBlank !== false; // default true
+        const sameCard        = settings.sameCard || false; // default false
         const multiHitMode    = settings.multiHitMode || false; // default false
         const multiHitDifficulty = settings.multiHitDifficulty || 'MEDIUM'; // default MEDIUM
         const iconDistribution = settings.iconDistribution || 'same-icons'; // default same-icons
@@ -71,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ----- Apply the loaded settings to UI controls -----
         if (showLabelsToggle) showLabelsToggle.checked = showLabels;
         if (centerBlankToggle) centerBlankToggle.checked = centerBlank;
+        if (sameCardToggle) sameCardToggle.checked = sameCard;
 
         if (multiHitToggle) {
             multiHitToggle.checked = multiHitMode;
@@ -143,6 +146,7 @@ function initializeDOMElements() {
     pdfCompression = document.getElementById('pdfCompression');
     pdfLayout = document.getElementById('pdfLayout');
     centerBlankToggle = document.getElementById('centerBlankToggle');
+    sameCardToggle = document.getElementById('sameCardToggle');
     showLabelsToggle = document.getElementById('showLabelsToggle');
     multiHitToggle = document.getElementById('multiHitToggle');
     multiHitOptions = document.getElementById('multiHitOptions');
@@ -221,6 +225,14 @@ function setupEventListeners() {
             storage.saveSettings({ centerBlank: centerBlankToggle.checked });
             updateRequiredIconCount();
             updateMultiHitPreview();
+        });
+    }
+
+    // Same card toggle
+    if (sameCardToggle) {
+        sameCardToggle.addEventListener('change', () => {
+            storage.saveSettings({ sameCard: sameCardToggle.checked });
+            updateRequiredIconCount();
         });
     }
     
@@ -519,32 +531,39 @@ function updateRequiredIconCount() {
     const setCount = parseInt(setCountInput.value);
     const cardsPerSet = parseInt(cardCountInput.value);
     const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
+    const sameCard = sameCardToggle && sameCardToggle.checked;
     
     let cellsPerCard = gridSize * gridSize;
     if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
         cellsPerCard -= 1;
     }
     
-    // Get the current icon distribution mode
-    let iconDistribution = 'same-icons'; // default
-    const iconDistributionRadios = document.querySelectorAll('input[name="iconDistribution"]');
-    if (iconDistributionRadios) {
-        for (const radio of iconDistributionRadios) {
-            if (radio.checked) {
-                iconDistribution = radio.value;
-                break;
+    // Calculate icons needed based on sameCard option and distribution mode
+    let iconsNeededPerSet;
+    if (sameCard) {
+        // If using identical cards, we only need icons for one card
+        iconsNeededPerSet = cellsPerCard;
+    } else {
+        // Get the current icon distribution mode
+        let iconDistribution = 'same-icons'; // default
+        const iconDistributionRadios = document.querySelectorAll('input[name="iconDistribution"]');
+        if (iconDistributionRadios) {
+            for (const radio of iconDistributionRadios) {
+                if (radio.checked) {
+                    iconDistribution = radio.value;
+                    break;
+                }
             }
         }
-    }
-    
-    // Calculate icons needed based on distribution mode
-    let iconsNeededPerSet;
-    if (iconDistribution === 'different-icons') {
-        // For different-icons mode, we need unique icons for each card
-        iconsNeededPerSet = cellsPerCard * cardsPerSet;
-    } else {
-        // For same-icons mode, we reuse the same icons on each card
-        iconsNeededPerSet = cellsPerCard;
+        
+        // Calculate icons needed based on distribution mode
+        if (iconDistribution === 'different-icons') {
+            // For different-icons mode, we need unique icons for each card
+            iconsNeededPerSet = cellsPerCard * cardsPerSet;
+        } else {
+            // For same-icons mode, we reuse the same icons on each card
+            iconsNeededPerSet = cellsPerCard;
+        }
     }
     
     // Update info text
@@ -611,6 +630,7 @@ function generateCards() {
     const cardsPerSet = parseInt(cardCountInput.value);
     const title = titleInput.value.trim();
     const leaveCenterBlank = centerBlankToggle && centerBlankToggle.checked;
+    const sameCard = sameCardToggle && sameCardToggle.checked;
     
     // Get multi-hit settings
     const multiHitMode = multiHitToggle && multiHitToggle.checked;
@@ -645,6 +665,7 @@ function generateCards() {
             cardsPerSet,
             title,
             leaveCenterBlank,
+            sameCard,
             multiHitMode,
             difficulty,
             iconDistribution
