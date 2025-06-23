@@ -137,8 +137,30 @@ function createImageFromBase64(base64Data) {
 }
 
 // Export functions
+/**
+ * Load an image from base64 data and get its natural dimensions
+ * @param {string} base64Data - The base64 encoded image data
+ * @returns {Promise<{width:number,height:number}>} - Promise resolving with dimensions
+ */
+function getImageDimensions(base64Data) {
+    return new Promise((resolve) => {
+        const img = createImageFromBase64(base64Data);
+        if (img.complete && (img.naturalWidth || img.width)) {
+            resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
+        } else {
+            img.onload = function() {
+                resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
+            };
+            img.onerror = function() {
+                resolve({ width: 100, height: 100 });
+            };
+        }
+    });
+}
+
 export {
     compressImage,
     convertBlobToBase64Icon,
-    createImageFromBase64
-}; 
+    createImageFromBase64,
+    getImageDimensions
+};
