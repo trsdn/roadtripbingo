@@ -28,7 +28,7 @@ The project has been restructured into a modern, modular architecture:
 roadtripbingo/
 ├── config/               # Configuration files
 │   ├── .babelrc          # Babel configuration
-│   ├── cypress.config.js # Cypress E2E test configuration
+│   ├── playwright.config.js # Playwright E2E test configuration
 │   ├── jest.config.js    # Jest unit test configuration
 │   ├── jest.setup.js     # Jest setup file
 │   └── webpack.config.js # Webpack build configuration
@@ -55,8 +55,7 @@ roadtripbingo/
 │   │   ├── indexedDBStorage.test.js # IndexedDB storage tests
 │   │   └── ...           # Other module tests
 │   └── db.test.js        # Database tests
-├── cypress/              # E2E tests
-│   └── e2e/              # Test specifications
+├── playwright/           # E2E tests
 ├── server.js             # Simple development server
 └── package.json          # Project dependencies and scripts
 ```
@@ -115,11 +114,11 @@ npm run test:watch    # Run tests in watch mode
 
 ### E2E Tests
 
-Run Cypress end-to-end tests:
+Run Playwright end-to-end tests:
 
 ```bash
-npm run cypress:open  # Interactive mode
-npm run cypress:run   # Headless mode
+npm run e2e         # Headless mode
+npm run e2e:headed  # Run with browser UI
 ```
 
 Run all tests:
