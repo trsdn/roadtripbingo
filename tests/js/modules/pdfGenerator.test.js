@@ -209,15 +209,15 @@ describe('PDF Generator', () => {
 
       const instance = mockJsPDF.mock.results[0].value;
       expect(instance.addImage).toHaveBeenCalledWith(
-        'data:image/jpeg;base64,abcd',
+        'abcd',
         'JPEG',
         expect.any(Number),
         expect.any(Number),
         expect.any(Number),
         expect.any(Number),
-        'img-1',
-        0.9,
-        'FAST'
+        null,
+        'SLOW',
+        0.9
       );
     });
 
@@ -539,19 +539,17 @@ describe('PDF Generator', () => {
       );
 
       expect(identifierElements.length).toBeGreaterThanOrEqual(1); // Should appear at least once per page
-      
-      // Check if we have identifiers on both left and right sides
-      const rightIdentifier = identifierElements.find(el => el.options.align === 'right');
+
+      // All identifiers should be right aligned and larger font
+      const rightIdentifiers = identifierElements.filter(el => el.options.align === 'right');
+      expect(rightIdentifiers.length).toBeGreaterThanOrEqual(2);
+      rightIdentifiers.forEach(el => {
+        expect(el.fontSize).toBe(16);
+      });
+
+      // There should be no left aligned identifiers anymore
       const leftIdentifier = identifierElements.find(el => el.options.align === 'left');
-      
-      // Verify right side identifier
-      expect(rightIdentifier).toBeDefined();
-      expect(rightIdentifier.fontSize).toBe(8);
-      
-      // Verify left side identifier if it exists
-      if (leftIdentifier) {
-        expect(leftIdentifier.fontSize).toBe(8);
-      }
+      expect(leftIdentifier).toBeUndefined();
     });
   });
 

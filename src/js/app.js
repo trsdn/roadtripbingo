@@ -652,8 +652,9 @@ function generateCards() {
         
         generatedCards = result;
         
-        // Display the identifier
-        identifierElement.textContent = result.identifier;
+        // Display the identifier without the "ID:" prefix
+        const cleanIdentifier = result.identifier.replace(/^ID:/, '');
+        identifierElement.textContent = cleanIdentifier;
         
         // Enable download button
         downloadBtn.disabled = false;

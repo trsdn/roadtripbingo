@@ -141,13 +141,14 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
         
         let pageCount = 0;
         
-        // Add set identifier on first page - on both left and right sides
-        pdf.setFontSize(8);
+        // Add set identifier on first page - display without "ID:" prefix
+        const displayIdentifier = identifier.replace(/^ID:/, '');
+        pdf.setFontSize(16);
         pdf.setTextColor(100, 100, 100);
         // Right side identifier
-        pdf.text(identifier, pageWidth - margin, margin - 5, { align: 'right' });
+        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
         // Left side identifier
-        pdf.text(identifier, margin, margin - 5, { align: 'left' });
+        pdf.text(displayIdentifier, margin, margin - 5, { align: 'left' });
         
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
@@ -161,13 +162,14 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
                 if (pageCount > 0) {
                     try {
                         pdf.addPage();
-                        // Add identifier on each page - on both left and right sides
-                        pdf.setFontSize(8);
+                        // Add identifier on each page - display without "ID:" prefix
+                        const displayIdentifier = identifier.replace(/^ID:/, '');
+                        pdf.setFontSize(16);
                         pdf.setTextColor(100, 100, 100);
                         // Right side identifier
-                        pdf.text(identifier, pageWidth - margin, margin - 5, { align: 'right' });
+                        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
                         // Left side identifier
-                        pdf.text(identifier, margin, margin - 5, { align: 'left' });
+                        pdf.text(displayIdentifier, margin, margin - 5, { align: 'left' });
                     } catch (pageError) {
                         console.error('Error adding new page:', pageError);
                     }
@@ -256,17 +258,21 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
             cardHeight = Math.min(cardWidth, availableHeight);
             cardWidth = cardHeight; // Ensure perfect square for the grid
         }
+
+        // Calculate left margin for identifier placement
+        const leftMargin = isTestEnvironment ? margin : (pageWidth - ((2 * cardWidth) + (3 * margin))) / 2 + margin;
         
         let cardCount = 0;
         let pageCount = 0;
         
-        // Add set identifier on first page - on both left and right sides
-        pdf.setFontSize(8);
+        // Add set identifier on first page - on both halves (right aligned)
+        const displayIdentifier = identifier.replace(/^ID:/, '');
+        pdf.setFontSize(16);
         pdf.setTextColor(100, 100, 100);
-        // Right side identifier
-        pdf.text(identifier, pageWidth - margin, margin - 5, { align: 'right' });
-        // Left side identifier
-        pdf.text(identifier, margin, margin - 5, { align: 'left' });
+        // Right side of page
+        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+        // Right side of left half
+        pdf.text(displayIdentifier, leftMargin + cardWidth, margin - 5, { align: 'right' });
         
         // Process each card set
         for (let s = 0; s < cardSets.length; s++) {
@@ -310,13 +316,14 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                         
                         pageCount++;
                         
-                        // Add identifier on each page - on both left and right sides
-                        pdf.setFontSize(8);
+                        // Add identifier on each page - right side of both halves
+                        const displayIdentifier = identifier.replace(/^ID:/, '');
+                        pdf.setFontSize(16);
                         pdf.setTextColor(100, 100, 100);
-                        // Right side identifier
-                        pdf.text(identifier, pageWidth - margin, margin - 5, { align: 'right' });
-                        // Left side identifier
-                        pdf.text(identifier, margin, margin - 5, { align: 'left' });
+                        // Right side of page
+                        pdf.text(displayIdentifier, pageWidth - margin, margin - 5, { align: 'right' });
+                        // Right side of left half
+                        pdf.text(displayIdentifier, leftMargin + cardWidth, margin - 5, { align: 'right' });
                         
                         // Log dimensions after adding page to verify
                         console.log(`New page dimensions: Width=${pdf.internal.pageSize.getWidth()}, Height=${pdf.internal.pageSize.getHeight()}`);
