@@ -135,8 +135,8 @@ function initializeDOMElements() {
     cardPreview = document.getElementById('cardPreview');
     identifierElement = document.getElementById('identifier');
     iconUploadInput = document.getElementById('iconUpload');
-    uploadIconBtn = document.getElementById('uploadIconBtn');
-    clearIconsBtn = document.getElementById('clearIcons');
+    uploadIconBtn = document.getElementById('uploadBtn');
+    clearIconsBtn = document.getElementById('clearIconsBtn');
     optimizeStorageBtn = document.getElementById('optimizeStorage');
     iconGallery = document.getElementById('iconGallery');
     iconCount = document.getElementById('iconCount');
