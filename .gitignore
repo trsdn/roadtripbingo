@@ -9,9 +9,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Cypress
-cypress/videos/
-cypress/screenshots/
+# Playwright
+playwright-report/
+test-results/
 docs/screenshots/
 
 # Testing

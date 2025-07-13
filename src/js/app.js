@@ -256,7 +256,7 @@ function setupEventListeners() {
             updateMultiHitPreview();
         });
         
-        // Tell the Cypress hook that listeners are ready
+        // Tell the Playwright hook that listeners are ready
         multiHitToggle._hasEventListeners = true;
     }
     
