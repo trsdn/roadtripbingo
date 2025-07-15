@@ -117,20 +117,46 @@
             
             <div id="iconManager">
                 <h2 data-translate="iconManager">Icon Manager</h2>
-                <div class="icon-tools">
-                    <div class="file-input-wrapper">
-                        <button id="uploadBtn" data-translate="uploadIcons">Upload Icons</button>
-                        <input type="file" id="iconUpload" accept="image/*" multiple>
+                
+                <!-- Search and Filter Controls -->
+                <div class="icon-controls">
+                    <div class="search-controls">
+                        <input type="text" id="iconSearch" placeholder="Search icons..." data-translate-placeholder="searchIcons">
+                        <select id="categoryFilter">
+                            <option value="all" data-translate="allCategories">All Categories</option>
+                        </select>
                     </div>
-                    <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
-                    <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
-                    <span class="icon-count">
-                        <span data-translate="currentlyUsing">Currently using</span> 
-                        <span id="iconCount">0</span> 
-                        <span data-translate="icons">icons</span>
-                        <small style="color: #666; margin-left: 8px;">(IndexedDB)</small>
-                    </span>
+                    
+                    <div class="icon-tools">
+                        <div class="file-input-wrapper">
+                            <button id="uploadBtn" data-translate="uploadIcons">Upload Icons</button>
+                            <input type="file" id="iconUpload" accept="image/*" multiple>
+                        </div>
+                        <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
+                        <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
+                        <span class="icon-count">
+                            <span data-translate="currentlyUsing">Currently using</span> 
+                            <span id="iconCount">0</span> 
+                            <span data-translate="icons">icons</span>
+                            <small style="color: #666; margin-left: 8px;">(SQLite)</small>
+                        </span>
+                    </div>
                 </div>
+                
+                <!-- Drag and Drop Zone -->
+                <div id="dropZone" class="drop-zone" style="display: none;">
+                    <div class="drop-zone-content">
+                        <svg class="drop-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                        <p data-translate="dropZoneText">Drop images here to upload</p>
+                    </div>
+                </div>
+                
                 <div id="iconGallery" class="icon-gallery"></div>
             </div>
             
@@ -172,6 +198,46 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <!-- Main application script -->
-    <script type="module" src="js/app.js"></script>
+    <!-- Edit Icon Modal -->
+  <div id="editIconModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 data-translate="editIcon">Edit Icon</h3>
+        <button class="close-btn" id="closeEditModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="editIconName" data-translate="iconName">Icon Name:</label>
+          <input type="text" id="editIconName" placeholder="Enter icon name">
+        </div>
+        <div class="form-group">
+          <label for="editIconCategory" data-translate="category">Category:</label>
+          <select id="editIconCategory">
+            <option value="default">Default</option>
+            <option value="transport">Transport</option>
+            <option value="animals">Animals</option>
+            <option value="buildings">Buildings</option>
+            <option value="nature">Nature</option>
+            <option value="food">Food</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editIconTags" data-translate="tags">Tags (comma-separated):</label>
+          <input type="text" id="editIconTags" placeholder="tag1, tag2, tag3">
+        </div>
+        <div class="form-group">
+          <label for="editIconAltText" data-translate="altText">Alt Text:</label>
+          <input type="text" id="editIconAltText" placeholder="Describe the icon">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="saveIconChanges" class="btn-primary" data-translate="saveChanges">Save Changes</button>
+        <button id="cancelEditIcon" class="btn-secondary" data-translate="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

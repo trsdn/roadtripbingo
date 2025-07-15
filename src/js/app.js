@@ -2,7 +2,7 @@
 // Main entry point that coordinates all modules and UI interactions
 
 // Import modules
-import storage from './modules/indexedDBStorage.js';
+import storage from './modules/apiStorage.js';
 import { setLanguage, getTranslatedText, initLanguageSelector } from './modules/i18n.js';
 import { convertBlobToBase64Icon } from './modules/imageUtils.js';
 import { generateBingoCards, calculateExpectedMultiHitCount } from './modules/cardGenerator.js';
@@ -37,10 +37,30 @@ let difficultyRadios;
 let multiHitOptions;
 let multiHitPreview;
 
+// Enhanced CRUD DOM elements
+let iconSearch;
+let categoryFilter;
+let dropZone;
+let editIconModal;
+let editIconModalContent;
+let editIconName;
+let editIconCategory;
+let editIconPreview;
+let editIconSaveBtn;
+let editIconCancelBtn;
+let editIconCloseBtn;
+
 // Application state
 let availableIcons = [];
 let generatedCards = null;
 let showLabels = true;
+
+// Enhanced CRUD state
+let filteredIcons = [];
+let searchTerm = '';
+let selectedCategory = '';
+let categories = [];
+let currentEditingIcon = null;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
@@ -52,12 +72,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Initializing Road Trip Bingo Generator...');
 
         // Initialize modules
+        console.log('🔄 Initializing storage...');
         window.iconDB = storage; // For backward compatibility
         await storage.init();
-        console.log('Storage initialized');
+        console.log('✅ Storage initialized');
+        
         // ----- Load persisted settings *before* any long async work -----
+        console.log('🔄 Loading settings...');
         const settings = await storage.loadSettings();
-        console.log('Settings loaded');
+        console.log('✅ Settings loaded:', settings);
 
         // Extract values so we can apply them once the DOM elements exist
         showLabels = settings.showLabels !== false;          // default true
@@ -104,11 +127,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Language selector initialized');
 
         // Load saved icons
+        console.log('🔄 Loading icons...');
         await loadIcons();
-        console.log('Icons loading completed');
+        console.log('✅ Icons loading completed');
+        
+        // Load categories
+        console.log('🔄 Loading categories...');
+        await loadCategories();
+        console.log('✅ Categories loading completed');
+        
+        // Setup drag and drop
+        console.log('🔄 Setting up drag and drop...');
+        setupDragAndDrop();
+        console.log('✅ Drag and drop setup complete');
         
         // Update UI after icons are loaded
+        console.log('🔄 Updating UI...');
         updateUI();
+        console.log('✅ UI updated');
         
         // Add event listeners
         setupEventListeners();
@@ -153,6 +189,19 @@ function initializeDOMElements() {
     multiHitPreview = document.getElementById('multiHitPreview');
     difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
     
+    // Enhanced CRUD DOM elements
+    iconSearch = document.getElementById('iconSearch');
+    categoryFilter = document.getElementById('categoryFilter');
+    dropZone = document.getElementById('dropZone');
+    editIconModal = document.getElementById('editIconModal');
+    editIconModalContent = document.getElementById('editIconModalContent');
+    editIconName = document.getElementById('editIconName');
+    editIconCategory = document.getElementById('editIconCategory');
+    editIconPreview = document.getElementById('editIconPreview');
+    editIconSaveBtn = document.getElementById('editIconSaveBtn');
+    editIconCancelBtn = document.getElementById('editIconCancelBtn');
+    editIconCloseBtn = document.getElementById('editIconCloseBtn');
+    
     // Debug: Check if critical elements are found
     console.log('Upload button found:', !!uploadIconBtn);
     console.log('File input found:', !!iconUploadInput);
@@ -196,12 +245,22 @@ function setupEventListeners() {
     console.log('Attaching upload button listener to:', uploadIconBtn);
     uploadIconBtn.addEventListener('click', () => {
         console.log('Upload button clicked!');
-        iconUploadInput.click();
+        console.log('File input element:', iconUploadInput);
+        if (iconUploadInput) {
+            iconUploadInput.click();
+            console.log('File input clicked');
+        } else {
+            console.error('File input element not found!');
+            alert('File input not found! Please refresh the page.');
+        }
     });
     
     // Icon upload file input
     console.log('Attaching file input listener to:', iconUploadInput);
-    iconUploadInput.addEventListener('change', uploadIcons);
+    iconUploadInput.addEventListener('change', (event) => {
+        console.log('📁 File input changed, calling uploadIcons');
+        uploadIcons();
+    });
     
     // Clear icons
     console.log('Attaching clear icons listener to:', clearIconsBtn);
@@ -256,7 +315,7 @@ function setupEventListeners() {
             updateMultiHitPreview();
         });
         
-        // Tell the Cypress hook that listeners are ready
+        // Mark that event listeners are ready for testing
         multiHitToggle._hasEventListeners = true;
     }
     
@@ -285,6 +344,43 @@ function setupEventListeners() {
         });
     }
     
+    // Enhanced CRUD event listeners
+    if (iconSearch) {
+        iconSearch.addEventListener('input', handleIconSearch);
+    }
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', handleCategoryFilter);
+    }
+    
+    if (editIconModal) {
+        // Close modal when clicking outside
+        editIconModal.addEventListener('click', (e) => {
+            if (e.target === editIconModal) {
+                closeEditModal();
+            }
+        });
+    }
+    
+    if (editIconSaveBtn) {
+        editIconSaveBtn.addEventListener('click', saveIconChanges);
+    }
+    
+    if (editIconCancelBtn) {
+        editIconCancelBtn.addEventListener('click', closeEditModal);
+    }
+    
+    if (editIconCloseBtn) {
+        editIconCloseBtn.addEventListener('click', closeEditModal);
+    }
+    
+    // Escape key to close modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && editIconModal && editIconModal.style.display === 'block') {
+            closeEditModal();
+        }
+    });
+    
     console.log('Event listeners setup complete');
     
     // Update the required icon count initially
@@ -297,13 +393,25 @@ function setupEventListeners() {
 // Load icons from storage
 async function loadIcons() {
     try {
+        console.log('🔄 Starting to load icons from storage...');
         availableIcons = await storage.loadIcons();
+        console.log(`✅ Loaded ${availableIcons.length} icons from storage`);
+        
+        // Apply current filters
+        filterIcons();
+        
         updateIconGallery();
         updateStorageInfo();
         updateRequiredIconCount(); // Update UI state after loading icons
-        console.log(`Loaded ${availableIcons.length} icons from storage`);
+        
+        console.log(`🎯 Generate button should now be ${availableIcons.length >= 25 ? 'enabled' : 'disabled'}`);
     } catch (error) {
-        console.error('Error loading icons:', error);
+        console.error('❌ Error loading icons:', error);
+        availableIcons = []; // Ensure we have an empty array on error
+        filteredIcons = [];
+        updateIconGallery();
+        updateStorageInfo();
+        updateRequiredIconCount();
     }
 }
 
@@ -384,46 +492,60 @@ async function updateStorageInfo() {
         const info = await storage.getStorageInfo();
         const iconCountElement = document.getElementById('iconCount');
         
-        if (info.isOverLimit) {
-            iconCountElement.style.color = '#ff6b6b';
-            iconCountElement.title = `Storage over limit: ${info.totalSizeMB.toFixed(1)}MB / ${info.quotaMB.toFixed(1)}MB`;
-            if (optimizeStorageBtn) {
+        if (!info) {
+            console.warn('No storage info received');
+            return;
+        }
+        
+        // SQLite storage doesn't have quotas like IndexedDB, so we'll show basic info
+        iconCountElement.style.color = '#333';
+        
+        const totalSizeMB = info.totalSizeMB || 0;
+        const iconSizeMB = info.iconSizeMB || 0;
+        
+        iconCountElement.title = `Database size: ${totalSizeMB.toFixed(1)}MB (icons: ${iconSizeMB.toFixed(2)}MB)`;
+        
+        // Only show optimize button if we have a significant amount of data
+        if (optimizeStorageBtn) {
+            if (totalSizeMB > 10) {
                 optimizeStorageBtn.style.display = 'inline-block';
-            }
-            showStorageWarning(`Storage is full (${info.totalSizeMB.toFixed(1)}MB). Some features may not work properly.`);
-        } else if (info.isNearLimit) {
-            iconCountElement.style.color = '#ffa726';
-            iconCountElement.title = `Storage near limit: ${info.totalSizeMB.toFixed(1)}MB / ${info.quotaMB.toFixed(1)}MB`;
-            if (optimizeStorageBtn) {
-                optimizeStorageBtn.style.display = 'inline-block';
-            }
-        } else {
-            iconCountElement.style.color = '#4CAF50';
-            iconCountElement.title = `IndexedDB storage: ${info.totalSizeMB.toFixed(1)}MB / ${info.quotaMB.toFixed(1)}MB`;
-            if (optimizeStorageBtn) {
+            } else {
                 optimizeStorageBtn.style.display = 'none';
             }
         }
+        
+        console.log(`📊 Storage info: ${totalSizeMB.toFixed(1)}MB total, ${iconSizeMB.toFixed(2)}MB icons`);
     } catch (error) {
-        console.error('Error getting storage info:', error);
+        console.error('📊 Error getting storage info:', error);
     }
 }
 
-// Upload new icons
-async function uploadIcons() {
-    console.log('uploadIcons function called');
-    const files = iconUploadInput.files;
-    console.log('Selected files:', files ? files.length : 'none');
+// Upload new icons (supports both file input and drag & drop)
+async function uploadIcons(files = null) {
+    console.log('🔄 uploadIcons function called');
+    console.log('📁 Files parameter:', files);
+    console.log('📁 iconUploadInput:', iconUploadInput);
+    console.log('📁 iconUploadInput.files:', iconUploadInput?.files);
     
-    if (!files || files.length === 0) {
+    const filesToProcess = files || iconUploadInput.files;
+    console.log('📁 Selected files:', filesToProcess ? filesToProcess.length : 'none');
+    
+    if (filesToProcess && filesToProcess.length > 0) {
+        console.log('📁 Files to process:');
+        for (let i = 0; i < filesToProcess.length; i++) {
+            console.log(`  - ${filesToProcess[i].name} (${filesToProcess[i].type})`);
+        }
+    }
+    
+    if (!filesToProcess || filesToProcess.length === 0) {
         alert('Please select at least one image file');
         return;
     }
     
     try {
         const newIcons = [];
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        for (let i = 0; i < filesToProcess.length; i++) {
+            const file = filesToProcess[i];
             
             // Check if it's an image
             if (!file.type.startsWith('image/')) {
@@ -432,18 +554,36 @@ async function uploadIcons() {
             }
             
             const iconData = await convertBlobToBase64Icon(file, file.name);
+            // Add default category if not already set
+            if (!iconData.category) {
+                iconData.category = 'Uncategorized';
+            }
             newIcons.push(iconData);
         }
         
         if (newIcons.length > 0) {
-            // Add new icons to existing ones
-            availableIcons = [...availableIcons, ...newIcons];
+            // Save each icon individually to storage
+            for (const iconData of newIcons) {
+                try {
+                    const savedIcon = await storage.saveIcon(iconData);
+                    console.log('Icon saved:', savedIcon);
+                } catch (error) {
+                    console.error('Error saving icon:', iconData.name, error);
+                    alert(`Error saving icon "${iconData.name}": ${error.message}`);
+                }
+            }
             
-            // Save to storage
-            const saveResult = await saveIconsToStorage();
+            // Reload all icons from storage to get the latest data
+            await loadIcons();
             
-            // Reset the file input
-            iconUploadInput.value = '';
+            // Reset the file input if it was used
+            if (!files && iconUploadInput) {
+                iconUploadInput.value = '';
+            }
+            
+            // Update categories and apply filters
+            await loadCategories();
+            filterIcons();
             
             // Update UI
             updateIconGallery();
@@ -460,11 +600,36 @@ async function clearIcons() {
     console.log('clearIcons function called');
     if (confirm('Are you sure you want to remove all icons?')) {
         console.log('User confirmed icon clearing');
-        availableIcons = [];
-        await saveIconsToStorage();
-        updateIconGallery();
-        updateRequiredIconCount();
-        console.log('Icons cleared successfully');
+        try {
+            // Use storage's clearIcons method for API-based clearing
+            await storage.clearIcons();
+            
+            // Reload from storage to ensure consistency
+            await loadIcons();
+            
+            // Reset filters
+            searchTerm = '';
+            selectedCategory = '';
+            
+            // Clear search input and category filter UI
+            if (iconSearch) iconSearch.value = '';
+            if (categoryFilter) categoryFilter.value = 'all';
+            
+            // Update categories (should be empty now)
+            await loadCategories();
+            
+            // Apply filters (which should show all icons - none in this case)
+            filterIcons();
+            
+            // Update UI
+            updateIconGallery();
+            updateRequiredIconCount();
+            updateStorageInfo();
+            console.log('Icons cleared successfully');
+        } catch (error) {
+            console.error('Error clearing icons:', error);
+            alert('Error clearing icons. Please try again.');
+        }
     } else {
         console.log('User cancelled icon clearing');
     }
@@ -474,6 +639,7 @@ async function clearIcons() {
 function updateIconCount() {
     if (iconCount) {
         iconCount.textContent = availableIcons.length;
+        console.log(`📊 Icon count updated to: ${availableIcons.length}`);
     }
     updateStorageInfo(); // This is now async but we don't need to wait
 }
@@ -484,23 +650,60 @@ function updateIconGallery() {
     
     iconGallery.innerHTML = '';
     
-    availableIcons.forEach((icon, index) => {
+    // Use filteredIcons if available, otherwise use all icons
+    const iconsToDisplay = filteredIcons.length > 0 || searchTerm || selectedCategory ? filteredIcons : availableIcons;
+    
+    iconsToDisplay.forEach((icon, index) => {
         const iconElement = document.createElement('div');
-        iconElement.className = 'icon-item';
+        iconElement.className = 'icon-item enhanced';
         
+        // Icon image
         const img = document.createElement('img');
         img.src = icon.data;
         img.alt = icon.name;
         img.title = icon.name;
         
-        const deleteBtn = document.createElement('span');
-        deleteBtn.className = 'delete-icon';
-        deleteBtn.textContent = '×';
+        // Icon info container
+        const infoContainer = document.createElement('div');
+        infoContainer.className = 'icon-info';
+        
+        // Icon name
+        const nameElement = document.createElement('div');
+        nameElement.className = 'icon-name';
+        nameElement.textContent = icon.name || 'Unnamed';
+        
+        // Icon category
+        const categoryElement = document.createElement('div');
+        categoryElement.className = 'icon-category';
+        categoryElement.textContent = icon.category || 'Uncategorized';
+        
+        infoContainer.appendChild(nameElement);
+        infoContainer.appendChild(categoryElement);
+        
+        // Action buttons container
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'icon-actions';
+        
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-icon-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.title = 'Edit this icon';
+        editBtn.addEventListener('click', () => openEditModal(icon.id));
+        
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-icon-btn';
+        deleteBtn.textContent = 'Delete';
         deleteBtn.title = 'Remove this icon';
         deleteBtn.addEventListener('click', () => deleteIcon(icon.id, index));
         
+        actionsContainer.appendChild(editBtn);
+        actionsContainer.appendChild(deleteBtn);
+        
         iconElement.appendChild(img);
-        iconElement.appendChild(deleteBtn);
+        iconElement.appendChild(infoContainer);
+        iconElement.appendChild(actionsContainer);
         iconGallery.appendChild(iconElement);
     });
     
@@ -510,17 +713,34 @@ function updateIconGallery() {
 // Delete a single icon
 async function deleteIcon(id, index) {
     try {
+        console.log(`🗑️ Deleting icon with ID: ${id}`);
+        
         // Delete from storage
-        await storage.deleteIcon(id);
+        const result = await storage.deleteIcon(id);
         
-        // Also remove from the local array
-        availableIcons.splice(index, 1);
-        
-        // Update UI
-        updateIconGallery();
-        updateRequiredIconCount();
+        if (result) {
+            console.log('✅ Icon deleted from storage');
+            
+            // Reload all icons from storage to ensure consistency
+            await loadIcons();
+            
+            // Update categories since an icon was removed
+            await loadCategories();
+            
+            // Apply current filters
+            filterIcons();
+            
+            // Update UI
+            updateIconGallery();
+            updateRequiredIconCount();
+            updateStorageInfo();
+            
+            console.log('✅ UI updated after deletion');
+        } else {
+            throw new Error('Delete operation returned false');
+        }
     } catch (error) {
-        console.error('Error deleting icon:', error);
+        console.error('❌ Error deleting icon:', error);
         alert('Failed to delete the icon. Please try again.');
     }
 }
@@ -569,16 +789,20 @@ function updateRequiredIconCount() {
     // Update info text
     let infoText = '';
     
+    console.log(`🎮 Generate button logic: Available icons: ${availableIcons.length}, Needed: ${iconsNeededPerSet}`);
+    
     if (availableIcons.length < iconsNeededPerSet) {
         // Not enough icons
         infoText = getTranslatedText('needIcons', { count: iconsNeededPerSet });
         generateBtn.disabled = true;
+        console.log(`❌ Generate button DISABLED - not enough icons (need ${iconsNeededPerSet}, have ${availableIcons.length})`);
     } else {
         // Enough icons
         if (setCount > 1) {
             infoText = getTranslatedText('manyUniqueSets', { count: availableIcons.length });
         }
         generateBtn.disabled = false;
+        console.log(`✅ Generate button ENABLED - sufficient icons (need ${iconsNeededPerSet}, have ${availableIcons.length})`);
     }
     
     // Update icon availability text
@@ -900,6 +1124,201 @@ async function optimizeStorageManually() {
 // Update the UI based on current settings
 function updateUI() {
     updateRequiredIconCount();
+}
+
+// Enhanced CRUD Functions
+
+// Filter icons based on search term and category
+function filterIcons() {
+    filteredIcons = availableIcons.filter(icon => {
+        const matchesSearch = !searchTerm || 
+            icon.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = !selectedCategory || 
+            icon.category === selectedCategory;
+        
+        return matchesSearch && matchesCategory;
+    });
+    
+    console.log(`Filtered ${filteredIcons.length} icons from ${availableIcons.length} total`);
+}
+
+// Load categories from available icons
+async function loadCategories() {
+    try {
+        // Extract unique categories from available icons
+        const categorySet = new Set();
+        availableIcons.forEach(icon => {
+            if (icon.category) {
+                categorySet.add(icon.category);
+            } else {
+                categorySet.add('Uncategorized');
+            }
+        });
+        
+        categories = Array.from(categorySet).sort();
+        console.log('Categories loaded:', categories);
+        
+        // Update the category filter dropdown
+        updateCategoryFilter();
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        categories = [];
+    }
+}
+
+// Update category filter dropdown
+function updateCategoryFilter() {
+    if (!categoryFilter) return;
+    
+    // Clear existing options
+    categoryFilter.innerHTML = '';
+    
+    // Add default "All Categories" option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'All Categories';
+    categoryFilter.appendChild(defaultOption);
+    
+    // Add category options
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+    
+    // Set selected value
+    categoryFilter.value = selectedCategory;
+}
+
+// Handle search input
+function handleIconSearch(event) {
+    searchTerm = event.target.value.trim();
+    filterIcons();
+    updateIconGallery();
+}
+
+// Handle category filter change
+function handleCategoryFilter(event) {
+    selectedCategory = event.target.value;
+    filterIcons();
+    updateIconGallery();
+}
+
+// Setup drag and drop functionality
+function setupDragAndDrop() {
+    if (!dropZone) return;
+    
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    // Highlight drop zone when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+    
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    function highlight(e) {
+        dropZone.classList.add('dragover');
+    }
+    
+    function unhighlight(e) {
+        dropZone.classList.remove('dragover');
+    }
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            uploadIcons(files);
+        }
+    }
+}
+
+// Open edit modal for an icon
+function openEditModal(iconId) {
+    const icon = availableIcons.find(i => i.id === iconId);
+    if (!icon || !editIconModal) return;
+    
+    currentEditingIcon = icon;
+    
+    // Populate modal fields
+    if (editIconName) editIconName.value = icon.name || '';
+    if (editIconCategory) editIconCategory.value = icon.category || 'Uncategorized';
+    if (editIconPreview) {
+        editIconPreview.src = icon.data;
+        editIconPreview.alt = icon.name || 'Icon preview';
+    }
+    
+    // Show modal
+    editIconModal.style.display = 'block';
+}
+
+// Close edit modal
+function closeEditModal() {
+    if (!editIconModal) return;
+    
+    editIconModal.style.display = 'none';
+    currentEditingIcon = null;
+    
+    // Clear form fields
+    if (editIconName) editIconName.value = '';
+    if (editIconCategory) editIconCategory.value = '';
+    if (editIconPreview) editIconPreview.src = '';
+}
+
+// Save icon changes
+async function saveIconChanges() {
+    if (!currentEditingIcon) return;
+    
+    try {
+        // Get updated values
+        const newName = editIconName ? editIconName.value.trim() : currentEditingIcon.name;
+        const newCategory = editIconCategory ? editIconCategory.value.trim() : currentEditingIcon.category;
+        
+        // Update icon in available icons array
+        const iconIndex = availableIcons.findIndex(i => i.id === currentEditingIcon.id);
+        if (iconIndex !== -1) {
+            availableIcons[iconIndex] = {
+                ...availableIcons[iconIndex],
+                name: newName || 'Unnamed',
+                category: newCategory || 'Uncategorized'
+            };
+        }
+        
+        // Save to storage
+        await saveIconsToStorage();
+        
+        // Reload categories and apply filters
+        await loadCategories();
+        filterIcons();
+        
+        // Update UI
+        updateIconGallery();
+        
+        // Close modal
+        closeEditModal();
+        
+        console.log('Icon updated successfully');
+    } catch (error) {
+        console.error('Error saving icon changes:', error);
+        alert('Error saving changes. Please try again.');
+    }
 }
 
 // Export for testing

@@ -114,7 +114,8 @@ function convertBlobToBase64Icon(blob, name) {
                 resolve({
                     id: Date.now() + '-' + Math.floor(Math.random() * 1000),
                     name: iconName,
-                    data: base64data
+                    image: base64data,
+                    data: base64data  // Keep for backward compatibility
                 });
             };
             reader.onerror = function() {

@@ -16,15 +16,27 @@ const localStorageMock = {
   __getStore: () => mockStore
 };
 
-// Forcefully define localStorage on the window object (JSDOM environment)
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-  writable: true,    // Allows tests or other code to modify/re-spy if necessary
-  configurable: true // Allows it to be deleted or reconfigured
-});
+// Check if we're in a jsdom environment (browser-like tests)
+const isJSDOMEnvironment = typeof window !== 'undefined';
 
-// Mock IndexedDB with fake-indexeddb
-require('fake-indexeddb/auto');
+if (isJSDOMEnvironment) {
+  // JSDOM environment setup
+  
+  // Forcefully define localStorage on the window object (JSDOM environment)
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock,
+    writable: true,    // Allows tests or other code to modify/re-spy if necessary
+    configurable: true // Allows it to be deleted or reconfigured
+  });
+
+  // Mock URL for minimal support
+  global.URL = {
+    createObjectURL: jest.fn(() => 'blob:mock-url'),
+    revokeObjectURL: jest.fn()
+  };
+}
+
+// IndexedDB is no longer needed since we use SQLite
 
 // Add structuredClone polyfill for Node.js
 if (!global.structuredClone) {
