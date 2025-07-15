@@ -71,6 +71,17 @@
               </div>
             
             <div class="form-group">
+                <label for="gameDifficulty" data-translate="gameDifficulty">Game Difficulty:</label>
+                <select id="gameDifficulty">
+                    <option value="EASY">Easy (More easy icons, balanced cards)</option>
+                    <option value="MEDIUM" selected>Medium (Balanced mix of all difficulties)</option>
+                    <option value="HARD">Hard (More hard icons, challenging cards)</option>
+                    <option value="EXPERT">Expert (Mostly hard icons, very challenging)</option>
+                </select>
+                <small class="help-text">Controls the overall difficulty of icon selection and card balance</small>
+            </div>
+            
+            <div class="form-group">
                 <label for="multiHitToggle" class="checkbox-label">
                   <input type="checkbox" id="multiHitToggle">
                   <span data-translate="multiHitToggle">Enable Multi-Hit Mode</span>
@@ -124,6 +135,14 @@
                         <input type="text" id="iconSearch" placeholder="Search icons..." data-translate-placeholder="searchIcons">
                         <select id="categoryFilter">
                             <option value="all" data-translate="allCategories">All Categories</option>
+                        </select>
+                        <select id="difficultyFilter">
+                            <option value="all">All Difficulties</option>
+                            <option value="1">⭐ Very Easy</option>
+                            <option value="2">⭐⭐ Easy</option>
+                            <option value="3">⭐⭐⭐ Medium</option>
+                            <option value="4">⭐⭐⭐⭐ Hard</option>
+                            <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
                         </select>
                     </div>
                     
@@ -229,6 +248,17 @@
         <div class="form-group">
           <label for="editIconAltText" data-translate="altText">Alt Text:</label>
           <input type="text" id="editIconAltText" placeholder="Describe the icon">
+        </div>
+        <div class="form-group">
+          <label for="editIconDifficulty" data-translate="difficulty">Difficulty:</label>
+          <select id="editIconDifficulty">
+            <option value="1">⭐ Very Easy</option>
+            <option value="2">⭐⭐ Easy</option>
+            <option value="3" selected>⭐⭐⭐ Medium</option>
+            <option value="4">⭐⭐⭐⭐ Hard</option>
+            <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
+          </select>
+          <small class="help-text">Rate how difficult this icon is to spot during gameplay</small>
         </div>
       </div>
       <div class="modal-footer">

@@ -11,6 +11,8 @@ import { createImageFromBase64, getImageDimensions } from './imageUtils.js';
  * @param {string} options.layout - Layout type ('one-per-page' or 'two-per-page')
  * @param {string} options.compressionLevel - PDF compression level ('NONE', 'FAST', 'MEDIUM', 'SLOW')
  * @param {boolean} options.showLabels - Whether to show labels on the bingo cards
+ * @param {string} options.gameMode - Game mode information
+ * @param {string} options.gameDifficulty - Game difficulty level
  * @returns {Promise<Blob>} - Promise that resolves with the generated PDF blob
  */
 async function generatePDF(options) {
@@ -20,7 +22,9 @@ async function generatePDF(options) {
             identifier, 
             compressionLevel = 'MEDIUM', 
             showLabels = true,
-            layout = 'one-per-page' 
+            layout = 'one-per-page',
+            gameMode = '',
+            gameDifficulty = ''
         } = options;
         
         // Get the jsPDF library from window global
@@ -183,7 +187,9 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
                     8,   // label font size
                     showLabels, 
                     imgQuality,
-                    compressionLevel
+                    compressionLevel,
+                    gameMode,
+                    gameDifficulty
                 );
             }
         }
@@ -377,7 +383,9 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                     6,  // label font size (smaller for two-per-page)
                     showLabels,
                     imgQuality,
-                    compressionLevel
+                    compressionLevel,
+                    gameMode,
+                    gameDifficulty
                 );
                 
                 cardCount++;
@@ -403,8 +411,10 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
  * @param {boolean} showLabels - Whether to show labels
  * @param {number} imgQuality - Image quality (0-1)
  * @param {string} compressionLevel - Compression level for jsPDF
+ * @param {string} gameMode - Game mode information (e.g., "Multi-Hit Mode")
+ * @param {string} gameDifficulty - Game difficulty (e.g., "MEDIUM")
  */
-async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelFontSize, showLabels, imgQuality, compressionLevel) {
+async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelFontSize, showLabels, imgQuality, compressionLevel, gameMode = '', gameDifficulty = '') {
     // Use the provided width directly - calculations are now done in the layout functions
     const cardWidth = availableWidth;
     // Calculate cell size based on grid dimensions (assumes square cells and grid)
@@ -430,6 +440,25 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
         pdf.setFontSize(titleFontSize * 0.8);
         pdf.setTextColor(100, 100, 100);
         pdf.text(card.identifier, x + cardWidth - 5, y - 5, { align: 'right' });
+    }
+    
+    // Draw game mode and difficulty information
+    if (gameMode || gameDifficulty) {
+        pdf.setFontSize(titleFontSize * 0.6);
+        pdf.setTextColor(120, 120, 120);
+        
+        let modeText = '';
+        if (gameMode && gameDifficulty) {
+            modeText = `${gameMode} | ${gameDifficulty}`;
+        } else if (gameMode) {
+            modeText = gameMode;
+        } else if (gameDifficulty) {
+            modeText = `Difficulty: ${gameDifficulty}`;
+        }
+        
+        if (modeText) {
+            pdf.text(modeText, x + 5, y - 5, { align: 'left' });
+        }
     }
     
     // Draw grid cells

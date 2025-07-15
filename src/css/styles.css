@@ -756,3 +756,25 @@ button:disabled {
 .btn-secondary:hover {
     background-color: #545b62;
 }
+
+/* Help text styling */
+.help-text {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Difficulty indicator in gallery */
+.icon-difficulty {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 10px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: bold;
+}

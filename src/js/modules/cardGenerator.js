@@ -26,7 +26,8 @@ function generateBingoCards(options) {
         sameCard = false,
         multiHitMode = false, 
         difficulty = 'MEDIUM',
-        iconDistribution = 'same-icons' 
+        iconDistribution = 'same-icons',
+        gameDifficulty = 'MEDIUM'
     } = options;
     
     // Validation
@@ -79,13 +80,13 @@ function generateBingoCards(options) {
         let selectedIcons;
         if (sameCard) {
             // For identical cards, select icons once and reuse for all cards in the set
-            selectedIcons = shuffleArray([...icons]).slice(0, cellsPerCard);
+            selectedIcons = selectBalancedIcons(icons, cellsPerCard, gameDifficulty);
         } else if (iconDistribution === 'different-icons') {
             // For different-icons, select enough icons for all cards with no overlaps
-            selectedIcons = shuffleArray([...icons]).slice(0, iconsNeededPerSet);
+            selectedIcons = selectBalancedIcons(icons, iconsNeededPerSet, gameDifficulty);
         } else {
             // For same-icons, select just enough for one card (they will be reused)
-            selectedIcons = shuffleArray([...icons]).slice(0, cellsPerCard);
+            selectedIcons = selectBalancedIcons(icons, cellsPerCard, gameDifficulty);
         }
         
         // Generate cards for this set
@@ -147,12 +148,16 @@ function applyMultiHitMode(grid, gridSize, difficulty) {
     const difficultySettings = getDifficultySettings(difficulty);
     const totalCells = gridSize * gridSize;
     
-    // Get all non-free space positions
+    // Get all non-free space positions with their icon difficulty
     const availablePositions = [];
     for (let row = 0; row < gridSize; row++) {
         for (let col = 0; col < gridSize; col++) {
             if (!grid[row][col].isFreeSpace) {
-                availablePositions.push({ row, col });
+                availablePositions.push({ 
+                    row, 
+                    col, 
+                    iconDifficulty: grid[row][col].difficulty || 3 
+                });
             }
         }
     }
@@ -161,8 +166,8 @@ function applyMultiHitMode(grid, gridSize, difficulty) {
     const targetPercentage = Math.random() * (difficultySettings.maxPercentage - difficultySettings.minPercentage) + difficultySettings.minPercentage;
     const multiHitCount = Math.floor(availablePositions.length * targetPercentage / 100);
     
-    // Randomly select positions for multi-hit tiles
-    const selectedPositions = selectMultiHitPositions(availablePositions, multiHitCount, gridSize);
+    // Select positions prioritizing easier icons for multi-hit
+    const selectedPositions = selectMultiHitPositionsWithDifficulty(availablePositions, multiHitCount, gridSize);
     
     // Apply multi-hit to selected positions
     selectedPositions.forEach(pos => {
@@ -238,6 +243,72 @@ function selectMultiHitPositions(availablePositions, count, gridSize) {
     // If we don't have enough positions due to anti-clustering, fill the rest randomly
     while (selected.length < count && selected.length < availablePositions.length) {
         for (const position of shuffled) {
+            if (selected.length >= count) break;
+            if (!selected.some(p => p.row === position.row && p.col === position.col)) {
+                selected.push(position);
+            }
+        }
+    }
+    
+    return selected;
+}
+
+/**
+ * Select positions for multi-hit tiles, prioritizing easier icons
+ * @param {Array} availablePositions - All available positions with icon difficulty
+ * @param {number} count - Number of positions to select
+ * @param {number} gridSize - Size of the grid
+ * @returns {Array} - Selected positions
+ */
+function selectMultiHitPositionsWithDifficulty(availablePositions, count, gridSize) {
+    if (count >= availablePositions.length) {
+        return [...availablePositions];
+    }
+    
+    // Sort positions by icon difficulty (easier icons first)
+    // Icons with difficulty 1-2 are prioritized, then 3, then 4-5
+    const sortedPositions = [...availablePositions].sort((a, b) => {
+        const diffA = a.iconDifficulty;
+        const diffB = b.iconDifficulty;
+        
+        // Priority: 1-2 (easy) > 3 (medium) > 4-5 (hard)
+        const getPriority = (diff) => {
+            if (diff <= 2) return 1; // Easy icons get highest priority
+            if (diff === 3) return 2; // Medium icons get second priority
+            return 3; // Hard icons get lowest priority
+        };
+        
+        const priorityA = getPriority(diffA);
+        const priorityB = getPriority(diffB);
+        
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB; // Lower priority number = higher priority
+        }
+        
+        // Within same priority group, prefer easier icons
+        return diffA - diffB;
+    });
+    
+    const selected = [];
+    
+    // First pass: select easier icons while avoiding clustering
+    for (const position of sortedPositions) {
+        if (selected.length >= count) break;
+        
+        // Check if position is too close to already selected positions
+        const isTooClose = selected.some(selectedPos => {
+            const distance = Math.abs(position.row - selectedPos.row) + Math.abs(position.col - selectedPos.col);
+            return distance <= 1 && gridSize >= 5; // Only apply anti-clustering for larger grids
+        });
+        
+        if (!isTooClose) {
+            selected.push(position);
+        }
+    }
+    
+    // Second pass: if we still need more positions, fill with remaining easier icons
+    if (selected.length < count) {
+        for (const position of sortedPositions) {
             if (selected.length >= count) break;
             if (!selected.some(p => p.row === position.row && p.col === position.col)) {
                 selected.push(position);
@@ -349,11 +420,102 @@ function cloneGrid(grid) {
     return grid.map(row => row.map(cell => ({ ...cell })));
 }
 
+/**
+ * Select icons with balanced difficulty levels for better gameplay
+ * @param {Array} icons - Available icons with difficulty ratings
+ * @param {number} count - Number of icons to select
+ * @param {string} gameDifficulty - Overall game difficulty (EASY, MEDIUM, HARD, EXPERT)
+ * @returns {Array} - Selected icons with balanced difficulty
+ */
+function selectBalancedIcons(icons, count, gameDifficulty = 'MEDIUM') {
+    if (!icons || icons.length === 0) return [];
+    if (count <= 0) return [];
+    if (count >= icons.length) return shuffleArray([...icons]);
+    
+    // Group icons by difficulty level (1-5)
+    const iconsByDifficulty = {
+        1: icons.filter(icon => (icon.difficulty || 3) === 1),
+        2: icons.filter(icon => (icon.difficulty || 3) === 2),
+        3: icons.filter(icon => (icon.difficulty || 3) === 3),
+        4: icons.filter(icon => (icon.difficulty || 3) === 4),
+        5: icons.filter(icon => (icon.difficulty || 3) === 5)
+    };
+    
+    // Target distribution based on game difficulty
+    const getTargetDistribution = (difficulty) => {
+        switch (difficulty) {
+            case 'EASY':
+                return {
+                    easy: Math.floor(count * 0.50),    // 50% easy icons
+                    medium: Math.floor(count * 0.35),  // 35% medium icons
+                    hard: Math.floor(count * 0.15)     // 15% hard icons
+                };
+            case 'HARD':
+                return {
+                    easy: Math.floor(count * 0.15),    // 15% easy icons
+                    medium: Math.floor(count * 0.35),  // 35% medium icons
+                    hard: Math.floor(count * 0.50)     // 50% hard icons
+                };
+            case 'EXPERT':
+                return {
+                    easy: Math.floor(count * 0.10),    // 10% easy icons
+                    medium: Math.floor(count * 0.20),  // 20% medium icons
+                    hard: Math.floor(count * 0.70)     // 70% hard icons
+                };
+            default: // MEDIUM
+                return {
+                    easy: Math.floor(count * 0.25),    // 25% easy icons
+                    medium: Math.floor(count * 0.50),  // 50% medium icons
+                    hard: Math.floor(count * 0.25)     // 25% hard icons
+                };
+        }
+    };
+    
+    const targetDistribution = getTargetDistribution(gameDifficulty);
+    
+    // Adjust for remainder
+    const remainder = count - (targetDistribution.easy + targetDistribution.medium + targetDistribution.hard);
+    if (remainder > 0) {
+        targetDistribution.medium += remainder; // Add remainder to medium
+    }
+    
+    const selectedIcons = [];
+    
+    // Select easy icons (difficulty 1-2)
+    const easyIcons = [...iconsByDifficulty[1], ...iconsByDifficulty[2]];
+    const selectedEasy = shuffleArray(easyIcons).slice(0, Math.min(targetDistribution.easy, easyIcons.length));
+    selectedIcons.push(...selectedEasy);
+    
+    // Select medium icons (difficulty 3)
+    const mediumIcons = iconsByDifficulty[3];
+    const selectedMedium = shuffleArray([...mediumIcons]).slice(0, Math.min(targetDistribution.medium, mediumIcons.length));
+    selectedIcons.push(...selectedMedium);
+    
+    // Select hard icons (difficulty 4-5)
+    const hardIcons = [...iconsByDifficulty[4], ...iconsByDifficulty[5]];
+    const selectedHard = shuffleArray(hardIcons).slice(0, Math.min(targetDistribution.hard, hardIcons.length));
+    selectedIcons.push(...selectedHard);
+    
+    // If we don't have enough icons in the desired distribution,
+    // fill the remainder randomly from available icons
+    if (selectedIcons.length < count) {
+        const usedIds = new Set(selectedIcons.map(icon => icon.id));
+        const remainingIcons = icons.filter(icon => !usedIds.has(icon.id));
+        const additionalNeeded = count - selectedIcons.length;
+        const additional = shuffleArray(remainingIcons).slice(0, additionalNeeded);
+        selectedIcons.push(...additional);
+    }
+    
+    // Final shuffle to randomize order while maintaining balance
+    return shuffleArray(selectedIcons).slice(0, count);
+}
+
 // Export functions
 export {
     generateBingoCards,
     generateIdentifier,
     shuffleArray,
+    selectBalancedIcons,
     calculateExpectedMultiHitCount,
     getDifficultySettings
 };

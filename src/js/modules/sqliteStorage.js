@@ -97,11 +97,17 @@ class SQLiteStorage {
         data BLOB NOT NULL,
         type TEXT NOT NULL,
         size INTEGER DEFAULT 0,
+        category TEXT DEFAULT 'default',
+        tags TEXT DEFAULT '[]',
+        alt_text TEXT DEFAULT '',
+        difficulty INTEGER DEFAULT 3,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       
       CREATE INDEX IF NOT EXISTS idx_icons_name ON icons(name);
+      CREATE INDEX IF NOT EXISTS idx_icons_category ON icons(category);
+      CREATE INDEX IF NOT EXISTS idx_icons_difficulty ON icons(difficulty);
       
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
@@ -170,8 +176,8 @@ class SQLiteStorage {
     }
     
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO icons (id, name, data, type, size, category, tags, alt_text, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT OR REPLACE INTO icons (id, name, data, type, size, category, tags, alt_text, difficulty, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
     
     try {
@@ -183,7 +189,8 @@ class SQLiteStorage {
         dataSize,
         iconData.category || 'default',
         JSON.stringify(iconData.tags || []),
-        iconData.altText || iconData.name || 'Icon'
+        iconData.altText || iconData.name || 'Icon',
+        iconData.difficulty || 3
       );
       
       return { 
@@ -195,7 +202,8 @@ class SQLiteStorage {
           size: dataSize,
           category: iconData.category || 'default',
           tags: iconData.tags || [],
-          altText: iconData.altText || iconData.name || 'Icon'
+          altText: iconData.altText || iconData.name || 'Icon',
+          difficulty: iconData.difficulty || 3
         } 
       };
     } catch (error) {
@@ -208,7 +216,7 @@ class SQLiteStorage {
     if (!this.isInitialized) await this.init();
     
     let query = `
-      SELECT id, name, data, type, size, category, tags, alt_text, created_at, updated_at
+      SELECT id, name, data, type, size, category, tags, alt_text, difficulty, created_at, updated_at
       FROM icons
     `;
     
@@ -254,6 +262,7 @@ class SQLiteStorage {
           category: row.category || 'default',
           tags: JSON.parse(row.tags || '[]'),
           altText: row.alt_text || '',
+          difficulty: row.difficulty || 3,
           createdAt: row.created_at,
           updatedAt: row.updated_at
         };
@@ -585,11 +594,11 @@ class SQLiteStorage {
   async updateIcon(iconId, iconData) {
     if (!this.isInitialized) await this.init();
     
-    const { name, category, tags, alt_text } = iconData;
+    const { name, category, tags, alt_text, difficulty } = iconData;
     
     const stmt = this.db.prepare(`
       UPDATE icons 
-      SET name = ?, category = ?, tags = ?, alt_text = ?, updated_at = CURRENT_TIMESTAMP
+      SET name = ?, category = ?, tags = ?, alt_text = ?, difficulty = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
     
@@ -599,6 +608,7 @@ class SQLiteStorage {
         category || 'default',
         JSON.stringify(tags || []),
         alt_text || '',
+        difficulty || 3,
         iconId
       );
       
@@ -644,6 +654,7 @@ class SQLiteStorage {
         category: row.category || 'default',
         tags: JSON.parse(row.tags || '[]'),
         altText: row.alt_text || '',
+        difficulty: row.difficulty || 3,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };

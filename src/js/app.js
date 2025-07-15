@@ -32,6 +32,7 @@ let iconCount;
 let centerBlankToggle;
 let sameCardToggle;
 let showLabelsToggle;
+let gameDifficulty;
 let multiHitToggle;
 let difficultyRadios;
 let multiHitOptions;
@@ -40,11 +41,15 @@ let multiHitPreview;
 // Enhanced CRUD DOM elements
 let iconSearch;
 let categoryFilter;
+let difficultyFilter;
 let dropZone;
 let editIconModal;
 let editIconModalContent;
 let editIconName;
 let editIconCategory;
+let editIconTags;
+let editIconAltText;
+let editIconDifficulty;
 let editIconPreview;
 let editIconSaveBtn;
 let editIconCancelBtn;
@@ -59,6 +64,7 @@ let showLabels = true;
 let filteredIcons = [];
 let searchTerm = '';
 let selectedCategory = '';
+let selectedDifficulty = '';
 let categories = [];
 let currentEditingIcon = null;
 
@@ -184,6 +190,7 @@ function initializeDOMElements() {
     centerBlankToggle = document.getElementById('centerBlankToggle');
     sameCardToggle = document.getElementById('sameCardToggle');
     showLabelsToggle = document.getElementById('showLabelsToggle');
+    gameDifficulty = document.getElementById('gameDifficulty');
     multiHitToggle = document.getElementById('multiHitToggle');
     multiHitOptions = document.getElementById('multiHitOptions');
     multiHitPreview = document.getElementById('multiHitPreview');
@@ -192,15 +199,19 @@ function initializeDOMElements() {
     // Enhanced CRUD DOM elements
     iconSearch = document.getElementById('iconSearch');
     categoryFilter = document.getElementById('categoryFilter');
+    difficultyFilter = document.getElementById('difficultyFilter');
     dropZone = document.getElementById('dropZone');
     editIconModal = document.getElementById('editIconModal');
     editIconModalContent = document.getElementById('editIconModalContent');
     editIconName = document.getElementById('editIconName');
     editIconCategory = document.getElementById('editIconCategory');
+    editIconTags = document.getElementById('editIconTags');
+    editIconAltText = document.getElementById('editIconAltText');
+    editIconDifficulty = document.getElementById('editIconDifficulty');
     editIconPreview = document.getElementById('editIconPreview');
-    editIconSaveBtn = document.getElementById('editIconSaveBtn');
-    editIconCancelBtn = document.getElementById('editIconCancelBtn');
-    editIconCloseBtn = document.getElementById('editIconCloseBtn');
+    editIconSaveBtn = document.getElementById('saveIconChanges');
+    editIconCancelBtn = document.getElementById('cancelEditIcon');
+    editIconCloseBtn = document.getElementById('closeEditModal');
     
     // Debug: Check if critical elements are found
     console.log('Upload button found:', !!uploadIconBtn);
@@ -351,6 +362,10 @@ function setupEventListeners() {
     
     if (categoryFilter) {
         categoryFilter.addEventListener('change', handleCategoryFilter);
+    }
+    
+    if (difficultyFilter) {
+        difficultyFilter.addEventListener('change', handleDifficultyFilter);
     }
     
     if (editIconModal) {
@@ -610,10 +625,12 @@ async function clearIcons() {
             // Reset filters
             searchTerm = '';
             selectedCategory = '';
+            selectedDifficulty = '';
             
             // Clear search input and category filter UI
             if (iconSearch) iconSearch.value = '';
             if (categoryFilter) categoryFilter.value = 'all';
+            if (difficultyFilter) difficultyFilter.value = 'all';
             
             // Update categories (should be empty now)
             await loadCategories();
@@ -680,6 +697,13 @@ function updateIconGallery() {
         infoContainer.appendChild(nameElement);
         infoContainer.appendChild(categoryElement);
         
+        // Difficulty indicator
+        const difficultyElement = document.createElement('div');
+        difficultyElement.className = 'icon-difficulty';
+        const difficultyStars = '⭐'.repeat(icon.difficulty || 3);
+        difficultyElement.textContent = difficultyStars;
+        difficultyElement.title = `Difficulty: ${icon.difficulty || 3}/5`;
+        
         // Action buttons container
         const actionsContainer = document.createElement('div');
         actionsContainer.className = 'icon-actions';
@@ -703,6 +727,7 @@ function updateIconGallery() {
         
         iconElement.appendChild(img);
         iconElement.appendChild(infoContainer);
+        iconElement.appendChild(difficultyElement);
         iconElement.appendChild(actionsContainer);
         iconGallery.appendChild(iconElement);
     });
@@ -880,6 +905,9 @@ function generateCards() {
         }
     }
     
+    // Get game difficulty
+    const gameDifficultyValue = gameDifficulty ? gameDifficulty.value : 'MEDIUM';
+    
     try {
         // Generate the cards
         const result = generateBingoCards({
@@ -892,7 +920,8 @@ function generateCards() {
             sameCard,
             multiHitMode,
             difficulty,
-            iconDistribution
+            iconDistribution,
+            gameDifficulty: gameDifficultyValue
         });
         
         generatedCards = result;
@@ -1041,13 +1070,29 @@ async function downloadPDF() {
             const compressionLevel = pdfCompression.value;
             const layout = pdfLayout.value;
             
+            // Get game mode and difficulty information
+            const isMultiHit = multiHitToggle && multiHitToggle.checked;
+            let multiHitDifficulty = 'MEDIUM';
+            if (difficultyRadios) {
+                for (const radio of difficultyRadios) {
+                    if (radio.checked) {
+                        multiHitDifficulty = radio.value;
+                        break;
+                    }
+                }
+            }
+            const gameMode = isMultiHit ? `Multi-Hit Mode (${multiHitDifficulty})` : 'Standard Mode';
+            const gameDifficultyValue = gameDifficulty ? gameDifficulty.value : 'MEDIUM';
+            
             // Generate the PDF
             const pdfBlob = await generatePDF({
                 cardSets: generatedCards.cardSets,
                 identifier: generatedCards.identifier,
                 compressionLevel,
                 layout,
-                showLabels // include toggle state
+                showLabels, // include toggle state
+                gameMode,
+                gameDifficulty: gameDifficultyValue
             });
             
             // Download the PDF
@@ -1133,10 +1178,12 @@ function filterIcons() {
     filteredIcons = availableIcons.filter(icon => {
         const matchesSearch = !searchTerm || 
             icon.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = !selectedCategory || 
+        const matchesCategory = !selectedCategory || selectedCategory === 'all' ||
             icon.category === selectedCategory;
+        const matchesDifficulty = !selectedDifficulty || selectedDifficulty === 'all' ||
+            (icon.difficulty || 3).toString() === selectedDifficulty;
         
-        return matchesSearch && matchesCategory;
+        return matchesSearch && matchesCategory && matchesDifficulty;
     });
     
     console.log(`Filtered ${filteredIcons.length} icons from ${availableIcons.length} total`);
@@ -1205,6 +1252,13 @@ function handleCategoryFilter(event) {
     updateIconGallery();
 }
 
+// Handle difficulty filter change
+function handleDifficultyFilter(event) {
+    selectedDifficulty = event.target.value;
+    filterIcons();
+    updateIconGallery();
+}
+
 // Setup drag and drop functionality
 function setupDragAndDrop() {
     if (!dropZone) return;
@@ -1259,11 +1313,16 @@ function openEditModal(iconId) {
     
     // Populate modal fields
     if (editIconName) editIconName.value = icon.name || '';
-    if (editIconCategory) editIconCategory.value = icon.category || 'Uncategorized';
+    if (editIconCategory) editIconCategory.value = icon.category || 'default';
+    if (editIconTags) editIconTags.value = (icon.tags || []).join(', ');
+    if (editIconAltText) editIconAltText.value = icon.altText || '';
+    if (editIconDifficulty) editIconDifficulty.value = icon.difficulty || 3;
     if (editIconPreview) {
-        editIconPreview.src = icon.data;
+        editIconPreview.src = icon.data || icon.image;
         editIconPreview.alt = icon.name || 'Icon preview';
     }
+    
+    console.log('🎯 Opening edit modal for:', icon.name, 'Difficulty:', icon.difficulty);
     
     // Show modal
     editIconModal.style.display = 'block';
@@ -1278,7 +1337,10 @@ function closeEditModal() {
     
     // Clear form fields
     if (editIconName) editIconName.value = '';
-    if (editIconCategory) editIconCategory.value = '';
+    if (editIconCategory) editIconCategory.value = 'default';
+    if (editIconTags) editIconTags.value = '';
+    if (editIconAltText) editIconAltText.value = '';
+    if (editIconDifficulty) editIconDifficulty.value = '3';
     if (editIconPreview) editIconPreview.src = '';
 }
 
@@ -1290,6 +1352,9 @@ async function saveIconChanges() {
         // Get updated values
         const newName = editIconName ? editIconName.value.trim() : currentEditingIcon.name;
         const newCategory = editIconCategory ? editIconCategory.value.trim() : currentEditingIcon.category;
+        const newTags = editIconTags ? editIconTags.value.split(',').map(tag => tag.trim()).filter(tag => tag) : currentEditingIcon.tags;
+        const newAltText = editIconAltText ? editIconAltText.value.trim() : currentEditingIcon.altText;
+        const newDifficulty = editIconDifficulty ? parseInt(editIconDifficulty.value) : currentEditingIcon.difficulty;
         
         // Update icon in available icons array
         const iconIndex = availableIcons.findIndex(i => i.id === currentEditingIcon.id);
@@ -1297,12 +1362,21 @@ async function saveIconChanges() {
             availableIcons[iconIndex] = {
                 ...availableIcons[iconIndex],
                 name: newName || 'Unnamed',
-                category: newCategory || 'Uncategorized'
+                category: newCategory || 'default',
+                tags: newTags || [],
+                altText: newAltText || '',
+                difficulty: newDifficulty || 3
             };
         }
         
-        // Save to storage
-        await saveIconsToStorage();
+        // Save to storage using the new updateIcon method
+        await storage.updateIcon(currentEditingIcon.id, {
+            name: newName || 'Unnamed',
+            category: newCategory || 'default',
+            tags: newTags || [],
+            alt_text: newAltText || '',
+            difficulty: newDifficulty || 3
+        });
         
         // Reload categories and apply filters
         await loadCategories();
