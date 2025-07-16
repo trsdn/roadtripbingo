@@ -341,13 +341,13 @@ Current Category: ${icon.category || 'None'}
 Current Difficulty: ${icon.difficulty || 'Not set'}
 Current Tags: ${icon.tags || 'None'}
 
-Please provide the following in JSON format:
+Please provide the following in JSON format. ALL fields are required:
 {
   "category_suggestion": "Most appropriate category (Transport, Animals, Buildings, Nature, People, Signs, Food, Objects, Weather, Technology)",
   "tags_suggestion": ["array", "of", "relevant", "tags", "max 8"],
   "difficulty_suggestion": 1-5 (1=very easy to spot, 5=very hard to spot),
   "name_suggestion": "Clear, concise name for the icon",
-  "name_suggestion_de": "German translation of the name",
+  "name_suggestion_de": "REQUIRED: German translation of the name (e.g. 'Airplane' -> 'Flugzeug')",
   "description_suggestion": "Brief description of what to look for (max 100 chars)",
   "reasoning": "Brief explanation of your suggestions"
 }
