@@ -2297,7 +2297,15 @@ function showAIAnalysisResults(results) {
         const difficulty = data.difficulty_suggestion;
         const name = data.name_suggestion;
         const nameDe = data.name_suggestion_de;
-        const tags = data.tags_suggestion;
+        // Parse tags if they come as JSON string
+        let tags = data.tags_suggestion;
+        if (typeof tags === 'string' && tags.startsWith('[')) {
+            try {
+                tags = JSON.parse(tags);
+            } catch (e) {
+                console.warn('Failed to parse tags JSON:', tags);
+            }
+        }
         const confidence = Math.round((data.confidence_score || 0) * 100);
         
         return `
