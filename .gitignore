@@ -9,12 +9,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Cypress
-cypress/videos/
-cypress/screenshots/
-docs/screenshots/
-
 # Testing
+test-results/
+playwright-report/
 coverage/
 
 # Environment variables
@@ -23,6 +20,13 @@ coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Data directory - exclude database files but keep structure
+data/*.db
+data/backups/*.sql
+data/backups/*.json
+!data/README.md
+!data/migrations/
 
 # Original copyright content
 icons copyright/

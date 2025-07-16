@@ -223,6 +223,115 @@ async function handleAPIRequest(req, res) {
       return true;
     }
 
+    // Icon Sets API
+    if (pathname === '/api/icon-sets') {
+      if (method === 'GET') {
+        const sets = await storage.getIconSets();
+        sendJSON(res, { success: true, data: sets });
+        return true;
+      } else if (method === 'POST') {
+        const body = await parseRequestBody(req);
+        const result = await storage.createIconSet(body);
+        sendJSON(res, result, 201);
+        return true;
+      }
+    }
+
+    // Individual icon set operations
+    if (pathname.startsWith('/api/icon-sets/')) {
+      const pathParts = pathname.split('/');
+      const setId = pathParts[3];
+      
+      if (method === 'GET') {
+        // Get icons in a specific set
+        const icons = await storage.getIconsInSet(setId);
+        sendJSON(res, { success: true, data: icons });
+        return true;
+      } else if (method === 'PUT') {
+        // Update icon set
+        const body = await parseRequestBody(req);
+        const result = await storage.updateIconSet(setId, body);
+        sendJSON(res, result);
+        return true;
+      } else if (method === 'DELETE') {
+        // Delete icon set
+        const result = await storage.deleteIconSet(setId);
+        sendJSON(res, result);
+        return true;
+      }
+    }
+
+    // Icon set membership API
+    if (pathname.startsWith('/api/icon-sets/') && pathname.includes('/icons/')) {
+      const pathParts = pathname.split('/');
+      const setId = pathParts[3];
+      const iconId = pathParts[5];
+      
+      if (method === 'POST') {
+        // Add icon to set
+        const result = await storage.addIconToSet(iconId, setId);
+        sendJSON(res, result);
+        return true;
+      } else if (method === 'DELETE') {
+        // Remove icon from set
+        const result = await storage.removeIconFromSet(iconId, setId);
+        sendJSON(res, result);
+        return true;
+      }
+    }
+
+    // Icon translations API
+    if (pathname.startsWith('/api/icons/') && pathname.includes('/translations')) {
+      const pathParts = pathname.split('/');
+      const iconId = pathParts[3];
+      
+      if (method === 'GET') {
+        // Get translations for an icon
+        const translations = await storage.getIconTranslations(iconId);
+        sendJSON(res, { success: true, data: translations });
+        return true;
+      } else if (method === 'POST') {
+        // Save translation for an icon
+        const body = await parseRequestBody(req);
+        const { languageCode, translatedName } = body;
+        const result = await storage.saveIconTranslation(iconId, languageCode, translatedName);
+        sendJSON(res, result);
+        return true;
+      }
+    }
+
+    // Delete specific translation
+    if (pathname.startsWith('/api/icons/') && pathname.includes('/translations/')) {
+      const pathParts = pathname.split('/');
+      const iconId = pathParts[3];
+      const languageCode = pathParts[5];
+      
+      if (method === 'DELETE') {
+        const result = await storage.deleteIconTranslation(iconId, languageCode);
+        sendJSON(res, result);
+        return true;
+      }
+    }
+
+    // Get sets containing a specific icon
+    if (pathname.startsWith('/api/icons/') && pathname.endsWith('/sets')) {
+      const pathParts = pathname.split('/');
+      const iconId = pathParts[3];
+      
+      if (method === 'GET') {
+        const sets = await storage.getSetsContainingIcon(iconId);
+        sendJSON(res, { success: true, data: sets });
+        return true;
+      }
+    }
+
+    // Migration API - migrate existing icons to default set
+    if (pathname === '/api/migrate/icons' && method === 'POST') {
+      const result = await storage.migrateExistingIconsToDefaultSet();
+      sendJSON(res, result);
+      return true;
+    }
+
     return false; // API route not found
   } catch (error) {
     console.error('API Error:', error);

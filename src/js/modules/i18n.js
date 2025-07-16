@@ -39,7 +39,60 @@ const languages = {
         iconDistributionLabel: "Icon Distribution:",
         sameIcons: "Same icons (different arrangements)",
         differentIcons: "Different icons for each card",
-        iconDistributionInfo: "Choose how icons are distributed across cards within each set."
+        iconDistributionInfo: "Choose how icons are distributed across cards within each set.",
+        // New translations for enhanced UI
+        navGenerator: "Generator",
+        navIconManager: "Icon Manager",
+        iconManagerDescription: "Manage your icon collection, organize them into sets, and add translations.",
+        iconSets: "Icon Sets",
+        createSet: "Create New Set",
+        iconManagement: "Icon Management",
+        tableView: "Table View",
+        gridView: "Grid View",
+        searchIcons: "Search icons...",
+        allCategories: "All Categories",
+        allSets: "All Sets",
+        itemsSelected: "items selected",
+        addToSet: "Add to Set",
+        removeFromSet: "Remove from Set",
+        deleteSelected: "Delete Selected",
+        clearSelection: "Clear Selection",
+        dropZoneText: "Drop images here to upload",
+        name: "Name",
+        category: "Category",
+        difficulty: "Difficulty",
+        preview: "Preview",
+        sets: "Sets",
+        translations: "Translations",
+        actions: "Actions",
+        dataManagement: "Data Management",
+        selectIconSet: "Select Icon Set:",
+        allIcons: "All Icons",
+        selectedIcons: "Selected Icons:",
+        selectIcons: "Select Icons",
+        selectIconsForGeneration: "Select Icons for Card Generation",
+        selectAll: "Select All",
+        deselectAll: "Deselect All",
+        confirmSelection: "Confirm Selection",
+        cancel: "Cancel",
+        close: "Close",
+        saveChanges: "Save Changes",
+        editIcon: "Edit Icon",
+        iconName: "Icon Name:",
+        tags: "Tags (comma-separated):",
+        altText: "Alt Text:",
+        createSet: "Create Set",
+        setName: "Set Name:",
+        setDescription: "Description:",
+        saveSet: "Save Set",
+        selectSet: "Select Set:",
+        selectSetOption: "Select a set...",
+        manageTranslations: "Manage Translations",
+        language: "Language:",
+        translatedName: "Translated Name:",
+        addTranslation: "Add Translation",
+        gameDifficulty: "Game Difficulty:",
+        pdfLayout: "PDF Layout:"
     },
     de: {
         title: "Auto Bingo Generator",
@@ -77,7 +130,60 @@ const languages = {
         iconDistributionLabel: "Icon-Verteilung:",
         sameIcons: "Gleiche Icons (unterschiedliche Anordnungen)",
         differentIcons: "Verschiedene Icons für jede Karte",
-        iconDistributionInfo: "Wählen Sie, wie Icons auf Karten innerhalb eines Sets verteilt werden."
+        iconDistributionInfo: "Wählen Sie, wie Icons auf Karten innerhalb eines Sets verteilt werden.",
+        // New translations for enhanced UI
+        navGenerator: "Generator",
+        navIconManager: "Icon Manager",
+        iconManagerDescription: "Verwalten Sie Ihre Icon-Sammlung, organisieren Sie sie in Sets und fügen Sie Übersetzungen hinzu.",
+        iconSets: "Icon Sets",
+        createSet: "Neues Set erstellen",
+        iconManagement: "Icon Verwaltung",
+        tableView: "Tabellenansicht",
+        gridView: "Rasteransicht",
+        searchIcons: "Icons suchen...",
+        allCategories: "Alle Kategorien",
+        allSets: "Alle Sets",
+        itemsSelected: "Elemente ausgewählt",
+        addToSet: "Zu Set hinzufügen",
+        removeFromSet: "Aus Set entfernen",
+        deleteSelected: "Ausgewählte löschen",
+        clearSelection: "Auswahl aufheben",
+        dropZoneText: "Bilder hier ablegen zum Hochladen",
+        name: "Name",
+        category: "Kategorie",
+        difficulty: "Schwierigkeit",
+        preview: "Vorschau",
+        sets: "Sets",
+        translations: "Übersetzungen",
+        actions: "Aktionen",
+        dataManagement: "Datenverwaltung",
+        selectIconSet: "Icon Set auswählen:",
+        allIcons: "Alle Icons",
+        selectedIcons: "Ausgewählte Icons:",
+        selectIcons: "Icons auswählen",
+        selectIconsForGeneration: "Icons für Kartenerstellung auswählen",
+        selectAll: "Alle auswählen",
+        deselectAll: "Alle abwählen",
+        confirmSelection: "Auswahl bestätigen",
+        cancel: "Abbrechen",
+        close: "Schließen",
+        saveChanges: "Änderungen speichern",
+        editIcon: "Icon bearbeiten",
+        iconName: "Icon Name:",
+        tags: "Tags (durch Komma getrennt):",
+        altText: "Alt Text:",
+        createSet: "Set erstellen",
+        setName: "Set Name:",
+        setDescription: "Beschreibung:",
+        saveSet: "Set speichern",
+        selectSet: "Set auswählen:",
+        selectSetOption: "Set auswählen...",
+        manageTranslations: "Übersetzungen verwalten",
+        language: "Sprache:",
+        translatedName: "Übersetzter Name:",
+        addTranslation: "Übersetzung hinzufügen",
+        gameDifficulty: "Spiel-Schwierigkeit:",
+        pdfLayout: "PDF-Layout:"
     }
 };
 
@@ -86,11 +192,27 @@ const languages = {
  * @param {string} lang - Language code (e.g., 'en', 'de')
  */
 function setLanguage(lang) {
+    console.log('🔄 Setting language to:', lang);
+    
+    if (!languages[lang]) {
+        console.error('❌ Language not supported:', lang);
+        return;
+    }
+    
     const elements = document.querySelectorAll('[data-translate]');
+    console.log(`🔄 Found ${elements.length} elements to translate`);
+    
     elements.forEach(el => {
         const key = el.getAttribute('data-translate');
-        el.textContent = languages[lang][key];
+        const translation = languages[lang][key];
+        if (translation) {
+            el.textContent = translation;
+        } else {
+            console.warn(`⚠️ Translation missing for key: ${key} in language: ${lang}`);
+        }
     });
+    
+    console.log('✅ Language set successfully');
 }
 
 /**
@@ -123,9 +245,11 @@ function getTranslatedText(key, replacements = {}, language = 'en') {
 function initLanguageSelector(onChange, initialLang = 'en') {
     const languageSelect = document.getElementById('languageSelect');
     if (!languageSelect) {
-        console.error('Language selector element not found');
+        console.error('❌ Language selector element not found');
         return;
     }
+
+    console.log('✅ Language selector found, initializing with:', initialLang);
 
     // Set initial language
     setLanguage(initialLang);
@@ -136,6 +260,7 @@ function initLanguageSelector(onChange, initialLang = 'en') {
     // Add change event listener
     languageSelect.addEventListener('change', () => {
         const selectedLang = languageSelect.value;
+        console.log('🔄 Language changed to:', selectedLang);
         setLanguage(selectedLang);
 
         // Call onChange callback if provided
@@ -143,6 +268,8 @@ function initLanguageSelector(onChange, initialLang = 'en') {
             onChange(selectedLang);
         }
     });
+    
+    console.log('✅ Language selector initialized successfully');
 }
 
 // Export functions and data
