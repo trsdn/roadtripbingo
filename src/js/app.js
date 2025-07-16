@@ -2296,6 +2296,7 @@ function showAIAnalysisResults(results) {
         const category = data.category_suggestion;
         const difficulty = data.difficulty_suggestion;
         const name = data.name_suggestion;
+        const nameDe = data.name_suggestion_de;
         const tags = data.tags_suggestion;
         const confidence = Math.round((data.confidence_score || 0) * 100);
         
@@ -2316,6 +2317,13 @@ function showAIAnalysisResults(results) {
                         <button class="ai-reject">Reject</button>
                     </div>
                 </div>
+                ${nameDe ? `<div class="ai-suggestion">
+                    <span><strong>German Name:</strong> ${nameDe}</span>
+                    <div class="ai-suggestion-actions">
+                        <button class="ai-accept" onclick="addTranslation('${iconId}', 'de', '${nameDe}')">Accept</button>
+                        <button class="ai-reject">Reject</button>
+                    </div>
+                </div>` : ''}
                 <div class="ai-suggestion">
                     <span><strong>Difficulty:</strong> ${difficulty}/5</span>
                     <div class="ai-suggestion-actions">
@@ -2326,7 +2334,7 @@ function showAIAnalysisResults(results) {
                 <div class="ai-suggestion">
                     <span><strong>Tags:</strong> ${tags}</span>
                     <div class="ai-suggestion-actions">
-                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', ${JSON.stringify(tags)})">Accept</button>
+                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', '${Array.isArray(tags) ? tags.join(',') : tags}')">Accept</button>
                         <button class="ai-reject">Reject</button>
                     </div>
                 </div>
@@ -2389,6 +2397,26 @@ window.acceptSuggestion = async function(iconId, field, value) {
     } catch (error) {
         console.error('Error accepting suggestion:', error);
         window.notifications.show('Failed to apply suggestion: ' + error.message, 'error');
+    }
+};
+
+// Add translation from AI suggestion
+window.addTranslation = async function(iconId, language, translation) {
+    try {
+        console.log('Adding translation:', { iconId, language, translation });
+        
+        const result = await api.addIconTranslation(iconId, language, translation);
+        console.log('Translation result:', result);
+        
+        if (result.success) {
+            window.notifications.show('German translation added', 'success');
+            await loadIconsForTable(); // Refresh the icon list
+        } else {
+            throw new Error(result.error || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error adding translation:', error);
+        window.notifications.show('Failed to add translation: ' + error.message, 'error');
     }
 };
 
