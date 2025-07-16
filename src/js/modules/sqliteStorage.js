@@ -731,6 +731,302 @@ class SQLiteStorage {
     }
   }
 
+  // Icon Sets Management Methods
+  
+  // Create a new icon set
+  async createIconSet(setData) {
+    if (!this.isInitialized) await this.init();
+    
+    const setId = setData.id || `set-${Date.now()}`;
+    const stmt = this.db.prepare(`
+      INSERT INTO icon_sets (id, name, description)
+      VALUES (?, ?, ?)
+    `);
+    
+    try {
+      stmt.run(setId, setData.name, setData.description || '');
+      return { success: true, id: setId };
+    } catch (error) {
+      console.error('Error creating icon set:', error);
+      throw new Error(`Failed to create icon set: ${error.message}`);
+    }
+  }
+  
+  // Get all icon sets
+  async getIconSets() {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      SELECT s.*, COUNT(m.icon_id) as icon_count
+      FROM icon_sets s
+      LEFT JOIN icon_set_members m ON s.id = m.set_id
+      GROUP BY s.id
+      ORDER BY s.name ASC
+    `);
+    
+    try {
+      const rows = stmt.all();
+      return rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        iconCount: row.icon_count,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+    } catch (error) {
+      console.error('Error loading icon sets:', error);
+      throw new Error(`Failed to load icon sets: ${error.message}`);
+    }
+  }
+  
+  // Get icons in a specific set
+  async getIconsInSet(setId) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      SELECT i.*, m.added_at
+      FROM icons i
+      JOIN icon_set_members m ON i.id = m.icon_id
+      WHERE m.set_id = ?
+      ORDER BY i.name ASC
+    `);
+    
+    try {
+      const rows = stmt.all(setId);
+      return rows.map(row => {
+        let imageData = row.data;
+        
+        // Convert Buffer back to base64 data URL for frontend compatibility
+        if (Buffer.isBuffer(imageData)) {
+          imageData = `data:${row.type};base64,${imageData.toString('base64')}`;
+        }
+        
+        return {
+          id: row.id,
+          name: row.name,
+          image: imageData,
+          data: imageData,
+          type: row.type,
+          size: row.size,
+          category: row.category || 'default',
+          tags: JSON.parse(row.tags || '[]'),
+          altText: row.alt_text || '',
+          difficulty: row.difficulty || 3,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          addedToSet: row.added_at
+        };
+      });
+    } catch (error) {
+      console.error('Error loading icons in set:', error);
+      throw new Error(`Failed to load icons in set: ${error.message}`);
+    }
+  }
+  
+  // Add icon to set
+  async addIconToSet(iconId, setId) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      INSERT OR IGNORE INTO icon_set_members (icon_id, set_id)
+      VALUES (?, ?)
+    `);
+    
+    try {
+      const result = stmt.run(iconId, setId);
+      return { success: true, added: result.changes > 0 };
+    } catch (error) {
+      console.error('Error adding icon to set:', error);
+      throw new Error(`Failed to add icon to set: ${error.message}`);
+    }
+  }
+  
+  // Remove icon from set
+  async removeIconFromSet(iconId, setId) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      DELETE FROM icon_set_members
+      WHERE icon_id = ? AND set_id = ?
+    `);
+    
+    try {
+      const result = stmt.run(iconId, setId);
+      return { success: true, removed: result.changes > 0 };
+    } catch (error) {
+      console.error('Error removing icon from set:', error);
+      throw new Error(`Failed to remove icon from set: ${error.message}`);
+    }
+  }
+  
+  // Update icon set
+  async updateIconSet(setId, setData) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      UPDATE icon_sets
+      SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    try {
+      const result = stmt.run(setData.name, setData.description || '', setId);
+      if (result.changes === 0) {
+        throw new Error(`Icon set with id ${setId} not found`);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating icon set:', error);
+      throw new Error(`Failed to update icon set: ${error.message}`);
+    }
+  }
+  
+  // Delete icon set
+  async deleteIconSet(setId) {
+    if (!this.isInitialized) await this.init();
+    
+    // Don't allow deleting the default "All Icons" set
+    if (setId === 'all-icons') {
+      throw new Error('Cannot delete the default "All Icons" set');
+    }
+    
+    const stmt = this.db.prepare('DELETE FROM icon_sets WHERE id = ?');
+    
+    try {
+      const result = stmt.run(setId);
+      return { success: true, deleted: result.changes > 0 };
+    } catch (error) {
+      console.error('Error deleting icon set:', error);
+      throw new Error(`Failed to delete icon set: ${error.message}`);
+    }
+  }
+  
+  // Icon Translation Methods
+  
+  // Save translation for an icon
+  async saveIconTranslation(iconId, languageCode, translatedName) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO icon_translations (icon_id, language_code, translated_name)
+      VALUES (?, ?, ?)
+    `);
+    
+    try {
+      stmt.run(iconId, languageCode, translatedName);
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving icon translation:', error);
+      throw new Error(`Failed to save icon translation: ${error.message}`);
+    }
+  }
+  
+  // Get translations for an icon
+  async getIconTranslations(iconId) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      SELECT language_code, translated_name
+      FROM icon_translations
+      WHERE icon_id = ?
+    `);
+    
+    try {
+      const rows = stmt.all(iconId);
+      const translations = {};
+      rows.forEach(row => {
+        translations[row.language_code] = row.translated_name;
+      });
+      return translations;
+    } catch (error) {
+      console.error('Error loading icon translations:', error);
+      throw new Error(`Failed to load icon translations: ${error.message}`);
+    }
+  }
+  
+  // Delete translation for an icon
+  async deleteIconTranslation(iconId, languageCode) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      DELETE FROM icon_translations
+      WHERE icon_id = ? AND language_code = ?
+    `);
+    
+    try {
+      const result = stmt.run(iconId, languageCode);
+      return { success: true, deleted: result.changes > 0 };
+    } catch (error) {
+      console.error('Error deleting icon translation:', error);
+      throw new Error(`Failed to delete icon translation: ${error.message}`);
+    }
+  }
+  
+  // Get sets that contain a specific icon
+  async getSetsContainingIcon(iconId) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      SELECT s.id, s.name, s.description, m.added_at
+      FROM icon_sets s
+      JOIN icon_set_members m ON s.id = m.set_id
+      WHERE m.icon_id = ?
+      ORDER BY s.name ASC
+    `);
+    
+    try {
+      const rows = stmt.all(iconId);
+      return rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        addedAt: row.added_at
+      }));
+    } catch (error) {
+      console.error('Error loading sets containing icon:', error);
+      throw new Error(`Failed to load sets containing icon: ${error.message}`);
+    }
+  }
+  
+  // Migrate existing icons to ensure they're all in the "All Icons" set
+  async migrateExistingIconsToDefaultSet() {
+    if (!this.isInitialized) await this.init();
+    
+    try {
+      // Get all icons that are not in any set
+      const stmt = this.db.prepare(`
+        SELECT i.id
+        FROM icons i
+        LEFT JOIN icon_set_members m ON i.id = m.icon_id
+        WHERE m.icon_id IS NULL
+      `);
+      
+      const orphanedIcons = stmt.all();
+      
+      if (orphanedIcons.length > 0) {
+        console.log(`Migrating ${orphanedIcons.length} orphaned icons to "All Icons" set`);
+        
+        // Add each orphaned icon to the "All Icons" set
+        const insertStmt = this.db.prepare(`
+          INSERT OR IGNORE INTO icon_set_members (icon_id, set_id)
+          VALUES (?, 'all-icons')
+        `);
+        
+        for (const icon of orphanedIcons) {
+          insertStmt.run(icon.id);
+        }
+        
+        return { success: true, migratedCount: orphanedIcons.length };
+      }
+      
+      return { success: true, migratedCount: 0 };
+    } catch (error) {
+      console.error('Error migrating existing icons:', error);
+      throw new Error(`Failed to migrate existing icons: ${error.message}`);
+    }
+  }
+
   // Close database connection
   close() {
     if (this.db) {

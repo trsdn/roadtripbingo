@@ -16,7 +16,8 @@ A customizable bingo card generator for road trips. Create, customize, and print
 - PDF download with adjustable compression
 - Multi-language support (English, German)
 - Data backup and restore
-- IndexedDB storage with massive capacity (hundreds of MB to GB)
+- SQLite database storage with robust data management
+- RESTful API for data operations
 - Automatic storage optimization and quota management
 - Mobile-friendly responsive design
 
@@ -28,16 +29,22 @@ The project has been restructured into a modern, modular architecture:
 roadtripbingo/
 ├── config/               # Configuration files
 │   ├── .babelrc          # Babel configuration
-│   ├── cypress.config.js # Cypress E2E test configuration
 │   ├── jest.config.js    # Jest unit test configuration
 │   ├── jest.setup.js     # Jest setup file
 │   └── webpack.config.js # Webpack build configuration
+├── data/                 # SQLite database and related files
+│   ├── README.md         # Database schema documentation
+│   ├── backups/          # Database backup files
+│   └── migrations/       # Database migration scripts
 ├── src/                  # Source files
 │   ├── js/               # JavaScript modules
 │   │   ├── app.js        # Main application logic
 │   │   └── modules/      # Modular components
 │   │       ├── storage.js           # Legacy localStorage storage
-│   │       ├── indexedDBStorage.js  # Modern IndexedDB storage system
+│   │       ├── indexedDBStorage.js  # Legacy IndexedDB storage
+│   │       ├── sqliteStorage.js     # Modern SQLite storage system
+│   │       ├── indexedDBMigrator.js # Migration from IndexedDB to SQLite
+│   │       ├── backupManager.js     # Backup and restore utilities
 │   │       ├── i18n.js              # Internationalization 
 │   │       ├── imageUtils.js        # Image handling & compression
 │   │       ├── cardGenerator.js     # Bingo card generation
@@ -54,9 +61,9 @@ roadtripbingo/
 │   ├── js/modules/       # Module tests
 │   │   ├── indexedDBStorage.test.js # IndexedDB storage tests
 │   │   └── ...           # Other module tests
+│   ├── e2e/              # End-to-end tests (Playwright)
 │   └── db.test.js        # Database tests
-├── cypress/              # E2E tests
-│   └── e2e/              # Test specifications
+├── playwright.config.js  # Playwright configuration
 ├── server.js             # Simple development server
 └── package.json          # Project dependencies and scripts
 ```
@@ -73,6 +80,10 @@ roadtripbingo/
 ```bash
 npm install
 ```
+
+### Database Setup
+
+The application uses SQLite for data storage. The database will be automatically initialized on first run. No additional setup is required.
 
 ### Development Server
 
@@ -115,11 +126,13 @@ npm run test:watch    # Run tests in watch mode
 
 ### E2E Tests
 
-Run Cypress end-to-end tests:
+Run Playwright end-to-end tests:
 
 ```bash
-npm run cypress:open  # Interactive mode
-npm run cypress:run   # Headless mode
+npm run playwright:test         # Run all tests
+npm run playwright:test:headed  # Run with browser UI
+npm run playwright:test:debug   # Interactive debugging
+npm run playwright:show-report  # View test results
 ```
 
 Run all tests:
@@ -130,19 +143,35 @@ npm run test:all
 
 ## Storage System
 
-The application uses **IndexedDB** for data storage, providing:
+The application uses **SQLite** for data storage, providing:
 
 ### Features
-- **Massive Storage Capacity**: Hundreds of MB to GB (vs localStorage's ~10MB limit)
-- **Binary Image Storage**: Images stored as Blobs instead of base64 strings (30% more efficient)
-- **Automatic Migration**: Seamlessly migrates data from legacy localStorage
-- **Quota Management**: Real-time storage monitoring with color-coded status indicators
-- **Storage Optimization**: Built-in tools to compress and clean up storage
 
-### Storage Status Indicators
-- 🟢 **Green**: Plenty of storage available
-- 🟠 **Orange**: Storage getting full (>75% used)  
-- 🔴 **Red**: Storage critically full or quota exceeded
+- **Robust Data Management**: SQLite database with ACID compliance and data integrity
+- **RESTful API**: Server-side API endpoints for all data operations
+- **Automatic Migration**: Seamlessly migrates data from legacy IndexedDB storage
+- **Backup & Restore**: Built-in tools for data backup and restore (JSON and SQL formats)
+- **Versioning Support**: Database schema versioning with forward/backward migration
+- **Transaction Support**: Atomic operations with rollback capability
+
+### API Endpoints
+
+The server provides RESTful endpoints for data operations:
+
+- **Icons**: `GET/POST/PUT/DELETE /api/icons`
+- **Settings**: `GET/POST/PUT/DELETE /api/settings`
+- **Card Generations**: `GET/POST/PUT/DELETE /api/generations`
+- **Storage Info**: `GET /api/storage/info`
+- **Export/Import**: `GET /api/export`, `POST /api/import`
+
+### Migration from IndexedDB
+
+Users with existing IndexedDB data will be automatically migrated to SQLite on first load. The migration process:
+
+- Validates existing data integrity
+- Transfers all icons, settings, and card generations
+- Provides rollback capability if migration fails
+- Maintains data consistency throughout the process
 
 ### Center Blank Feature
 - **Toggle available**: Leave center cell blank for traditional bingo experience

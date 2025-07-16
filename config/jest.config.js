@@ -18,7 +18,7 @@ module.exports = {
     '/node_modules/',
   ],
 
-  // Setup files to run before each test
+  // Setup files to run before each test (conditional based on file docblock)
   setupFiles: ['<rootDir>/jest.setup.js'],
 
   // Modules that don't need transformation
@@ -39,4 +39,13 @@ module.exports = {
 
   // The directory where Jest should output its coverage files
   coverageDirectory: '../coverage',
+
+  // Test timeout for longer running tests
+  testTimeout: 15000,
+
+  // Test environment options
+  testEnvironmentOptions: {
+    // For jsdom environment
+    url: 'http://localhost/',
+  },
 }; 

@@ -38,6 +38,12 @@ let difficultyRadios;
 let multiHitOptions;
 let multiHitPreview;
 
+// Navigation elements
+let navGeneratorBtn;
+let navIconManagerBtn;
+let generatorPage;
+let iconManagerPage;
+
 // Enhanced CRUD DOM elements
 let iconSearch;
 let categoryFilter;
@@ -55,10 +61,42 @@ let editIconSaveBtn;
 let editIconCancelBtn;
 let editIconCloseBtn;
 
+// Icon Manager DOM elements
+let setsGrid;
+let iconTable;
+let iconTableBody;
+let selectAllCheckbox;
+let bulkOperations;
+let selectedCount;
+let viewToggle;
+let iconTableView;
+let iconGridView;
+let setFilter;
+let createSetBtn;
+let setModal;
+let addToSetModal;
+let translationModal;
+
+// Generator Icon Selection DOM elements
+let iconSetSelector;
+let selectedIconsPreview;
+let selectIconsBtn;
+let iconSelectionModal;
+let iconSelectionGrid;
+let iconSelectionSearch;
+let iconSelectionCategoryFilter;
+let selectAllIcons;
+let deselectAllIcons;
+let selectionCountText;
+let confirmIconSelection;
+let cancelIconSelection;
+let closeIconSelectionModal;
+
 // Application state
 let availableIcons = [];
 let generatedCards = null;
 let showLabels = true;
+let currentPage = 'generator';
 
 // Enhanced CRUD state
 let filteredIcons = [];
@@ -67,6 +105,110 @@ let selectedCategory = '';
 let selectedDifficulty = '';
 let categories = [];
 let currentEditingIcon = null;
+
+// Icon Manager state
+let iconSets = [];
+let selectedIcons = new Set();
+let currentView = 'table';
+let sortField = 'name';
+let sortDirection = 'asc';
+let currentEditingSet = null;
+
+// Generator Icon Selection state
+let selectedIconsForGeneration = new Set();
+let generatorIconSets = [];
+let filteredIconsForSelection = [];
+
+// Notification System
+class NotificationSystem {
+    constructor() {
+        this.container = document.getElementById('notificationContainer');
+        this.notifications = new Map();
+        this.counter = 0;
+    }
+
+    show(message, type = 'info', duration = 5000) {
+        const id = ++this.counter;
+        
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <div class="notification-icon">${this.getIcon(type)}</div>
+                <div class="notification-text">${message}</div>
+            </div>
+            <button class="notification-close" onclick="window.notifications.hide(${id})">&times;</button>
+            <div class="notification-progress"></div>
+        `;
+
+        this.container.appendChild(notification);
+        this.notifications.set(id, notification);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
+        // Auto-hide with progress bar
+        if (duration > 0) {
+            const progressBar = notification.querySelector('.notification-progress');
+            progressBar.style.width = '100%';
+            progressBar.style.transitionDuration = `${duration}ms`;
+            
+            setTimeout(() => {
+                progressBar.style.width = '0%';
+            }, 100);
+
+            setTimeout(() => {
+                this.hide(id);
+            }, duration);
+        }
+
+        return id;
+    }
+
+    hide(id) {
+        const notification = this.notifications.get(id);
+        if (notification) {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+                this.notifications.delete(id);
+            }, 300);
+        }
+    }
+
+    getIcon(type) {
+        switch (type) {
+            case 'success': return '✓';
+            case 'error': return '✕';
+            case 'warning': return '⚠';
+            case 'info': return 'ℹ';
+            default: return 'ℹ';
+        }
+    }
+
+    success(message, duration = 4000) {
+        return this.show(message, 'success', duration);
+    }
+
+    error(message, duration = 6000) {
+        return this.show(message, 'error', duration);
+    }
+
+    warning(message, duration = 5000) {
+        return this.show(message, 'warning', duration);
+    }
+
+    info(message, duration = 4000) {
+        return this.show(message, 'info', duration);
+    }
+}
+
+// Initialize notification system
+window.notifications = new NotificationSystem();
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
@@ -142,6 +284,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadCategories();
         console.log('✅ Categories loading completed');
         
+        // Load icon sets for generator
+        console.log('🔄 Loading icon sets for generator...');
+        await loadIconSetsForGenerator();
+        console.log('✅ Icon sets for generator loaded');
+        
         // Setup drag and drop
         console.log('🔄 Setting up drag and drop...');
         setupDragAndDrop();
@@ -159,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Application initialized successfully');
     } catch (error) {
         console.error('Error during initialization:', error);
-        alert('There was an error initializing the application. Please check the browser console for details.');
+        window.notifications.error('There was an error initializing the application. Please check the browser console for details.');
     }
 });
 
@@ -196,6 +343,20 @@ function initializeDOMElements() {
     multiHitPreview = document.getElementById('multiHitPreview');
     difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
     
+    // Navigation elements
+    navGeneratorBtn = document.getElementById('navGenerator');
+    navIconManagerBtn = document.getElementById('navIconManager');
+    generatorPage = document.getElementById('generatorPage');
+    iconManagerPage = document.getElementById('iconManagerPage');
+    
+    // Debug navigation elements
+    console.log('Navigation elements:', {
+        navGeneratorBtn: !!navGeneratorBtn,
+        navIconManagerBtn: !!navIconManagerBtn,
+        generatorPage: !!generatorPage,
+        iconManagerPage: !!iconManagerPage
+    });
+    
     // Enhanced CRUD DOM elements
     iconSearch = document.getElementById('iconSearch');
     categoryFilter = document.getElementById('categoryFilter');
@@ -213,6 +374,37 @@ function initializeDOMElements() {
     editIconCancelBtn = document.getElementById('cancelEditIcon');
     editIconCloseBtn = document.getElementById('closeEditModal');
     
+    // Icon Manager DOM elements
+    setsGrid = document.getElementById('setsGrid');
+    iconTable = document.getElementById('iconTable');
+    iconTableBody = document.getElementById('iconTableBody');
+    selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    bulkOperations = document.getElementById('bulkOperations');
+    selectedCount = document.getElementById('selectedCount');
+    viewToggle = document.getElementById('viewToggle');
+    iconTableView = document.getElementById('iconTableView');
+    iconGridView = document.getElementById('iconGridView');
+    setFilter = document.getElementById('setFilter');
+    createSetBtn = document.getElementById('createSetBtn');
+    setModal = document.getElementById('setModal');
+    addToSetModal = document.getElementById('addToSetModal');
+    translationModal = document.getElementById('translationModal');
+    
+    // Generator Icon Selection DOM elements
+    iconSetSelector = document.getElementById('iconSetSelector');
+    selectedIconsPreview = document.getElementById('selectedIconsPreview');
+    selectIconsBtn = document.getElementById('selectIconsBtn');
+    iconSelectionModal = document.getElementById('iconSelectionModal');
+    iconSelectionGrid = document.getElementById('iconSelectionGrid');
+    iconSelectionSearch = document.getElementById('iconSelectionSearch');
+    iconSelectionCategoryFilter = document.getElementById('iconSelectionCategoryFilter');
+    selectAllIcons = document.getElementById('selectAllIcons');
+    deselectAllIcons = document.getElementById('deselectAllIcons');
+    selectionCountText = document.getElementById('selectionCountText');
+    confirmIconSelection = document.getElementById('confirmIconSelection');
+    cancelIconSelection = document.getElementById('cancelIconSelection');
+    closeIconSelectionModal = document.getElementById('closeIconSelectionModal');
+    
     // Debug: Check if critical elements are found
     console.log('Upload button found:', !!uploadIconBtn);
     console.log('File input found:', !!iconUploadInput);
@@ -226,13 +418,34 @@ function initializeDOMElements() {
     
     if (missingElements.length > 0) {
         console.error('Missing DOM elements:', missingElements);
-        alert('Some buttons are not working. Missing elements: ' + missingElements.join(', '));
+        window.notifications.error('Some buttons are not working. Missing elements: ' + missingElements.join(', '));
     }
 }
 
 // Setup all event listeners
 function setupEventListeners() {
     console.log('Setting up event listeners...');
+    
+    // Navigation
+    if (navGeneratorBtn) {
+        console.log('✅ Generator button found, adding event listener');
+        navGeneratorBtn.addEventListener('click', () => {
+            console.log('🔄 Generator button clicked');
+            switchToPage('generator');
+        });
+    } else {
+        console.error('❌ Generator button not found');
+    }
+    
+    if (navIconManagerBtn) {
+        console.log('✅ Icon Manager button found, adding event listener');
+        navIconManagerBtn.addEventListener('click', () => {
+            console.log('🔄 Icon Manager button clicked');
+            switchToPage('iconManager');
+        });
+    } else {
+        console.error('❌ Icon Manager button not found');
+    }
     
     // Grid size change
     gridSizeSelect.addEventListener('change', () => {
@@ -262,7 +475,7 @@ function setupEventListeners() {
             console.log('File input clicked');
         } else {
             console.error('File input element not found!');
-            alert('File input not found! Please refresh the page.');
+            window.notifications.error('File input not found! Please refresh the page.');
         }
     });
     
@@ -272,6 +485,35 @@ function setupEventListeners() {
         console.log('📁 File input changed, calling uploadIcons');
         uploadIcons();
     });
+    
+    // Generator Icon Selection
+    if (selectIconsBtn) {
+        selectIconsBtn.addEventListener('click', openIconSelectionModal);
+    }
+    if (iconSetSelector) {
+        iconSetSelector.addEventListener('change', loadIconsForSelectedSet);
+    }
+    if (closeIconSelectionModal) {
+        closeIconSelectionModal.addEventListener('click', closeIconSelectionModalHandler);
+    }
+    if (selectAllIcons) {
+        selectAllIcons.addEventListener('click', selectAllIconsForGeneration);
+    }
+    if (deselectAllIcons) {
+        deselectAllIcons.addEventListener('click', deselectAllIconsForGeneration);
+    }
+    if (confirmIconSelection) {
+        confirmIconSelection.addEventListener('click', confirmIconSelectionHandler);
+    }
+    if (cancelIconSelection) {
+        cancelIconSelection.addEventListener('click', closeIconSelectionModalHandler);
+    }
+    if (iconSelectionSearch) {
+        iconSelectionSearch.addEventListener('input', filterIconsForSelection);
+    }
+    if (iconSelectionCategoryFilter) {
+        iconSelectionCategoryFilter.addEventListener('change', filterIconsForSelection);
+    }
     
     // Clear icons
     console.log('Attaching clear icons listener to:', clearIconsBtn);
@@ -405,6 +647,50 @@ function setupEventListeners() {
     updateMultiHitPreview();
 }
 
+// Navigation functions
+function switchToPage(page) {
+    console.log(`Switching to page: ${page}`);
+    
+    currentPage = page;
+    
+    // Update navigation buttons
+    if (navGeneratorBtn && navIconManagerBtn) {
+        navGeneratorBtn.classList.toggle('active', page === 'generator');
+        navIconManagerBtn.classList.toggle('active', page === 'iconManager');
+    }
+    
+    // Update page visibility
+    if (generatorPage && iconManagerPage) {
+        generatorPage.classList.toggle('active', page === 'generator');
+        iconManagerPage.classList.toggle('active', page === 'iconManager');
+    }
+    
+    // Initialize page-specific functionality
+    if (page === 'iconManager') {
+        initializeIconManager();
+    }
+}
+
+// Initialize Icon Manager functionality
+async function initializeIconManager() {
+    console.log('Initializing Icon Manager...');
+    
+    try {
+        // Load icon sets
+        await loadIconSets();
+        
+        // Load icons for table view
+        await loadIconsForTable();
+        
+        // Setup Icon Manager event listeners
+        setupIconManagerEventListeners();
+        
+        console.log('Icon Manager initialized successfully');
+    } catch (error) {
+        console.error('Error initializing Icon Manager:', error);
+    }
+}
+
 // Load icons from storage
 async function loadIcons() {
     try {
@@ -415,9 +701,16 @@ async function loadIcons() {
         // Apply current filters
         filterIcons();
         
+        // Initialize selected icons for generation with all available icons
+        selectedIconsForGeneration.clear();
+        availableIcons.forEach(icon => {
+            selectedIconsForGeneration.add(icon.id);
+        });
+        
         updateIconGallery();
         updateStorageInfo();
         updateRequiredIconCount(); // Update UI state after loading icons
+        updateSelectedIconsPreview(); // Update the preview with all icons
         
         console.log(`🎯 Generate button should now be ${availableIcons.length >= 25 ? 'enabled' : 'disabled'}`);
     } catch (error) {
@@ -553,7 +846,7 @@ async function uploadIcons(files = null) {
     }
     
     if (!filesToProcess || filesToProcess.length === 0) {
-        alert('Please select at least one image file');
+        window.notifications.warning('Please select at least one image file');
         return;
     }
     
@@ -584,7 +877,7 @@ async function uploadIcons(files = null) {
                     console.log('Icon saved:', savedIcon);
                 } catch (error) {
                     console.error('Error saving icon:', iconData.name, error);
-                    alert(`Error saving icon "${iconData.name}": ${error.message}`);
+                    window.notifications.error(`Error saving icon "${iconData.name}": ${error.message}`);
                 }
             }
             
@@ -603,10 +896,13 @@ async function uploadIcons(files = null) {
             // Update UI
             updateIconGallery();
             updateRequiredIconCount();
+            
+            // Show success notification
+            window.notifications.success(`Successfully uploaded ${newIcons.length} icon${newIcons.length > 1 ? 's' : ''}`);
         }
     } catch (error) {
         console.error('Error uploading icons:', error);
-        alert('Error uploading one or more icons. Please try again.');
+        window.notifications.error('Error uploading one or more icons. Please try again.');
     }
 }
 
@@ -643,9 +939,12 @@ async function clearIcons() {
             updateRequiredIconCount();
             updateStorageInfo();
             console.log('Icons cleared successfully');
+            
+            // Show success notification
+            window.notifications.success('All icons cleared successfully');
         } catch (error) {
             console.error('Error clearing icons:', error);
-            alert('Error clearing icons. Please try again.');
+            window.notifications.error('Error clearing icons. Please try again.');
         }
     } else {
         console.log('User cancelled icon clearing');
@@ -766,7 +1065,7 @@ async function deleteIcon(id, index) {
         }
     } catch (error) {
         console.error('❌ Error deleting icon:', error);
-        alert('Failed to delete the icon. Please try again.');
+        window.notifications.error('Failed to delete the icon. Please try again.');
     }
 }
 
@@ -909,9 +1208,14 @@ function generateCards() {
     const gameDifficultyValue = gameDifficulty ? gameDifficulty.value : 'MEDIUM';
     
     try {
+        // Use only the selected icons for generation (filtered by user)
+        const selectedIconsData = availableIcons.filter(icon => selectedIconsForGeneration.has(icon.id));
+        
+        console.log(`🎯 Generating cards with ${selectedIconsData.length} selected icons`);
+        
         // Generate the cards
         const result = generateBingoCards({
-            icons: availableIcons,
+            icons: selectedIconsData,
             gridSize,
             setCount,
             cardsPerSet,
@@ -948,10 +1252,10 @@ function generateCards() {
         });
         
         // Show success message
-        alert(`Successfully generated ${setCount} set(s) with ${cardsPerSet} card(s) each.`);
+        window.notifications.success(`Successfully generated ${setCount} set(s) with ${cardsPerSet} card(s) each.`);
     } catch (error) {
         console.error('Error generating cards:', error);
-        alert(`Error generating cards: ${error.message}`);
+        window.notifications.error(`Error generating cards: ${error.message}`);
     }
 }
 
@@ -1103,7 +1407,7 @@ async function downloadPDF() {
             downloadBtn.disabled = false;
         } catch (error) {
             console.error('Error generating PDF:', error);
-            alert('Error generating PDF. Please try again.');
+            window.notifications.error('Error generating PDF. Please try again.');
             
             // Reset button
             downloadBtn.textContent = 'Download PDF';
@@ -1116,10 +1420,10 @@ async function downloadPDF() {
 function backupData() {
     try {
         storage.exportData();
-        alert(getTranslatedText('backupSuccess'));
+        window.notifications.success(getTranslatedText('backupSuccess'));
     } catch (error) {
         console.error('Error backing up data:', error);
-        alert(`Error backing up data: ${error.message}`);
+        window.notifications.error(`Error backing up data: ${error.message}`);
     }
 }
 
@@ -1132,7 +1436,7 @@ async function restoreData() {
     
     try {
         await storage.importData(file);
-        alert(getTranslatedText('restoreSuccess'));
+        window.notifications.success(getTranslatedText('restoreSuccess'));
         
         // Reload the page to reflect the restored data
         setTimeout(() => {
@@ -1140,7 +1444,7 @@ async function restoreData() {
         }, 500);
     } catch (error) {
         console.error('Error restoring data:', error);
-        alert(getTranslatedText('restoreError'));
+        window.notifications.error(getTranslatedText('restoreError'));
     } finally {
         // Clear the file input
         restoreInput.value = '';
@@ -1389,18 +1693,1287 @@ async function saveIconChanges() {
         closeEditModal();
         
         console.log('Icon updated successfully');
+        
+        // Show success notification
+        window.notifications.success('Icon updated successfully');
     } catch (error) {
         console.error('Error saving icon changes:', error);
-        alert('Error saving changes. Please try again.');
+        window.notifications.error('Error saving changes. Please try again.');
     }
 }
+
+// ========== ICON MANAGER FUNCTIONS ==========
+
+// Load icon sets from storage
+async function loadIconSets() {
+    try {
+        const response = await fetch('/api/icon-sets');
+        const result = await response.json();
+        
+        if (result.success) {
+            iconSets = result.data;
+            console.log(`Loaded ${iconSets.length} icon sets`);
+            renderIconSets();
+            updateSetFilter();
+        } else {
+            console.error('Failed to load icon sets:', result.error);
+            iconSets = [];
+        }
+    } catch (error) {
+        console.error('Error loading icon sets:', error);
+        iconSets = [];
+    }
+}
+
+// Render icon sets grid
+function renderIconSets() {
+    if (!setsGrid) return;
+    
+    setsGrid.innerHTML = '';
+    
+    iconSets.forEach(set => {
+        const setCard = document.createElement('div');
+        setCard.className = 'set-card';
+        setCard.innerHTML = `
+            <div class="set-card-header">
+                <h4 class="set-card-name">${set.name}</h4>
+                <span class="set-card-count">${set.iconCount}</span>
+            </div>
+            <div class="set-card-description">${set.description || 'No description'}</div>
+            <div class="set-card-actions">
+                <button class="btn-primary" onclick="viewSet('${set.id}')">View</button>
+                <button class="btn-secondary" onclick="editSet('${set.id}')">Edit</button>
+                ${set.id !== 'all-icons' ? `<button class="btn-danger" onclick="deleteSet('${set.id}')">Delete</button>` : ''}
+            </div>
+        `;
+        setsGrid.appendChild(setCard);
+    });
+}
+
+// Update set filter dropdown
+function updateSetFilter() {
+    if (!setFilter) return;
+    
+    setFilter.innerHTML = '<option value="all">All Sets</option>';
+    
+    iconSets.forEach(set => {
+        const option = document.createElement('option');
+        option.value = set.id;
+        option.textContent = set.name;
+        setFilter.appendChild(option);
+    });
+}
+
+// Load icons for table view
+async function loadIconsForTable() {
+    try {
+        // Load icons with extended information
+        const response = await fetch('/api/icons');
+        const result = await response.json();
+        
+        if (result.success) {
+            availableIcons = result.data;
+            
+            // Load additional information for each icon
+            for (const icon of availableIcons) {
+                // Load sets containing this icon
+                const setsResponse = await fetch(`/api/icons/${icon.id}/sets`);
+                const setsResult = await setsResponse.json();
+                icon.sets = setsResult.success ? setsResult.data : [];
+                
+                // Load translations for this icon
+                const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
+                const translationsResult = await translationsResponse.json();
+                icon.translations = translationsResult.success ? translationsResult.data : {};
+            }
+            
+            renderIconTable();
+        } else {
+            console.error('Failed to load icons:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading icons for table:', error);
+    }
+}
+
+// Render icon table
+function renderIconTable() {
+    if (!iconTableBody) return;
+    
+    iconTableBody.innerHTML = '';
+    
+    // Sort icons
+    const sortedIcons = [...availableIcons].sort((a, b) => {
+        const aValue = a[sortField] || '';
+        const bValue = b[sortField] || '';
+        
+        if (sortDirection === 'asc') {
+            return aValue.toString().localeCompare(bValue.toString());
+        } else {
+            return bValue.toString().localeCompare(aValue.toString());
+        }
+    });
+    
+    sortedIcons.forEach(icon => {
+        const row = document.createElement('tr');
+        row.className = selectedIcons.has(icon.id) ? 'selected' : '';
+        
+        // Convert difficulty to stars
+        const difficultyStars = '⭐'.repeat(icon.difficulty || 3);
+        
+        // Format sets
+        const setsHtml = (icon.sets || []).map(set => 
+            `<span class="set-tag">${set.name}</span>`
+        ).join('');
+        
+        // Format translations
+        const translationsHtml = Object.keys(icon.translations || {}).map(lang => 
+            `<span class="translation-badge">${lang}</span>`
+        ).join('');
+        
+        row.innerHTML = `
+            <td class="select-column">
+                <input type="checkbox" ${selectedIcons.has(icon.id) ? 'checked' : ''} 
+                       onchange="toggleIconSelection('${icon.id}')">
+            </td>
+            <td class="icon-preview-cell">
+                <img src="${icon.image || icon.data}" alt="${icon.name}">
+            </td>
+            <td class="icon-name-cell">${icon.name || 'Unnamed'}</td>
+            <td class="icon-category-cell">${icon.category || 'default'}</td>
+            <td class="icon-difficulty-cell">${difficultyStars}</td>
+            <td class="icon-sets-cell">${setsHtml}</td>
+            <td class="icon-translations-cell">${translationsHtml}</td>
+            <td class="icon-actions-cell">
+                <button class="btn-primary" onclick="editIcon('${icon.id}')">Edit</button>
+                <button class="btn-secondary" onclick="openTranslationModal('${icon.id}')">Translate</button>
+                <button class="btn-danger" onclick="deleteIcon('${icon.id}')">Delete</button>
+            </td>
+        `;
+        
+        iconTableBody.appendChild(row);
+    });
+    
+    updateBulkOperationsVisibility();
+}
+
+// Toggle icon selection
+function toggleIconSelection(iconId) {
+    if (selectedIcons.has(iconId)) {
+        selectedIcons.delete(iconId);
+    } else {
+        selectedIcons.add(iconId);
+    }
+    
+    updateBulkOperationsVisibility();
+    renderIconTable(); // Re-render to update selection visual
+}
+
+// Update bulk operations visibility
+function updateBulkOperationsVisibility() {
+    if (!bulkOperations || !selectedCount) return;
+    
+    const count = selectedIcons.size;
+    
+    if (count > 0) {
+        bulkOperations.style.display = 'flex';
+        selectedCount.textContent = count;
+    } else {
+        bulkOperations.style.display = 'none';
+    }
+}
+
+// Setup Icon Manager event listeners
+function setupIconManagerEventListeners() {
+    // Create set button
+    if (createSetBtn) {
+        createSetBtn.addEventListener('click', openCreateSetModal);
+    }
+    
+    // Search and filter controls
+    if (iconSearch) {
+        iconSearch.addEventListener('input', handleIconManagerSearch);
+    }
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', handleIconManagerCategoryFilter);
+    }
+    
+    if (difficultyFilter) {
+        difficultyFilter.addEventListener('change', handleIconManagerDifficultyFilter);
+    }
+    
+    if (setFilter) {
+        setFilter.addEventListener('change', handleIconManagerSetFilter);
+    }
+    
+    // Table sorting
+    if (iconTable) {
+        iconTable.addEventListener('click', (e) => {
+            if (e.target.matches('.sort-column') || e.target.closest('.sort-column')) {
+                const column = e.target.closest('.sort-column');
+                const field = column.dataset.sort;
+                handleTableSort(field);
+            }
+        });
+    }
+    
+    // Select all checkbox
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            selectedIcons.clear();
+            
+            if (isChecked) {
+                availableIcons.forEach(icon => selectedIcons.add(icon.id));
+            }
+            
+            renderIconTable();
+        });
+    }
+    
+    // View toggle - handle both table and grid view buttons
+    const viewButtons = document.querySelectorAll('.view-btn');
+    viewButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Remove active class from all buttons
+            viewButtons.forEach(button => button.classList.remove('active'));
+            // Add active class to clicked button
+            e.target.classList.add('active');
+            
+            const view = e.target.dataset.view;
+            console.log('🔄 Switching to view:', view);
+            switchView(view);
+        });
+    });
+    
+    // Bulk operations
+    const bulkAddToSetBtn = document.getElementById('bulkAddToSet');
+    const bulkRemoveFromSetBtn = document.getElementById('bulkRemoveFromSet');
+    const bulkDeleteBtn = document.getElementById('bulkDelete');
+    const bulkClearSelectionBtn = document.getElementById('bulkClearSelection');
+    
+    if (bulkAddToSetBtn) {
+        bulkAddToSetBtn.addEventListener('click', openBulkAddToSetModal);
+    }
+    
+    if (bulkRemoveFromSetBtn) {
+        bulkRemoveFromSetBtn.addEventListener('click', bulkRemoveFromSet);
+    }
+    
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', bulkDeleteIcons);
+    }
+    
+    if (bulkClearSelectionBtn) {
+        bulkClearSelectionBtn.addEventListener('click', clearSelection);
+    }
+}
+
+// Handle table sorting
+function handleTableSort(field) {
+    if (sortField === field) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortField = field;
+        sortDirection = 'asc';
+    }
+    
+    // Update sort indicators
+    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    const currentColumn = document.querySelector(`[data-sort="${field}"] .sort-indicator`);
+    if (currentColumn) {
+        currentColumn.classList.add(sortDirection);
+    }
+    
+    renderIconTable();
+}
+
+// Switch between table and grid view
+function switchView(view) {
+    console.log('🔄 switchView called with:', view);
+    currentView = view;
+    
+    if (iconTableView && iconGridView) {
+        iconTableView.style.display = view === 'table' ? 'block' : 'none';
+        iconGridView.style.display = view === 'grid' ? 'block' : 'none';
+        console.log('✅ View switched to:', view);
+    } else {
+        console.error('❌ iconTableView or iconGridView not found');
+    }
+    
+    if (view === 'grid') {
+        console.log('🔄 Updating icon gallery for grid view');
+        updateIconManagerGridView(); // Use specific function for Icon Manager grid view
+    }
+}
+
+// Update icon gallery specifically for Icon Manager grid view
+function updateIconManagerGridView() {
+    if (!iconGallery) {
+        console.error('❌ iconGallery element not found');
+        return;
+    }
+    
+    console.log('🔄 Updating Icon Manager grid view');
+    iconGallery.innerHTML = '';
+    
+    // Use availableIcons (same data as table view)
+    const iconsToDisplay = availableIcons;
+    
+    iconsToDisplay.forEach((icon, index) => {
+        const iconElement = document.createElement('div');
+        iconElement.className = 'icon-item enhanced';
+        
+        // Icon image
+        const img = document.createElement('img');
+        img.src = icon.image || icon.data;
+        img.alt = icon.name || 'Unnamed';
+        img.title = icon.name || 'Unnamed';
+        
+        // Icon info container
+        const infoContainer = document.createElement('div');
+        infoContainer.className = 'icon-info';
+        
+        // Icon name
+        const nameElement = document.createElement('div');
+        nameElement.className = 'icon-name';
+        nameElement.textContent = icon.name || 'Unnamed';
+        
+        // Icon category
+        const categoryElement = document.createElement('div');
+        categoryElement.className = 'icon-category';
+        categoryElement.textContent = icon.category || 'default';
+        
+        infoContainer.appendChild(nameElement);
+        infoContainer.appendChild(categoryElement);
+        
+        // Difficulty indicator
+        const difficultyElement = document.createElement('div');
+        difficultyElement.className = 'icon-difficulty';
+        const difficultyStars = '⭐'.repeat(icon.difficulty || 3);
+        difficultyElement.textContent = difficultyStars;
+        difficultyElement.title = `Difficulty: ${icon.difficulty || 3}/5`;
+        
+        // Action buttons container
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'icon-actions';
+        
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-icon-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.title = 'Edit this icon';
+        editBtn.addEventListener('click', () => openEditModal(icon.id));
+        
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-icon-btn';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.title = 'Remove this icon';
+        deleteBtn.addEventListener('click', () => deleteIconFromManager(icon.id));
+        
+        actionsContainer.appendChild(editBtn);
+        actionsContainer.appendChild(deleteBtn);
+        
+        iconElement.appendChild(img);
+        iconElement.appendChild(infoContainer);
+        iconElement.appendChild(difficultyElement);
+        iconElement.appendChild(actionsContainer);
+        iconGallery.appendChild(iconElement);
+    });
+    
+    console.log(`✅ Icon Manager grid view updated with ${iconsToDisplay.length} icons`);
+}
+
+// Clear all selections
+function clearSelection() {
+    selectedIcons.clear();
+    renderIconTable();
+}
+
+// Icon Manager filtering functions
+let iconManagerFilters = {
+    search: '',
+    category: '',
+    difficulty: '',
+    set: ''
+};
+
+function handleIconManagerSearch(event) {
+    iconManagerFilters.search = event.target.value.trim().toLowerCase();
+    applyIconManagerFilters();
+}
+
+function handleIconManagerCategoryFilter(event) {
+    iconManagerFilters.category = event.target.value;
+    applyIconManagerFilters();
+}
+
+function handleIconManagerDifficultyFilter(event) {
+    iconManagerFilters.difficulty = event.target.value;
+    applyIconManagerFilters();
+}
+
+function handleIconManagerSetFilter(event) {
+    iconManagerFilters.set = event.target.value;
+    applyIconManagerFilters();
+}
+
+function applyIconManagerFilters() {
+    // Start with all icons
+    let filteredIcons = [...availableIcons];
+    
+    // Apply search filter
+    if (iconManagerFilters.search) {
+        filteredIcons = filteredIcons.filter(icon => 
+            (icon.name || '').toLowerCase().includes(iconManagerFilters.search) ||
+            (icon.altText || '').toLowerCase().includes(iconManagerFilters.search)
+        );
+    }
+    
+    // Apply category filter
+    if (iconManagerFilters.category && iconManagerFilters.category !== 'all') {
+        filteredIcons = filteredIcons.filter(icon => 
+            (icon.category || 'default') === iconManagerFilters.category
+        );
+    }
+    
+    // Apply difficulty filter
+    if (iconManagerFilters.difficulty && iconManagerFilters.difficulty !== 'all') {
+        const targetDifficulty = parseInt(iconManagerFilters.difficulty);
+        filteredIcons = filteredIcons.filter(icon => 
+            (icon.difficulty || 3) === targetDifficulty
+        );
+    }
+    
+    // Apply set filter
+    if (iconManagerFilters.set && iconManagerFilters.set !== 'all') {
+        filteredIcons = filteredIcons.filter(icon => 
+            (icon.sets || []).some(set => set.id === iconManagerFilters.set)
+        );
+    }
+    
+    // Update availableIcons temporarily for rendering
+    const originalIcons = [...availableIcons];
+    availableIcons = filteredIcons;
+    
+    // Re-render table
+    renderIconTable();
+    
+    // Restore original icons
+    availableIcons = originalIcons;
+}
+
+// Make functions globally accessible for onclick handlers
+window.toggleIconSelection = toggleIconSelection;
+window.editIcon = openEditModal;
+window.deleteIcon = deleteIconFromManager;
+window.viewSet = viewSet;
+window.editSet = editSet;
+window.deleteSet = deleteSet;
+window.openTranslationModal = openTranslationModal;
+
+// Placeholder functions for modal operations (to be implemented)
+function openCreateSetModal() {
+    if (!setModal) return;
+    
+    // Setup modal for creating new set
+    const modalTitle = document.getElementById('setModalTitle');
+    const setNameInput = document.getElementById('setName');
+    const setDescriptionInput = document.getElementById('setDescription');
+    const saveBtn = document.getElementById('saveSetBtn');
+    const cancelBtn = document.getElementById('cancelSetBtn');
+    const closeBtn = document.getElementById('closeSetModal');
+    
+    // Set modal title and clear inputs
+    if (modalTitle) modalTitle.textContent = 'Create Icon Set';
+    if (setNameInput) setNameInput.value = '';
+    if (setDescriptionInput) setDescriptionInput.value = '';
+    
+    // Reset editing state
+    currentEditingSet = null;
+    
+    // Show modal
+    setModal.style.display = 'block';
+    
+    // Focus on name input
+    if (setNameInput) setNameInput.focus();
+    
+    const handleSave = async () => {
+        const name = setNameInput?.value.trim();
+        const description = setDescriptionInput?.value.trim();
+        
+        if (!name) {
+            alert('Set name is required');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/icon-sets', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    description
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Refresh icon sets
+                await loadIconSets();
+                
+                alert('Icon set created successfully');
+                closeModal();
+            } else {
+                alert('Failed to create icon set: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error creating icon set:', error);
+            alert('Error creating icon set');
+        }
+    };
+    
+    const closeModal = () => {
+        setModal.style.display = 'none';
+        currentEditingSet = null;
+        // Remove event listeners
+        saveBtn?.removeEventListener('click', handleSave);
+        cancelBtn?.removeEventListener('click', closeModal);
+        closeBtn?.removeEventListener('click', closeModal);
+    };
+    
+    // Add event listeners
+    saveBtn?.addEventListener('click', handleSave);
+    cancelBtn?.addEventListener('click', closeModal);
+    closeBtn?.addEventListener('click', closeModal);
+    
+    // Handle Enter key in name input
+    setNameInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSave();
+        }
+    });
+}
+
+function editSet(setId) {
+    const set = iconSets.find(s => s.id === setId);
+    if (!set || !setModal) return;
+    
+    // Setup modal for editing set
+    const modalTitle = document.getElementById('setModalTitle');
+    const setNameInput = document.getElementById('setName');
+    const setDescriptionInput = document.getElementById('setDescription');
+    const saveBtn = document.getElementById('saveSetBtn');
+    const cancelBtn = document.getElementById('cancelSetBtn');
+    const closeBtn = document.getElementById('closeSetModal');
+    
+    // Set modal title and populate inputs
+    if (modalTitle) modalTitle.textContent = 'Edit Icon Set';
+    if (setNameInput) setNameInput.value = set.name;
+    if (setDescriptionInput) setDescriptionInput.value = set.description || '';
+    
+    // Set editing state
+    currentEditingSet = set;
+    
+    // Show modal
+    setModal.style.display = 'block';
+    
+    // Focus on name input
+    if (setNameInput) setNameInput.focus();
+    
+    const handleSave = async () => {
+        const name = setNameInput?.value.trim();
+        const description = setDescriptionInput?.value.trim();
+        
+        if (!name) {
+            alert('Set name is required');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/icon-sets/${setId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    description
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Refresh icon sets
+                await loadIconSets();
+                
+                alert('Icon set updated successfully');
+                closeModal();
+            } else {
+                alert('Failed to update icon set: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error updating icon set:', error);
+            alert('Error updating icon set');
+        }
+    };
+    
+    const closeModal = () => {
+        setModal.style.display = 'none';
+        currentEditingSet = null;
+        // Remove event listeners
+        saveBtn?.removeEventListener('click', handleSave);
+        cancelBtn?.removeEventListener('click', closeModal);
+        closeBtn?.removeEventListener('click', closeModal);
+    };
+    
+    // Add event listeners
+    saveBtn?.addEventListener('click', handleSave);
+    cancelBtn?.addEventListener('click', closeModal);
+    closeBtn?.addEventListener('click', closeModal);
+    
+    // Handle Enter key in name input
+    setNameInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSave();
+        }
+    });
+}
+
+async function deleteSet(setId) {
+    if (setId === 'all-icons') {
+        alert('Cannot delete the default "All Icons" set');
+        return;
+    }
+    
+    const set = iconSets.find(s => s.id === setId);
+    if (!set) return;
+    
+    if (confirm(`Are you sure you want to delete the set "${set.name}"?`)) {
+        try {
+            const response = await fetch(`/api/icon-sets/${setId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Refresh icon sets
+                await loadIconSets();
+                
+                alert('Icon set deleted successfully');
+            } else {
+                alert('Failed to delete icon set: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error deleting icon set:', error);
+            alert('Error deleting icon set');
+        }
+    }
+}
+
+function viewSet(setId) {
+    // Filter the table to show only icons from this set
+    if (setFilter) {
+        setFilter.value = setId;
+        iconManagerFilters.set = setId;
+        applyIconManagerFilters();
+    }
+    
+    // Scroll to the icons table
+    if (iconTableView) {
+        iconTableView.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function openTranslationModal(iconId) {
+    const icon = availableIcons.find(i => i.id === iconId);
+    if (!icon || !translationModal) return;
+    
+    // Setup modal elements
+    const iconPreview = document.getElementById('translationIconPreview');
+    const translationsList = document.getElementById('translationsList');
+    const languageSelect = document.getElementById('translationLanguage');
+    const translationTextInput = document.getElementById('translationText');
+    const addTranslationBtn = document.getElementById('addTranslationBtn');
+    const closeBtn = document.getElementById('closeTranslationBtn');
+    const closeModalBtn = document.getElementById('closeTranslationModal');
+    
+    // Show icon preview
+    if (iconPreview) {
+        iconPreview.innerHTML = `
+            <img src="${icon.image || icon.data}" alt="${icon.name}" style="width: 60px; height: 60px; object-fit: contain;">
+            <h4>${icon.name}</h4>
+        `;
+    }
+    
+    // Load and display existing translations
+    loadTranslationsForIcon(iconId, translationsList);
+    
+    // Show modal
+    translationModal.style.display = 'block';
+    
+    const handleAddTranslation = async () => {
+        const language = languageSelect?.value;
+        const text = translationTextInput?.value.trim();
+        
+        if (!language || !text) {
+            alert('Please select a language and enter a translation');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/icons/${iconId}/translations`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    languageCode: language,
+                    translatedName: text
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Clear input
+                if (translationTextInput) translationTextInput.value = '';
+                
+                // Reload translations
+                loadTranslationsForIcon(iconId, translationsList);
+                
+                // Refresh icon table to show updated translations
+                await loadIconsForTable();
+                
+                alert('Translation added successfully');
+            } else {
+                alert('Failed to add translation: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error adding translation:', error);
+            alert('Error adding translation');
+        }
+    };
+    
+    const closeModal = () => {
+        translationModal.style.display = 'none';
+        // Remove event listeners
+        addTranslationBtn?.removeEventListener('click', handleAddTranslation);
+        closeBtn?.removeEventListener('click', closeModal);
+        closeModalBtn?.removeEventListener('click', closeModal);
+    };
+    
+    // Add event listeners
+    addTranslationBtn?.addEventListener('click', handleAddTranslation);
+    closeBtn?.addEventListener('click', closeModal);
+    closeModalBtn?.addEventListener('click', closeModal);
+    
+    // Handle Enter key in translation input
+    translationTextInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleAddTranslation();
+        }
+    });
+}
+
+// Helper function to load translations for an icon
+async function loadTranslationsForIcon(iconId, translationsList) {
+    if (!translationsList) return;
+    
+    try {
+        const response = await fetch(`/api/icons/${iconId}/translations`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const translations = result.data;
+            
+            translationsList.innerHTML = '';
+            
+            if (Object.keys(translations).length === 0) {
+                translationsList.innerHTML = '<p>No translations available</p>';
+                return;
+            }
+            
+            Object.entries(translations).forEach(([language, text]) => {
+                const translationItem = document.createElement('div');
+                translationItem.className = 'translation-item';
+                translationItem.innerHTML = `
+                    <div class="translation-info">
+                        <div class="translation-lang">${language.toUpperCase()}</div>
+                        <div class="translation-text">${text}</div>
+                    </div>
+                    <button class="btn-danger" onclick="deleteTranslation('${iconId}', '${language}')">Delete</button>
+                `;
+                translationsList.appendChild(translationItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading translations:', error);
+        if (translationsList) {
+            translationsList.innerHTML = '<p>Error loading translations</p>';
+        }
+    }
+}
+
+// Delete translation function
+async function deleteTranslation(iconId, language) {
+    if (confirm(`Delete ${language.toUpperCase()} translation?`)) {
+        try {
+            const response = await fetch(`/api/icons/${iconId}/translations/${language}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Reload translations
+                const translationsList = document.getElementById('translationsList');
+                loadTranslationsForIcon(iconId, translationsList);
+                
+                // Refresh icon table
+                await loadIconsForTable();
+                
+                alert('Translation deleted successfully');
+            } else {
+                alert('Failed to delete translation');
+            }
+        } catch (error) {
+            console.error('Error deleting translation:', error);
+            alert('Error deleting translation');
+        }
+    }
+}
+
+// Make delete translation function globally accessible
+window.deleteTranslation = deleteTranslation;
+
+function openBulkAddToSetModal() {
+    if (selectedIcons.size === 0) return;
+    
+    // Populate the modal with available sets
+    const targetSetSelect = document.getElementById('targetSet');
+    const selectedIconsPreview = document.getElementById('selectedIconsPreview');
+    
+    if (!targetSetSelect || !selectedIconsPreview || !addToSetModal) return;
+    
+    // Clear and populate sets dropdown
+    targetSetSelect.innerHTML = '<option value="">Select a set...</option>';
+    iconSets.forEach(set => {
+        const option = document.createElement('option');
+        option.value = set.id;
+        option.textContent = set.name;
+        targetSetSelect.appendChild(option);
+    });
+    
+    // Show selected icons preview
+    selectedIconsPreview.innerHTML = '';
+    Array.from(selectedIcons).forEach(iconId => {
+        const icon = availableIcons.find(i => i.id === iconId);
+        if (icon) {
+            const img = document.createElement('img');
+            img.src = icon.image || icon.data;
+            img.alt = icon.name;
+            img.className = 'selected-icon-preview';
+            selectedIconsPreview.appendChild(img);
+        }
+    });
+    
+    // Show modal
+    addToSetModal.style.display = 'block';
+    
+    // Setup modal buttons
+    const confirmBtn = document.getElementById('confirmAddToSet');
+    const cancelBtn = document.getElementById('cancelAddToSet');
+    const closeBtn = document.getElementById('closeAddToSetModal');
+    
+    const handleConfirm = async () => {
+        const selectedSetId = targetSetSelect.value;
+        if (!selectedSetId) {
+            alert('Please select a set');
+            return;
+        }
+        
+        try {
+            const promises = Array.from(selectedIcons).map(iconId =>
+                fetch(`/api/icon-sets/${selectedSetId}/icons/${iconId}`, { method: 'POST' })
+                    .then(response => response.json())
+            );
+            
+            const results = await Promise.all(promises);
+            const successCount = results.filter(result => result.success).length;
+            
+            if (successCount > 0) {
+                // Refresh the icon table to show updated sets
+                await loadIconsForTable();
+                
+                // Clear selection
+                selectedIcons.clear();
+                
+                alert(`Successfully added ${successCount} icon${successCount > 1 ? 's' : ''} to set`);
+                closeModal();
+            } else {
+                alert('Failed to add icons to set');
+            }
+        } catch (error) {
+            console.error('Error adding icons to set:', error);
+            alert('Error adding icons to set');
+        }
+    };
+    
+    const closeModal = () => {
+        addToSetModal.style.display = 'none';
+        // Remove event listeners
+        confirmBtn.removeEventListener('click', handleConfirm);
+        cancelBtn.removeEventListener('click', closeModal);
+        closeBtn.removeEventListener('click', closeModal);
+    };
+    
+    // Add event listeners
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+}
+
+function bulkRemoveFromSet() {
+    console.log('Bulk removing from set...');
+    // TODO: Implement bulk remove from set
+}
+
+async function bulkDeleteIcons() {
+    if (selectedIcons.size === 0) return;
+    
+    const count = selectedIcons.size;
+    if (confirm(`Are you sure you want to delete ${count} selected icon${count > 1 ? 's' : ''}?`)) {
+        try {
+            const iconIds = Array.from(selectedIcons);
+            const promises = iconIds.map(iconId => 
+                fetch(`/api/icons/${iconId}`, { method: 'DELETE' })
+                    .then(response => response.json())
+            );
+            
+            const results = await Promise.all(promises);
+            
+            // Count successful deletions
+            const successCount = results.filter(result => result.success).length;
+            
+            if (successCount > 0) {
+                // Remove deleted icons from arrays
+                availableIcons = availableIcons.filter(icon => !selectedIcons.has(icon.id));
+                selectedIcons.clear();
+                
+                // Re-render
+                renderIconTable();
+                
+                alert(`Successfully deleted ${successCount} icon${successCount > 1 ? 's' : ''}`);
+            } else {
+                alert('Failed to delete icons');
+            }
+        } catch (error) {
+            console.error('Error bulk deleting icons:', error);
+            alert('Error deleting icons');
+        }
+    }
+}
+
+// Delete icon function for Icon Manager
+async function deleteIconFromManager(iconId) {
+    if (confirm('Are you sure you want to delete this icon?')) {
+        try {
+            const response = await fetch(`/api/icons/${iconId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Remove from arrays
+                availableIcons = availableIcons.filter(icon => icon.id !== iconId);
+                selectedIcons.delete(iconId);
+                
+                // Re-render
+                renderIconTable();
+                console.log('Icon deleted successfully');
+            } else {
+                console.error('Failed to delete icon:', result.error);
+                alert('Failed to delete icon');
+            }
+        } catch (error) {
+            console.error('Error deleting icon:', error);
+            alert('Error deleting icon');
+        }
+    }
+}
+
+// Icon Selection Functions for Generator
+
+// Load icon sets for the generator dropdown
+async function loadIconSetsForGenerator() {
+    try {
+        const response = await fetch('/api/icon-sets');
+        const result = await response.json();
+        
+        if (result.success) {
+            generatorIconSets = result.data;
+            populateIconSetSelector();
+        }
+    } catch (error) {
+        console.error('Error loading icon sets for generator:', error);
+    }
+}
+
+// Populate the icon set selector dropdown
+function populateIconSetSelector() {
+    if (!iconSetSelector) return;
+    
+    iconSetSelector.innerHTML = '<option value="all-icons">All Icons</option>';
+    
+    generatorIconSets.forEach(set => {
+        if (set.id !== 'all-icons') {
+            const option = document.createElement('option');
+            option.value = set.id;
+            option.textContent = set.name;
+            iconSetSelector.appendChild(option);
+        }
+    });
+}
+
+// Load icons for the selected set
+async function loadIconsForSelectedSet() {
+    const selectedSetId = iconSetSelector.value;
+    console.log('🔄 Loading icons for set:', selectedSetId);
+    
+    try {
+        let response;
+        if (selectedSetId === 'all-icons') {
+            response = await fetch('/api/icons');
+        } else {
+            response = await fetch(`/api/icon-sets/${selectedSetId}/icons`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            availableIcons = result.data || [];
+            console.log(`✅ Loaded ${availableIcons.length} icons for set ${selectedSetId}`);
+            
+            // Update the selected icons to show all icons from the set
+            selectedIconsForGeneration.clear();
+            availableIcons.forEach(icon => {
+                selectedIconsForGeneration.add(icon.id);
+            });
+            
+            // Update UI components
+            updateSelectedIconsPreview();
+            updateRequiredIconCount();
+        } else {
+            console.error('❌ Failed to load icons for set:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading icons for selected set:', error);
+    }
+}
+
+// Open icon selection modal
+async function openIconSelectionModal() {
+    if (!iconSelectionModal) return;
+    
+    // Load all icons for selection
+    await loadIconsForSelection();
+    
+    // Show modal
+    iconSelectionModal.style.display = 'block';
+    
+    // Render icons
+    renderIconSelectionGrid();
+}
+
+// Load icons for selection modal
+async function loadIconsForSelection() {
+    try {
+        const response = await fetch('/api/icons');
+        const result = await response.json();
+        
+        if (result.success) {
+            filteredIconsForSelection = result.data;
+            
+            // Also populate category filter
+            const categories = [...new Set(result.data.map(icon => icon.category))];
+            populateIconSelectionCategoryFilter(categories);
+        }
+    } catch (error) {
+        console.error('Error loading icons for selection:', error);
+    }
+}
+
+// Populate category filter in selection modal
+function populateIconSelectionCategoryFilter(categories) {
+    if (!iconSelectionCategoryFilter) return;
+    
+    iconSelectionCategoryFilter.innerHTML = '<option value="all">All Categories</option>';
+    
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+        iconSelectionCategoryFilter.appendChild(option);
+    });
+}
+
+// Render icon selection grid
+function renderIconSelectionGrid() {
+    if (!iconSelectionGrid) return;
+    
+    iconSelectionGrid.innerHTML = '';
+    
+    filteredIconsForSelection.forEach(icon => {
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'icon-selection-item';
+        iconDiv.innerHTML = `
+            <div class="icon-checkbox">
+                <input type="checkbox" id="select-${icon.id}" 
+                       ${selectedIconsForGeneration.has(icon.id) ? 'checked' : ''}>
+            </div>
+            <div class="icon-preview">
+                <img src="${icon.image}" alt="${icon.name}" title="${icon.name}">
+            </div>
+            <div class="icon-name">${icon.name}</div>
+        `;
+        
+        // Add click handler
+        const checkbox = iconDiv.querySelector('input[type="checkbox"]');
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                selectedIconsForGeneration.add(icon.id);
+            } else {
+                selectedIconsForGeneration.delete(icon.id);
+            }
+            updateSelectionCount();
+        });
+        
+        iconSelectionGrid.appendChild(iconDiv);
+    });
+    
+    updateSelectionCount();
+}
+
+// Filter icons for selection
+function filterIconsForSelection() {
+    const searchTerm = iconSelectionSearch ? iconSelectionSearch.value.toLowerCase() : '';
+    const categoryFilter = iconSelectionCategoryFilter ? iconSelectionCategoryFilter.value : 'all';
+    
+    // Load all icons first
+    loadIconsForSelection().then(() => {
+        // Apply filters
+        filteredIconsForSelection = filteredIconsForSelection.filter(icon => {
+            const matchesSearch = icon.name.toLowerCase().includes(searchTerm);
+            const matchesCategory = categoryFilter === 'all' || icon.category === categoryFilter;
+            return matchesSearch && matchesCategory;
+        });
+        
+        renderIconSelectionGrid();
+    });
+}
+
+// Select all icons for generation
+function selectAllIconsForGeneration() {
+    filteredIconsForSelection.forEach(icon => {
+        selectedIconsForGeneration.add(icon.id);
+    });
+    renderIconSelectionGrid();
+}
+
+// Deselect all icons for generation
+function deselectAllIconsForGeneration() {
+    selectedIconsForGeneration.clear();
+    renderIconSelectionGrid();
+}
+
+// Update selection count
+function updateSelectionCount() {
+    if (selectionCountText) {
+        const count = selectedIconsForGeneration.size;
+        selectionCountText.textContent = `${count} icons selected`;
+    }
+}
+
+// Close icon selection modal
+function closeIconSelectionModalHandler() {
+    if (iconSelectionModal) {
+        iconSelectionModal.style.display = 'none';
+    }
+}
+
+// Confirm icon selection
+function confirmIconSelectionHandler() {
+    updateSelectedIconsPreview();
+    closeIconSelectionModalHandler();
+}
+
+// Update selected icons preview in generator
+function updateSelectedIconsPreview() {
+    if (!selectedIconsPreview) return;
+    
+    console.log('🔄 Updating selected icons preview');
+    selectedIconsPreview.innerHTML = '';
+    
+    const selectedIconIds = Array.from(selectedIconsForGeneration);
+    const selectedIconsData = availableIcons.filter(icon => selectedIconIds.includes(icon.id));
+    
+    console.log(`Found ${selectedIconsData.length} selected icons from ${selectedIconIds.length} selected IDs`);
+    
+    if (selectedIconsData.length === 0) {
+        selectedIconsPreview.innerHTML = '<p>No icons selected. Click "Select Icons" to choose icons for generation.</p>';
+        return;
+    }
+    
+    selectedIconsData.forEach(icon => {
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'selected-icon-item';
+        iconDiv.innerHTML = `
+            <img src="${icon.image || icon.data}" alt="${icon.name}" title="${icon.name}">
+            <span>${icon.name}</span>
+            <button class="remove-icon-btn" onclick="removeIconFromSelection('${icon.id}')">&times;</button>
+        `;
+        selectedIconsPreview.appendChild(iconDiv);
+    });
+    
+    console.log('✅ Selected icons preview updated');
+}
+
+// Remove icon from selection
+function removeIconFromSelection(iconId) {
+    console.log('🗑️ Removing icon from selection:', iconId);
+    selectedIconsForGeneration.delete(iconId);
+    
+    // Update the available icons to exclude the removed icon
+    availableIcons = availableIcons.filter(icon => icon.id !== iconId);
+    
+    updateSelectedIconsPreview();
+    updateRequiredIconCount();
+}
+
+// Make removeIconFromSelection globally accessible
+window.removeIconFromSelection = removeIconFromSelection;
 
 // Export for testing
 // Convert from CommonJS to ES Module exports
 const exports = {
     updateRequiredIconCount,
     generateCards,
-    displayCardPreview
+    displayCardPreview,
+    switchToPage,
+    loadIconSets,
+    renderIconTable
 };
 
 export default exports;

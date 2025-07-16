@@ -10,7 +10,14 @@
 <body>
   <h1 data-translate="title">Road Trip Bingo Generator</h1>
   
+  <!-- Notification Container -->
+  <div id="notificationContainer" class="notification-container"></div>
+  
   <div class="toolbar">
+    <nav class="main-nav">
+      <button id="navGenerator" class="nav-btn active" data-translate="navGenerator">Generator</button>
+      <button id="navIconManager" class="nav-btn" data-translate="navIconManager">Icon Manager</button>
+    </nav>
     <div>
       <select id="languageSelect">
         <option value="en">English</option>
@@ -19,8 +26,10 @@
     </div>
   </div>
   
-  <div class="container">
-    <div class="settings-panel">
+  <!-- Generator Page -->
+  <div id="generatorPage" class="page-container active">
+    <div class="container">
+      <div class="settings-panel">
       <div class="form-group">
         <label for="title" data-translate="bingoCardTitle">Bingo Card Title:</label>
         <input type="text" id="title" value="Road Trip Bingo">
@@ -122,101 +131,298 @@
                 <p class="info-text" data-translate="iconDistributionInfo">Choose how icons are distributed across cards within each set.</p>
               </div>
             
+            <!-- Icon Selection Section -->
+            <div class="form-group">
+              <label for="iconSetSelector" data-translate="selectIconSet">Select Icon Set:</label>
+              <select id="iconSetSelector">
+                <option value="all-icons" data-translate="allIcons">All Icons</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label data-translate="selectedIcons">Selected Icons:</label>
+              <div id="selectedIconsPreview" class="selected-icons-preview">
+                <!-- Selected icons will be shown here -->
+              </div>
+              <button id="selectIconsBtn" type="button" data-translate="selectIcons">Select Icons</button>
+            </div>
+            
             <p id="iconAvailability"></p>
             
             <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
             
-            <div id="iconManager">
-                <h2 data-translate="iconManager">Icon Manager</h2>
+            <!-- Preview Section moved here -->
+            <div class="preview-section">
+                <h2 data-translate="preview">Preview</h2>
+                <div id="cardPreview"></div>
                 
-                <!-- Search and Filter Controls -->
-                <div class="icon-controls">
-                    <div class="search-controls">
-                        <input type="text" id="iconSearch" placeholder="Search icons..." data-translate-placeholder="searchIcons">
-                        <select id="categoryFilter">
-                            <option value="all" data-translate="allCategories">All Categories</option>
-                        </select>
-                        <select id="difficultyFilter">
-                            <option value="all">All Difficulties</option>
-                            <option value="1">⭐ Very Easy</option>
-                            <option value="2">⭐⭐ Easy</option>
-                            <option value="3">⭐⭐⭐ Medium</option>
-                            <option value="4">⭐⭐⭐⭐ Hard</option>
-                            <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
+                <div class="generate-section">
+                    <p id="identifier"></p>
+                    <div class="form-group">
+                        <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
+                        <select id="pdfCompression">
+                            <option value="NONE">None (Largest file)</option>
+                            <option value="FAST">Light (Smaller file)</option>
+                            <option value="MEDIUM" selected>Medium (Recommended)</option>
+                            <option value="SLOW">High (Smallest file)</option>
                         </select>
                     </div>
-                    
-                    <div class="icon-tools">
-                        <div class="file-input-wrapper">
-                            <button id="uploadBtn" data-translate="uploadIcons">Upload Icons</button>
-                            <input type="file" id="iconUpload" accept="image/*" multiple>
-                        </div>
-                        <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
-                        <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
-                        <span class="icon-count">
-                            <span data-translate="currentlyUsing">Currently using</span> 
-                            <span id="iconCount">0</span> 
-                            <span data-translate="icons">icons</span>
-                            <small style="color: #666; margin-left: 8px;">(SQLite)</small>
-                        </span>
+                    <div class="form-group">
+                      <label for="pdfLayout" data-translate="pdfLayout">PDF Layout:</label>
+                      <select id="pdfLayout">
+                        <option value="one-per-page">One card per page</option>
+                        <option value="two-per-page" selected>Two cards per page</option>
+                      </select>
                     </div>
+                    <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
                 </div>
-                
-                <!-- Drag and Drop Zone -->
-                <div id="dropZone" class="drop-zone" style="display: none;">
-                    <div class="drop-zone-content">
-                        <svg class="drop-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14,2 14,8 20,8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10,9 9,9 8,9"/>
-                        </svg>
-                        <p data-translate="dropZoneText">Drop images here to upload</p>
-                    </div>
-                </div>
-                
-                <div id="iconGallery" class="icon-gallery"></div>
-            </div>
-            
-            <div class="data-management">
-                <button id="backupBtn" data-translate="backupData">Backup Data</button>
-                <button id="restoreBtn" data-translate="restoreData">Restore Data</button>
-                <input type="file" id="restoreInput" accept=".json" class="hidden">
-            </div>
-        </div>
-        
-        <div class="preview-panel">
-            <h2 data-translate="preview">Preview</h2>
-            <div id="cardPreview"></div>
-            
-            <div class="generate-section">
-                <p id="identifier"></p>
-                <div class="form-group">
-                    <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
-                    <select id="pdfCompression">
-                        <option value="NONE">None (Largest file)</option>
-                        <option value="FAST">Light (Smaller file)</option>
-                        <option value="MEDIUM" selected>Medium (Recommended)</option>
-                        <option value="SLOW">High (Smallest file)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                  <label for="pdfLayout" data-translate="pdfLayout">PDF Layout:</label>
-                  <select id="pdfLayout">
-                    <option value="one-per-page">One card per page</option>
-                    <option value="two-per-page" selected>Two cards per page</option>
-                  </select>
-                </div>
-                <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
             </div>
         </div>
     </div>
+  </div>
+
+  <!-- Icon Manager Page -->
+  <div id="iconManagerPage" class="page-container">
+    <div class="icon-manager-container">
+      <div class="icon-manager-header">
+        <h2 data-translate="iconManager">Icon Manager</h2>
+        <p class="page-description" data-translate="iconManagerDescription">
+          Manage your icon collection, organize them into sets, and add translations.
+        </p>
+      </div>
+
+      <!-- Icon Sets Management -->
+      <div class="sets-management">
+        <div class="section-header">
+          <h3 data-translate="iconSets">Icon Sets</h3>
+          <button id="createSetBtn" class="btn-primary" data-translate="createSet">Create New Set</button>
+        </div>
+        
+        <div class="sets-grid" id="setsGrid">
+          <!-- Icon sets will be loaded here -->
+        </div>
+      </div>
+
+      <!-- Icon Management Section -->
+      <div class="icons-management">
+        <div class="section-header">
+          <h3 data-translate="iconManagement">Icon Management</h3>
+          <div class="view-controls">
+            <button id="viewToggle" class="view-btn active" data-view="table" data-translate="tableView">Table View</button>
+            <button class="view-btn" data-view="grid" data-translate="gridView">Grid View</button>
+          </div>
+        </div>
+
+        <!-- Enhanced Search and Filter Controls -->
+        <div class="icon-controls">
+          <div class="search-controls">
+            <input type="text" id="iconSearch" placeholder="Search icons..." data-translate-placeholder="searchIcons">
+            <select id="categoryFilter">
+              <option value="all" data-translate="allCategories">All Categories</option>
+            </select>
+            <select id="difficultyFilter">
+              <option value="all">All Difficulties</option>
+              <option value="1">⭐ Very Easy</option>
+              <option value="2">⭐⭐ Easy</option>
+              <option value="3">⭐⭐⭐ Medium</option>
+              <option value="4">⭐⭐⭐⭐ Hard</option>
+              <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
+            </select>
+            <select id="setFilter">
+              <option value="all" data-translate="allSets">All Sets</option>
+            </select>
+          </div>
+          
+          <div class="icon-tools">
+            <div class="file-input-wrapper">
+              <button id="uploadBtn" data-translate="uploadIcons">Upload Icons</button>
+              <input type="file" id="iconUpload" accept="image/*" multiple>
+            </div>
+            <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
+            <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
+            <span class="icon-count">
+              <span data-translate="currentlyUsing">Currently using</span> 
+              <span id="iconCount">0</span> 
+              <span data-translate="icons">icons</span>
+              <small style="color: #666; margin-left: 8px;">(SQLite)</small>
+            </span>
+          </div>
+        </div>
+
+        <!-- Bulk Operations -->
+        <div class="bulk-operations" id="bulkOperations" style="display: none;">
+          <div class="bulk-info">
+            <span id="selectedCount">0</span> <span data-translate="itemsSelected">items selected</span>
+          </div>
+          <div class="bulk-actions">
+            <button id="bulkAddToSet" data-translate="addToSet">Add to Set</button>
+            <button id="bulkRemoveFromSet" data-translate="removeFromSet">Remove from Set</button>
+            <button id="bulkDelete" class="btn-danger" data-translate="deleteSelected">Delete Selected</button>
+            <button id="bulkClearSelection" data-translate="clearSelection">Clear Selection</button>
+          </div>
+        </div>
+
+        <!-- Drag and Drop Zone -->
+        <div id="dropZone" class="drop-zone" style="display: none;">
+          <div class="drop-zone-content">
+            <svg class="drop-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10,9 9,9 8,9"/>
+            </svg>
+            <p data-translate="dropZoneText">Drop images here to upload</p>
+          </div>
+        </div>
+
+        <!-- Icon Table/Grid View -->
+        <div id="iconTableView" class="table-view">
+          <div class="table-container">
+            <table id="iconTable" class="icon-table">
+              <thead>
+                <tr>
+                  <th class="select-column">
+                    <input type="checkbox" id="selectAllCheckbox">
+                  </th>
+                  <th class="icon-preview-column" data-translate="preview">Preview</th>
+                  <th class="sort-column" data-sort="name">
+                    <span data-translate="name">Name</span>
+                    <span class="sort-indicator"></span>
+                  </th>
+                  <th class="sort-column" data-sort="category">
+                    <span data-translate="category">Category</span>
+                    <span class="sort-indicator"></span>
+                  </th>
+                  <th class="sort-column" data-sort="difficulty">
+                    <span data-translate="difficulty">Difficulty</span>
+                    <span class="sort-indicator"></span>
+                  </th>
+                  <th data-translate="sets">Sets</th>
+                  <th data-translate="translations">Translations</th>
+                  <th data-translate="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="iconTableBody">
+                <!-- Icons will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Original Grid View (for backward compatibility) -->
+        <div id="iconGridView" class="grid-view" style="display: none;">
+          <div id="iconGallery" class="icon-gallery"></div>
+        </div>
+      </div>
+
+      <!-- Data Management -->
+      <div class="data-management">
+        <h3 data-translate="dataManagement">Data Management</h3>
+        <div class="data-actions">
+          <button id="backupBtn" data-translate="backupData">Backup Data</button>
+          <button id="restoreBtn" data-translate="restoreData">Restore Data</button>
+          <input type="file" id="restoreInput" accept=".json" class="hidden">
+        </div>
+      </div>
+    </div>
+  </div>
     
     <!-- Third-party libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <!-- Main application script -->
+    <!-- Create/Edit Icon Set Modal -->
+    <div id="setModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="setModalTitle" data-translate="createSet">Create Icon Set</h3>
+          <button class="close-btn" id="closeSetModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="setName" data-translate="setName">Set Name:</label>
+            <input type="text" id="setName" placeholder="Enter set name" required>
+          </div>
+          <div class="form-group">
+            <label for="setDescription" data-translate="setDescription">Description:</label>
+            <textarea id="setDescription" placeholder="Enter set description" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="saveSetBtn" class="btn-primary" data-translate="saveSet">Save Set</button>
+          <button id="cancelSetBtn" class="btn-secondary" data-translate="cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add to Set Modal -->
+    <div id="addToSetModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 data-translate="addToSet">Add to Set</h3>
+          <button class="close-btn" id="closeAddToSetModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="targetSet" data-translate="selectSet">Select Set:</label>
+            <select id="targetSet" required>
+              <option value="" data-translate="selectSetOption">Select a set...</option>
+            </select>
+          </div>
+          <div class="selected-icons-preview" id="selectedIconsPreview">
+            <!-- Selected icons will be shown here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="confirmAddToSet" class="btn-primary" data-translate="addToSet">Add to Set</button>
+          <button id="cancelAddToSet" class="btn-secondary" data-translate="cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Translation Modal -->
+    <div id="translationModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 data-translate="manageTranslations">Manage Translations</h3>
+          <button class="close-btn" id="closeTranslationModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="icon-preview" id="translationIconPreview">
+            <!-- Icon preview will be shown here -->
+          </div>
+          <div class="translations-list" id="translationsList">
+            <!-- Existing translations will be shown here -->
+          </div>
+          <div class="add-translation">
+            <div class="form-group">
+              <label for="translationLanguage" data-translate="language">Language:</label>
+              <select id="translationLanguage">
+                <option value="de">Deutsch</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="it">Italiano</option>
+                <option value="pt">Português</option>
+                <option value="nl">Nederlands</option>
+                <option value="sv">Svenska</option>
+                <option value="no">Norsk</option>
+                <option value="da">Dansk</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="translationText" data-translate="translatedName">Translated Name:</label>
+              <input type="text" id="translationText" placeholder="Enter translated name">
+            </div>
+            <button id="addTranslationBtn" class="btn-primary" data-translate="addTranslation">Add Translation</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="closeTranslationBtn" class="btn-secondary" data-translate="close">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Edit Icon Modal -->
   <div id="editIconModal" class="modal" style="display: none;">
     <div class="modal-content">
@@ -264,6 +470,40 @@
       <div class="modal-footer">
         <button id="saveIconChanges" class="btn-primary" data-translate="saveChanges">Save Changes</button>
         <button id="cancelEditIcon" class="btn-secondary" data-translate="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Icon Selection Modal (for Generator) -->
+  <div id="iconSelectionModal" class="modal" style="display: none;">
+    <div class="modal-content large-modal">
+      <div class="modal-header">
+        <h3 data-translate="selectIconsForGeneration">Select Icons for Card Generation</h3>
+        <button class="close-btn" id="closeIconSelectionModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="icon-selection-controls">
+          <div class="selection-actions">
+            <button id="selectAllIcons" class="btn-secondary" data-translate="selectAll">Select All</button>
+            <button id="deselectAllIcons" class="btn-secondary" data-translate="deselectAll">Deselect All</button>
+            <span class="selection-count">
+              <span id="selectionCountText">0 icons selected</span>
+            </span>
+          </div>
+          <div class="selection-filters">
+            <input type="text" id="iconSelectionSearch" placeholder="Search icons..." data-translate-placeholder="searchIcons">
+            <select id="iconSelectionCategoryFilter">
+              <option value="all" data-translate="allCategories">All Categories</option>
+            </select>
+          </div>
+        </div>
+        <div id="iconSelectionGrid" class="icon-selection-grid">
+          <!-- Icons will be loaded here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="confirmIconSelection" class="btn-primary" data-translate="confirmSelection">Confirm Selection</button>
+        <button id="cancelIconSelection" class="btn-secondary" data-translate="cancel">Cancel</button>
       </div>
     </div>
   </div>
