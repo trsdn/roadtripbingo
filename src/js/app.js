@@ -1635,7 +1635,7 @@ function openEditModal(iconId) {
     
     // Populate modal fields
     if (editIconName) editIconName.value = icon.name || '';
-    if (editIconCategory) editIconCategory.value = icon.category || 'default';
+    if (editIconCategory) editIconCategory.value = (icon.category || 'default').toLowerCase();
     if (editIconTags) editIconTags.value = (icon.tags || []).join(', ');
     if (editIconAltText) editIconAltText.value = icon.altText || '';
     if (editIconDifficulty) editIconDifficulty.value = icon.difficulty || 3;
