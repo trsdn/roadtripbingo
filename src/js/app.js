@@ -8,6 +8,7 @@ import { convertBlobToBase64Icon } from './modules/imageUtils.js';
 import { generateBingoCards, calculateExpectedMultiHitCount } from './modules/cardGenerator.js';
 import { generatePDF, downloadPDFBlob } from './modules/pdfGenerator.js';
 import aiService from './modules/aiService.js';
+import api from './modules/api.js';
 
 // DOM elements
 let titleInput;
@@ -2325,7 +2326,7 @@ function showAIAnalysisResults(results) {
                 <div class="ai-suggestion">
                     <span><strong>Tags:</strong> ${tags}</span>
                     <div class="ai-suggestion-actions">
-                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', '${tags}')">Accept</button>
+                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', ${JSON.stringify(tags)})">Accept</button>
                         <button class="ai-reject">Reject</button>
                     </div>
                 </div>
@@ -2376,36 +2377,24 @@ window.acceptSuggestion = async function(iconId, field, value) {
     try {
         console.log('Accepting suggestion:', { iconId, field, value });
         
-        const updateData = {};
-        updateData[field] = value;
+        const result = await api.acceptAISuggestion(iconId, field, value);
+        console.log('API result:', result);
         
-        console.log('Update data:', updateData);
-        
-        const response = await fetch(`/api/icons/${iconId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updateData)
-        });
-
-        console.log('Update response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Update error response:', errorText);
-            throw new Error(`Failed to update icon: ${response.status} ${response.statusText}`);
+        if (result.success) {
+            window.notifications.show('Suggestion applied', 'success');
+            await loadIconsForTable(); // Refresh the icon list
+        } else {
+            throw new Error(result.error || 'Unknown error');
         }
-
-        const result = await response.json();
-        console.log('Update result:', result);
-        
-        window.notifications.show('Suggestion applied', 'success');
-        await loadIconsForTable(); // Refresh the icon list
     } catch (error) {
         console.error('Error accepting suggestion:', error);
         window.notifications.show('Failed to apply suggestion: ' + error.message, 'error');
     }
 };
 
+
+// Make API available globally for testing
+window.api = api;
 
 // Helper function to get localized icon name
 function getLocalizedIconName(icon) {
