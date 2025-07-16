@@ -85,10 +85,10 @@ async function generatePDF(options) {
         
         // Choose the appropriate layout function based on the layout option
         if (layout === 'two-per-page') {
-            return generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel);
+            return generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, gameMode, gameDifficulty);
         } else {
             // Default to one-per-page layout for any other value
-            return generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel);
+            return generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, gameMode, gameDifficulty);
         }
     } catch (error) {
         console.error('Error generating PDF:', error);
@@ -105,7 +105,7 @@ async function generatePDF(options) {
  * @param {boolean} showLabels - Whether to show labels
  * @returns {Promise<Blob>} - PDF blob
  */
-async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel) {
+async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, gameMode = '', gameDifficulty = '') {
     try {
         // Detect if we're in a test environment to handle layout differently
         const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -127,12 +127,12 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
             // In test mode: use the full page width to match test expectations
             cardWidth = pageWidth - (2 * margin);
             xOffset = margin;
-            yOffset = margin + 15;
+            yOffset = margin + 35; // Increased from 25 to 35 for game mode text
         } else {
             // In production: maintain square aspect ratio and center the card
             // Calculate available width and height (accounting for margins)
             const availableWidth = pageWidth - (2 * margin);
-            const availableHeight = pageHeight - (2 * margin) - 15; // 15mm additional top margin for title space
+            const availableHeight = pageHeight - (2 * margin) - 35; // Increased from 25 to 35 for game mode text
             
             // Maintain square aspect ratio for bingo cards
             cardWidth = Math.min(availableWidth, availableHeight);
@@ -140,7 +140,7 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
             // Center card horizontally
             xOffset = margin + (availableWidth - cardWidth) / 2;
             // Align to top with margin
-            yOffset = margin + 15;
+            yOffset = margin + 35; // Increased from 25 to 35 for game mode text
         }
         
         let pageCount = 0;
@@ -194,6 +194,7 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
             }
         }
         
+        console.log(`PDF generation completed: ${pageCount} pages total`);
         return pdf.output('blob');
     } catch (error) {
         console.error('Error in one-per-page layout:', error);
@@ -210,7 +211,7 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
  * @param {boolean} showLabels - Whether to show labels
  * @returns {Promise<Blob>} - PDF blob
  */
-async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel) {
+async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, gameMode = '', gameDifficulty = '') {
     try {
         // Detect if we're in a test environment to handle layout differently
         const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -360,7 +361,7 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                 
                 if (isTestEnvironment) {
                     // Stack vertically in test environment (to match test expectations)
-                    yOffset = margin + 15 + (cardPosition * (cardHeight + margin));
+                    yOffset = margin + 35 + (cardPosition * (cardHeight + margin)); // Increased from 25 to 35
                 } else {
                     // Side by side in landscape orientation in production
                     // Distribute cards evenly across the page width
@@ -369,7 +370,7 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
                     
                     xOffset = leftMargin + (cardPosition * (cardWidth + margin));
                     // Align cards to the top with a comfortable margin
-                    yOffset = margin + 15;
+                    yOffset = margin + 35; // Increased from 25 to 35 for game mode text
                 }
                 
                 // Render card on the page
@@ -392,6 +393,7 @@ async function generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, s
             }
         }
         
+        console.log(`Two-per-page PDF generation completed: ${pageCount + 1} pages total`);
         return pdf.output('blob');
     } catch (error) {
         console.error('Error in two-per-page layout:', error);
@@ -457,16 +459,18 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
         }
         
         if (modeText) {
-            pdf.text(modeText, x + 5, y - 5, { align: 'left' });
+            // Position below the title to avoid overlap
+            pdf.text(modeText, x + (cardWidth / 2), y + 12, { align: 'center' });
         }
     }
     
-    // Draw grid cells
+    // Draw grid cells - add offset for game mode text
+    const gridOffsetY = (gameMode || gameDifficulty) ? 15 : 0;
     for (let row = 0; row < card.grid.length; row++) {
         for (let col = 0; col < card.grid[row].length; col++) {
             const cell = card.grid[row][col];
             const cellX = x + (col * cellSize);
-            const cellY = y + (row * cellSize);
+            const cellY = y + gridOffsetY + (row * cellSize);
             
             // Draw cell border
             pdf.setDrawColor(0, 0, 0);
@@ -545,13 +549,13 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
                         pdf.setDrawColor(0, 0, 0);
                         const circleX = cellX + cellSize - padding;
                         const circleY = cellY + padding;
-                        const circleRadius = cellSize * 0.12;
+                        const circleRadius = cellSize * 0.15; // Increased from 0.12 to 0.15
                         
                         // Draw circle background
                         pdf.circle(circleX, circleY, circleRadius, 'FD');
                         
-                        // Draw hit count
-                        pdf.setFontSize(labelFontSize);
+                        // Draw hit count with larger font
+                        pdf.setFontSize(Math.max(labelFontSize * 1.5, 10)); // Increased font size
                         pdf.setTextColor(0, 0, 0);
                         pdf.text(
                             String(cell.hitCount),
