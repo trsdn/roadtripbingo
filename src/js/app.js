@@ -3,7 +3,7 @@
 
 // Import modules
 import storage from './modules/apiStorage.js';
-import { setLanguage, getTranslatedText, initLanguageSelector } from './modules/i18n.js';
+import { setLanguage, getTranslatedText, getCurrentLanguage, initLanguageSelector } from './modules/i18n.js';
 import { convertBlobToBase64Icon } from './modules/imageUtils.js';
 import { generateBingoCards, calculateExpectedMultiHitCount } from './modules/cardGenerator.js';
 import { generatePDF, downloadPDFBlob } from './modules/pdfGenerator.js';
@@ -701,6 +701,13 @@ async function loadIcons() {
         availableIcons = await storage.loadIcons();
         console.log(`✅ Loaded ${availableIcons.length} icons from storage`);
         
+        // Load translations for each icon
+        for (const icon of availableIcons) {
+            const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
+            const translationsResult = await translationsResponse.json();
+            icon.translations = translationsResult.success ? translationsResult.data : {};
+        }
+        
         // Apply current filters
         filterIcons();
         
@@ -989,7 +996,7 @@ function updateIconGallery() {
         // Icon name
         const nameElement = document.createElement('div');
         nameElement.className = 'icon-name';
-        nameElement.textContent = icon.name || 'Unnamed';
+        nameElement.textContent = getLocalizedIconName(icon);
         
         // Icon category
         const categoryElement = document.createElement('div');
@@ -1476,6 +1483,13 @@ async function optimizeStorageManually() {
 // Update the UI based on current settings
 function updateUI() {
     updateRequiredIconCount();
+    
+    // Re-render icon views to show localized names
+    if (currentPage === 'iconManager') {
+        renderIconTable();
+    }
+    updateIconGallery();
+    updateSelectedIconsPreview();
 }
 
 // Enhanced CRUD Functions
@@ -1854,7 +1868,7 @@ function renderIconTable() {
             <td class="icon-preview-cell">
                 <img src="${icon.image || icon.data}" alt="${icon.name}">
             </td>
-            <td class="icon-name-cell">${icon.name || 'Unnamed'}</td>
+            <td class="icon-name-cell">${getLocalizedIconName(icon)}</td>
             <td class="icon-category-cell">${icon.category || 'default'}</td>
             <td class="icon-difficulty-cell">${difficultyStars}</td>
             <td class="icon-exclusion-cell">${exclusionHtml}</td>
@@ -2032,7 +2046,6 @@ function initializeAIFeatures() {
         openAIFeaturesBtn.addEventListener('click', () => {
             aiPanel.style.display = 'block';
             document.body.appendChild(createOverlay());
-            updateAIUsageDisplay();
             updateAIStatusDisplay();
         });
     }
@@ -2393,21 +2406,18 @@ window.acceptSuggestion = async function(iconId, field, value) {
     }
 };
 
-// Update AI usage display
-async function updateAIUsageDisplay() {
-    try {
-        const response = await fetch('/api/ai/usage/check');
-        if (response.ok) {
-            const usage = await response.json();
-            const display = document.getElementById('aiUsageDisplay');
-            if (display) {
-                display.textContent = `${usage.data.usage} / ${usage.data.limit}`;
-                display.style.color = usage.data.within_limits ? '#333' : '#dc3545';
-            }
-        }
-    } catch (error) {
-        console.error('Error updating usage display:', error);
+
+// Helper function to get localized icon name
+function getLocalizedIconName(icon) {
+    const currentLang = getCurrentLanguage();
+    
+    // If German is selected and we have German translation, use it
+    if (currentLang === 'de' && icon.translations && icon.translations.de) {
+        return icon.translations.de;
     }
+    
+    // Fallback to English name
+    return icon.name || 'Unnamed Icon';
 }
 
 // Helper function to get selected icons
@@ -2488,7 +2498,7 @@ function updateIconManagerGridView() {
         // Icon name
         const nameElement = document.createElement('div');
         nameElement.className = 'icon-name';
-        nameElement.textContent = icon.name || 'Unnamed';
+        nameElement.textContent = getLocalizedIconName(icon);
         
         // Icon category
         const categoryElement = document.createElement('div');
@@ -3307,6 +3317,13 @@ async function loadIconsForSelectedSet() {
             availableIcons = result.data || [];
             console.log(`✅ Loaded ${availableIcons.length} icons for set ${selectedSetId}`);
             
+            // Load translations for each icon
+            for (const icon of availableIcons) {
+                const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
+                const translationsResult = await translationsResponse.json();
+                icon.translations = translationsResult.success ? translationsResult.data : {};
+            }
+            
             // Update the selected icons to show all icons from the set
             selectedIconsForGeneration.clear();
             availableIcons.forEach(icon => {
@@ -3347,6 +3364,13 @@ async function loadIconsForSelection() {
         if (result.success) {
             filteredIconsForSelection = result.data;
             
+            // Load translations for each icon
+            for (const icon of filteredIconsForSelection) {
+                const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
+                const translationsResult = await translationsResponse.json();
+                icon.translations = translationsResult.success ? translationsResult.data : {};
+            }
+            
             // Also populate category filter
             const categories = [...new Set(result.data.map(icon => icon.category))];
             populateIconSelectionCategoryFilter(categories);
@@ -3377,6 +3401,7 @@ function renderIconSelectionGrid() {
     iconSelectionGrid.innerHTML = '';
     
     filteredIconsForSelection.forEach(icon => {
+        const localizedName = getLocalizedIconName(icon);
         const iconDiv = document.createElement('div');
         iconDiv.className = 'icon-selection-item';
         iconDiv.innerHTML = `
@@ -3385,9 +3410,9 @@ function renderIconSelectionGrid() {
                        ${selectedIconsForGeneration.has(icon.id) ? 'checked' : ''}>
             </div>
             <div class="icon-preview">
-                <img src="${icon.image}" alt="${icon.name}" title="${icon.name}">
+                <img src="${icon.image}" alt="${localizedName}" title="${localizedName}">
             </div>
-            <div class="icon-name">${icon.name}</div>
+            <div class="icon-name">${localizedName}</div>
         `;
         
         // Add click handler
@@ -3416,7 +3441,8 @@ function filterIconsForSelection() {
     loadIconsForSelection().then(() => {
         // Apply filters
         filteredIconsForSelection = filteredIconsForSelection.filter(icon => {
-            const matchesSearch = icon.name.toLowerCase().includes(searchTerm);
+            const localizedName = getLocalizedIconName(icon);
+            const matchesSearch = localizedName.toLowerCase().includes(searchTerm);
             const matchesCategory = categoryFilter === 'all' || icon.category === categoryFilter;
             return matchesSearch && matchesCategory;
         });
@@ -3478,11 +3504,12 @@ function updateSelectedIconsPreview() {
     }
     
     selectedIconsData.forEach(icon => {
+        const localizedName = getLocalizedIconName(icon);
         const iconDiv = document.createElement('div');
         iconDiv.className = 'selected-icon-item';
         iconDiv.innerHTML = `
-            <img src="${icon.image || icon.data}" alt="${icon.name}" title="${icon.name}">
-            <span>${icon.name}</span>
+            <img src="${icon.image || icon.data}" alt="${localizedName}" title="${localizedName}">
+            <span>${localizedName}</span>
             <button class="remove-icon-btn" onclick="removeIconFromSelection('${icon.id}')">&times;</button>
         `;
         selectedIconsPreview.appendChild(iconDiv);
