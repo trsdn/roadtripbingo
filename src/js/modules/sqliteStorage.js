@@ -101,6 +101,7 @@ class SQLiteStorage {
         tags TEXT DEFAULT '[]',
         alt_text TEXT DEFAULT '',
         difficulty INTEGER DEFAULT 3,
+        exclude_from_multi_hit BOOLEAN DEFAULT FALSE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -108,6 +109,7 @@ class SQLiteStorage {
       CREATE INDEX IF NOT EXISTS idx_icons_name ON icons(name);
       CREATE INDEX IF NOT EXISTS idx_icons_category ON icons(category);
       CREATE INDEX IF NOT EXISTS idx_icons_difficulty ON icons(difficulty);
+      CREATE INDEX IF NOT EXISTS idx_icons_exclude_multi_hit ON icons(exclude_from_multi_hit);
       
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
@@ -176,8 +178,8 @@ class SQLiteStorage {
     }
     
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO icons (id, name, data, type, size, category, tags, alt_text, difficulty, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT OR REPLACE INTO icons (id, name, data, type, size, category, tags, alt_text, difficulty, exclude_from_multi_hit, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
     
     try {
@@ -190,7 +192,8 @@ class SQLiteStorage {
         iconData.category || 'default',
         JSON.stringify(iconData.tags || []),
         iconData.altText || iconData.name || 'Icon',
-        iconData.difficulty || 3
+        iconData.difficulty || 3,
+        iconData.excludeFromMultiHit || false
       );
       
       return { 
@@ -203,7 +206,8 @@ class SQLiteStorage {
           category: iconData.category || 'default',
           tags: iconData.tags || [],
           altText: iconData.altText || iconData.name || 'Icon',
-          difficulty: iconData.difficulty || 3
+          difficulty: iconData.difficulty || 3,
+          excludeFromMultiHit: iconData.excludeFromMultiHit || false
         } 
       };
     } catch (error) {
@@ -216,7 +220,7 @@ class SQLiteStorage {
     if (!this.isInitialized) await this.init();
     
     let query = `
-      SELECT id, name, data, type, size, category, tags, alt_text, difficulty, created_at, updated_at
+      SELECT id, name, data, type, size, category, tags, alt_text, difficulty, exclude_from_multi_hit, created_at, updated_at
       FROM icons
     `;
     
@@ -263,6 +267,7 @@ class SQLiteStorage {
           tags: JSON.parse(row.tags || '[]'),
           altText: row.alt_text || '',
           difficulty: row.difficulty || 3,
+          excludeFromMultiHit: row.exclude_from_multi_hit || false,
           createdAt: row.created_at,
           updatedAt: row.updated_at
         };
@@ -594,23 +599,55 @@ class SQLiteStorage {
   async updateIcon(iconId, iconData) {
     if (!this.isInitialized) await this.init();
     
-    const { name, category, tags, alt_text, difficulty } = iconData;
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
     
-    const stmt = this.db.prepare(`
-      UPDATE icons 
-      SET name = ?, category = ?, tags = ?, alt_text = ?, difficulty = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
+    if (iconData.category !== undefined) {
+      updates.push('category = ?');
+      values.push(iconData.category);
+    }
+    
+    if (iconData.name !== undefined) {
+      updates.push('name = ?');
+      values.push(iconData.name);
+    }
+    
+    if (iconData.difficulty !== undefined) {
+      updates.push('difficulty = ?');
+      values.push(iconData.difficulty);
+    }
+    
+    if (iconData.tags !== undefined) {
+      updates.push('tags = ?');
+      values.push(JSON.stringify(iconData.tags));
+    }
+    
+    if (iconData.alt_text !== undefined) {
+      updates.push('alt_text = ?');
+      values.push(iconData.alt_text);
+    }
+    
+    if (iconData.excludeFromMultiHit !== undefined) {
+      updates.push('exclude_from_multi_hit = ?');
+      values.push(iconData.excludeFromMultiHit ? 1 : 0);
+    }
+    
+    if (updates.length === 0) {
+      throw new Error('No fields to update');
+    }
+    
+    // Add timestamp update
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    
+    // Add iconId for WHERE clause
+    values.push(iconId);
+    
+    const sql = `UPDATE icons SET ${updates.join(', ')} WHERE id = ?`;
     
     try {
-      const result = stmt.run(
-        name || 'Untitled Icon',
-        category || 'default',
-        JSON.stringify(tags || []),
-        alt_text || '',
-        difficulty || 3,
-        iconId
-      );
+      const stmt = this.db.prepare(sql);
+      const result = stmt.run(...values);
       
       if (result.changes === 0) {
         throw new Error(`Icon with id ${iconId} not found`);
@@ -655,6 +692,7 @@ class SQLiteStorage {
         tags: JSON.parse(row.tags || '[]'),
         altText: row.alt_text || '',
         difficulty: row.difficulty || 3,
+        excludeFromMultiHit: row.exclude_from_multi_hit || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -813,6 +851,7 @@ class SQLiteStorage {
           tags: JSON.parse(row.tags || '[]'),
           altText: row.alt_text || '',
           difficulty: row.difficulty || 3,
+          excludeFromMultiHit: row.exclude_from_multi_hit || false,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           addedToSet: row.added_at
@@ -1025,6 +1064,443 @@ class SQLiteStorage {
       console.error('Error migrating existing icons:', error);
       throw new Error(`Failed to migrate existing icons: ${error.message}`);
     }
+  }
+
+  // Get icons suitable for multi-hit mode (not excluded)
+  async getMultiHitEligibleIcons() {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      SELECT id, name, data, type, size, category, tags, alt_text, difficulty, exclude_from_multi_hit, created_at, updated_at
+      FROM icons
+      WHERE exclude_from_multi_hit = FALSE
+      ORDER BY created_at ASC
+    `);
+    
+    try {
+      const rows = stmt.all();
+      return rows.map(row => {
+        let imageData = row.data;
+        
+        // Convert Buffer back to base64 data URL for frontend compatibility
+        if (Buffer.isBuffer(imageData)) {
+          imageData = `data:${row.type};base64,${imageData.toString('base64')}`;
+        }
+        
+        return {
+          id: row.id,
+          name: row.name,
+          image: imageData,
+          data: imageData,
+          type: row.type,
+          size: row.size,
+          category: row.category || 'default',
+          tags: JSON.parse(row.tags || '[]'),
+          altText: row.alt_text || '',
+          difficulty: row.difficulty || 3,
+          excludeFromMultiHit: row.exclude_from_multi_hit || false,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        };
+      });
+    } catch (error) {
+      console.error('Error loading multi-hit eligible icons:', error);
+      throw new Error(`Failed to load multi-hit eligible icons: ${error.message}`);
+    }
+  }
+
+  // Bulk update exclusion status for multiple icons
+  async bulkUpdateMultiHitExclusion(iconIds, exclude) {
+    if (!this.isInitialized) await this.init();
+    
+    const stmt = this.db.prepare(`
+      UPDATE icons 
+      SET exclude_from_multi_hit = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    try {
+      const transaction = this.db.transaction(() => {
+        for (const iconId of iconIds) {
+          stmt.run(exclude, iconId);
+        }
+      });
+      
+      transaction();
+      return { success: true, updated: iconIds.length };
+    } catch (error) {
+      console.error('Error bulk updating multi-hit exclusion:', error);
+      throw new Error(`Failed to bulk update multi-hit exclusion: ${error.message}`);
+    }
+  }
+
+  // Apply smart defaults for multi-hit exclusion based on icon characteristics
+  async applySmartMultiHitDefaults() {
+    if (!this.isInitialized) await this.init();
+    
+    // Define environmental/always-visible icons that should be excluded from multi-hit
+    const environmentalKeywords = [
+      'sky', 'sun', 'cloud', 'horizon', 'road', 'street', 'highway', 'path',
+      'grass', 'tree', 'mountain', 'hill', 'field', 'water', 'river', 'lake',
+      'weather', 'sunset', 'sunrise', 'daylight', 'darkness', 'night'
+    ];
+    
+    // Define categories that should typically be excluded
+    const environmentalCategories = ['environment', 'nature', 'weather', 'landscape'];
+    
+    try {
+      // Build conditions for environmental icons
+      const keywordConditions = environmentalKeywords.map(() => 'name LIKE ?').join(' OR ');
+      const categoryConditions = environmentalCategories.map(() => 'category = ?').join(' OR ');
+      
+      const query = `
+        UPDATE icons 
+        SET exclude_from_multi_hit = TRUE, updated_at = CURRENT_TIMESTAMP
+        WHERE (${keywordConditions}) OR (${categoryConditions})
+      `;
+      
+      const params = [
+        ...environmentalKeywords.map(keyword => `%${keyword}%`),
+        ...environmentalCategories
+      ];
+      
+      const stmt = this.db.prepare(query);
+      const result = stmt.run(...params);
+      
+      console.log(`Applied smart defaults: ${result.changes} icons excluded from multi-hit mode`);
+      
+      return { 
+        success: true, 
+        updated: result.changes,
+        message: `Smart defaults applied to ${result.changes} icons`
+      };
+    } catch (error) {
+      console.error('Error applying smart multi-hit defaults:', error);
+      throw new Error(`Failed to apply smart defaults: ${error.message}`);
+    }
+  }
+
+  // Close database connection
+  close() {
+    if (this.db) {
+      this.db.close();
+      this.isInitialized = false;
+      console.log('SQLite database connection closed');
+    }
+  }
+
+  // AI Feature Methods
+  async analyzeIconWithAI(iconId) {
+    try {
+      const icon = this.db.prepare('SELECT * FROM icons WHERE id = ?').get(iconId);
+      if (!icon) {
+        return { success: false, error: 'Icon not found' };
+      }
+
+      // Check if analysis already exists and is recent
+      const existingAnalysis = this.db.prepare(`
+        SELECT * FROM ai_analysis 
+        WHERE icon_id = ? 
+        AND datetime(analysis_date) > datetime('now', '-7 days')
+      `).get(iconId);
+
+      if (existingAnalysis) {
+        return { 
+          success: true, 
+          data: existingAnalysis,
+          cached: true 
+        };
+      }
+
+      // In real implementation, this would call the AI service
+      // For now, return a placeholder
+      return {
+        success: true,
+        data: {
+          icon_id: iconId,
+          category_suggestion: icon.category,
+          tags_suggestion: JSON.stringify(['placeholder']),
+          difficulty_suggestion: icon.difficulty || 3,
+          name_suggestion: icon.name,
+          description_suggestion: `AI analysis for ${icon.name}`,
+          confidence_score: 0.85,
+          ai_model: 'gpt-4o-mini',
+          analysis_date: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Error analyzing icon with AI:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async analyzeBatchWithAI(iconIds) {
+    try {
+      const results = [];
+      for (const iconId of iconIds) {
+        const result = await this.analyzeIconWithAI(iconId);
+        results.push(result);
+      }
+      return { success: true, data: results };
+    } catch (error) {
+      console.error('Error batch analyzing icons:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async detectDuplicatesWithAI() {
+    try {
+      const icons = this.db.prepare('SELECT id, name, category, tags FROM icons').all();
+      
+      // In real implementation, this would use AI to detect semantic duplicates
+      // For now, return empty results
+      return {
+        success: true,
+        data: {
+          groups: [],
+          total_icons_analyzed: icons.length,
+          duplicates_found: 0
+        }
+      };
+    } catch (error) {
+      console.error('Error detecting duplicates:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getAIContentSuggestions(targetSet = 'general') {
+    try {
+      const icons = this.db.prepare('SELECT * FROM icons').all();
+      const iconSummary = this.summarizeIconSet(icons);
+
+      // In real implementation, this would use AI to suggest missing content
+      return {
+        success: true,
+        data: {
+          target_set: targetSet,
+          current_summary: iconSummary,
+          suggestions: [
+            {
+              type: 'missing_category',
+              category: 'Weather',
+              reason: 'No weather-related icons found',
+              examples: ['Rain', 'Snow', 'Sun', 'Cloud']
+            }
+          ]
+        }
+      };
+    } catch (error) {
+      console.error('Error getting AI suggestions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async generateSmartSet(criteria) {
+    try {
+      // In real implementation, this would use AI to generate a themed set
+      return {
+        success: true,
+        data: {
+          name: criteria.theme || 'Custom Set',
+          description: 'AI-generated icon set',
+          icons: [],
+          theme: criteria.theme,
+          created_at: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Error generating smart set:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getAIPreferences() {
+    try {
+      const prefs = this.db.prepare('SELECT * FROM ai_preferences WHERE user_id = ?').get('default');
+      return prefs || {
+        enabled: true,
+        auto_apply_suggestions: false,
+        preferred_model: 'gpt-4o-mini',
+        duplicate_detection_sensitivity: 0.8,
+        suggestion_aggressiveness: 'moderate'
+      };
+    } catch (error) {
+      console.error('Error getting AI preferences:', error);
+      return null;
+    }
+  }
+
+  async updateAIPreferences(preferences) {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT OR REPLACE INTO ai_preferences (
+          user_id, enabled, auto_apply_suggestions, preferred_model,
+          duplicate_detection_sensitivity, suggestion_aggressiveness,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `);
+
+      stmt.run(
+        'default',
+        preferences.enabled !== false,
+        preferences.auto_apply_suggestions || false,
+        preferences.preferred_model || 'gpt-4o-mini',
+        preferences.duplicate_detection_sensitivity || 0.8,
+        preferences.suggestion_aggressiveness || 'moderate'
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating AI preferences:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async cacheAIResult(data) {
+    try {
+      const expiresAt = new Date();
+      expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in || 86400));
+
+      const stmt = this.db.prepare(`
+        INSERT OR REPLACE INTO ai_cache (
+          cache_key, request_type, request_data, response_data,
+          ai_model, created_at, expires_at
+        ) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+      `);
+
+      stmt.run(
+        data.cache_key,
+        data.request_type,
+        JSON.stringify(data.request_data || {}),
+        JSON.stringify(data.response_data),
+        data.ai_model || 'gpt-4o-mini',
+        expiresAt.toISOString()
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error caching AI result:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getAICachedResult(cacheKey) {
+    try {
+      const cached = this.db.prepare(`
+        SELECT * FROM ai_cache 
+        WHERE cache_key = ? 
+        AND datetime(expires_at) > datetime('now')
+      `).get(cacheKey);
+
+      if (cached) {
+        // Update hit count
+        this.db.prepare('UPDATE ai_cache SET hit_count = hit_count + 1 WHERE cache_key = ?').run(cacheKey);
+        
+        return {
+          success: true,
+          data: {
+            ...cached,
+            response_data: JSON.parse(cached.response_data)
+          }
+        };
+      }
+
+      return { success: false, error: 'Cache miss' };
+    } catch (error) {
+      console.error('Error getting cached result:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async trackAIUsage(data) {
+    try {
+      // Update usage counter
+      const currentDate = new Date().toISOString().split('T')[0];
+      
+      this.db.prepare(`
+        UPDATE ai_preferences 
+        SET current_month_usage = current_month_usage + 1,
+            usage_reset_date = CASE 
+              WHEN usage_reset_date IS NULL OR date(usage_reset_date) < date('now', 'start of month')
+              THEN date('now', 'start of month')
+              ELSE usage_reset_date
+            END
+        WHERE user_id = 'default'
+      `).run();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error tracking AI usage:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async checkAIUsageLimits() {
+    try {
+      const prefs = await this.getAIPreferences();
+      const currentDate = new Date();
+      const resetDate = prefs.usage_reset_date ? new Date(prefs.usage_reset_date) : null;
+      
+      // Reset usage if we're in a new month
+      if (!resetDate || resetDate.getMonth() !== currentDate.getMonth()) {
+        await this.db.prepare(`
+          UPDATE ai_preferences 
+          SET current_month_usage = 0, 
+              usage_reset_date = date('now', 'start of month')
+          WHERE user_id = 'default'
+        `).run();
+        
+        return {
+          success: true,
+          data: {
+            within_limits: true,
+            usage: 0,
+            limit: prefs.monthly_usage_limit || 1000
+          }
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          within_limits: prefs.current_month_usage < (prefs.monthly_usage_limit || 1000),
+          usage: prefs.current_month_usage || 0,
+          limit: prefs.monthly_usage_limit || 1000
+        }
+      };
+    } catch (error) {
+      console.error('Error checking usage limits:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  summarizeIconSet(icons) {
+    const summary = {
+      total_count: icons.length,
+      categories: {},
+      difficulties: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      common_tags: {}
+    };
+
+    icons.forEach(icon => {
+      summary.categories[icon.category] = (summary.categories[icon.category] || 0) + 1;
+      if (icon.difficulty) {
+        summary.difficulties[icon.difficulty]++;
+      }
+      
+      if (icon.tags) {
+        try {
+          const tags = typeof icon.tags === 'string' ? JSON.parse(icon.tags) : icon.tags;
+          tags.forEach(tag => {
+            summary.common_tags[tag] = (summary.common_tags[tag] || 0) + 1;
+          });
+        } catch (e) {
+          // Ignore JSON parse errors
+        }
+      }
+    });
+
+    return summary;
   }
 
   // Close database connection

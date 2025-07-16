@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const SQLiteStorage = require('./src/js/modules/sqliteStorage');
+const ServerAIService = require('./src/js/modules/serverAIService');
+
+// Load environment variables
+require('dotenv').config();
 
 const PORT = process.env.PORT || 8080;
 const mimeTypes = {
@@ -30,8 +34,9 @@ if (fs.existsSync('./dist')) {
 }
 console.log(`Serving files from: ${rootDir}`);
 
-// Initialize SQLite storage
+// Initialize SQLite storage and AI service
 const storage = new SQLiteStorage();
+const aiService = new ServerAIService();
 storage.init().catch(console.error);
 
 // Parse request body for POST/PUT requests
@@ -122,6 +127,13 @@ async function handleAPIRequest(req, res) {
     // Clear all icons API
     if (pathname === '/api/icons/clear' && method === 'DELETE') {
       const result = await storage.clearIcons();
+      sendJSON(res, result);
+      return true;
+    }
+
+    // Apply smart defaults for multi-hit exclusion API
+    if (pathname === '/api/icons/smart-defaults' && method === 'POST') {
+      const result = await storage.applySmartMultiHitDefaults();
       sendJSON(res, result);
       return true;
     }
@@ -328,6 +340,220 @@ async function handleAPIRequest(req, res) {
     // Migration API - migrate existing icons to default set
     if (pathname === '/api/migrate/icons' && method === 'POST') {
       const result = await storage.migrateExistingIconsToDefaultSet();
+      sendJSON(res, result);
+      return true;
+    }
+
+    // AI API endpoints
+    if (pathname === '/api/ai/status' && method === 'GET') {
+      const status = aiService.getStatus();
+      sendJSON(res, { success: true, data: status });
+      return true;
+    }
+
+    if (pathname === '/api/ai/analyze-icon' && method === 'POST') {
+      if (!aiService.isConfigured()) {
+        sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
+        return true;
+      }
+      
+      const body = await parseRequestBody(req);
+      const icon = await storage.db.prepare('SELECT * FROM icons WHERE id = ?').get(body.iconId);
+      
+      if (!icon) {
+        sendJSON(res, { success: false, error: 'Icon not found' }, 404);
+        return true;
+      }
+
+      try {
+        const analysis = await aiService.analyzeIcon(icon, body.model);
+        
+        // Store analysis in database
+        await storage.db.prepare(`
+          INSERT OR REPLACE INTO ai_analysis (
+            icon_id, category_suggestion, tags_suggestion, difficulty_suggestion,
+            name_suggestion, name_suggestion_de, description_suggestion, confidence_score,
+            ai_model, analysis_date
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          analysis.icon_id,
+          analysis.category_suggestion,
+          analysis.tags_suggestion,
+          analysis.difficulty_suggestion,
+          analysis.name_suggestion,
+          analysis.name_suggestion_de,
+          analysis.description_suggestion,
+          analysis.confidence_score,
+          analysis.ai_model,
+          analysis.analysis_date
+        );
+        
+        await storage.trackAIUsage({ operation: 'analyze_icon', model: analysis.ai_model });
+        sendJSON(res, { success: true, data: analysis });
+      } catch (error) {
+        console.error('AI analysis error:', error);
+        sendJSON(res, { success: false, error: error.message }, 500);
+      }
+      return true;
+    }
+
+    if (pathname === '/api/ai/analyze-batch' && method === 'POST') {
+      if (!aiService.isConfigured()) {
+        sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
+        return true;
+      }
+      
+      const body = await parseRequestBody(req);
+      const icons = [];
+      
+      for (const iconId of body.iconIds) {
+        const icon = await storage.db.prepare('SELECT * FROM icons WHERE id = ?').get(iconId);
+        if (icon) icons.push(icon);
+      }
+      
+      if (icons.length === 0) {
+        sendJSON(res, { success: false, error: 'No valid icons found' }, 400);
+        return true;
+      }
+
+      try {
+        const results = await aiService.analyzeBatch(icons, body.model);
+        
+        // Store successful analyses in database
+        for (const result of results) {
+          if (result.success) {
+            await storage.db.prepare(`
+              INSERT OR REPLACE INTO ai_analysis (
+                icon_id, category_suggestion, tags_suggestion, difficulty_suggestion,
+                name_suggestion, name_suggestion_de, description_suggestion, confidence_score,
+                ai_model, analysis_date
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              result.data.icon_id,
+              result.data.category_suggestion,
+              result.data.tags_suggestion,
+              result.data.difficulty_suggestion,
+              result.data.name_suggestion,
+              result.data.name_suggestion_de,
+              result.data.description_suggestion,
+              result.data.confidence_score,
+              result.data.ai_model,
+              result.data.analysis_date
+            );
+            
+            await storage.trackAIUsage({ operation: 'analyze_icon', model: result.data.ai_model });
+          }
+        }
+        
+        sendJSON(res, { success: true, data: results });
+      } catch (error) {
+        console.error('AI batch analysis error:', error);
+        sendJSON(res, { success: false, error: error.message }, 500);
+      }
+      return true;
+    }
+
+    if (pathname === '/api/ai/detect-duplicates' && method === 'POST') {
+      if (!aiService.isConfigured()) {
+        sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
+        return true;
+      }
+      
+      const body = await parseRequestBody(req);
+      const icons = await storage.db.prepare('SELECT id, name, category, tags FROM icons').all();
+      
+      if (icons.length === 0) {
+        sendJSON(res, { success: false, error: 'No icons found' }, 400);
+        return true;
+      }
+
+      try {
+        const result = await aiService.detectDuplicates(icons, body.sensitivity, body.model);
+        await storage.trackAIUsage({ operation: 'detect_duplicates', model: result.ai_model });
+        sendJSON(res, { success: true, data: result });
+      } catch (error) {
+        console.error('AI duplicate detection error:', error);
+        sendJSON(res, { success: false, error: error.message }, 500);
+      }
+      return true;
+    }
+
+    if (pathname === '/api/ai/content-suggestions' && method === 'GET') {
+      if (!aiService.isConfigured()) {
+        sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
+        return true;
+      }
+      
+      const { targetSet, model } = parsedUrl.query;
+      const icons = await storage.db.prepare('SELECT * FROM icons').all();
+
+      try {
+        const result = await aiService.suggestMissingContent(icons, targetSet, model);
+        await storage.trackAIUsage({ operation: 'suggest_content', model: result.ai_model });
+        sendJSON(res, { success: true, data: result });
+      } catch (error) {
+        console.error('AI content suggestions error:', error);
+        sendJSON(res, { success: false, error: error.message }, 500);
+      }
+      return true;
+    }
+
+    if (pathname === '/api/ai/generate-set' && method === 'POST') {
+      if (!aiService.isConfigured()) {
+        sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
+        return true;
+      }
+      
+      const body = await parseRequestBody(req);
+      
+      try {
+        const result = await aiService.generateSmartSet(body, body.model);
+        await storage.trackAIUsage({ operation: 'generate_set', model: result.ai_model });
+        sendJSON(res, { success: true, data: result });
+      } catch (error) {
+        console.error('AI set generation error:', error);
+        sendJSON(res, { success: false, error: error.message }, 500);
+      }
+      return true;
+    }
+
+    if (pathname === '/api/ai/preferences') {
+      if (method === 'GET') {
+        const preferences = await storage.getAIPreferences();
+        sendJSON(res, { success: true, data: preferences });
+        return true;
+      }
+      if (method === 'PUT') {
+        const body = await parseRequestBody(req);
+        const result = await storage.updateAIPreferences(body);
+        sendJSON(res, result);
+        return true;
+      }
+    }
+
+    if (pathname === '/api/ai/cache' && method === 'POST') {
+      const body = await parseRequestBody(req);
+      const result = await storage.cacheAIResult(body);
+      sendJSON(res, result);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/ai/cache/') && method === 'GET') {
+      const cacheKey = decodeURIComponent(pathname.split('/')[4]);
+      const result = await storage.getAICachedResult(cacheKey);
+      sendJSON(res, result);
+      return true;
+    }
+
+    if (pathname === '/api/ai/usage' && method === 'POST') {
+      const body = await parseRequestBody(req);
+      const result = await storage.trackAIUsage(body);
+      sendJSON(res, result);
+      return true;
+    }
+
+    if (pathname === '/api/ai/usage/check' && method === 'GET') {
+      const result = await storage.checkAIUsageLimits();
       sendJSON(res, result);
       return true;
     }

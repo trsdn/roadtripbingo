@@ -240,6 +240,7 @@
             </div>
             <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
             <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
+            <button id="openAIFeatures" class="btn-ai" data-translate="aiFeatures">AI Features</button>
             <span class="icon-count">
               <span data-translate="currentlyUsing">Currently using</span> 
               <span id="iconCount">0</span> 
@@ -257,8 +258,133 @@
           <div class="bulk-actions">
             <button id="bulkAddToSet" data-translate="addToSet">Add to Set</button>
             <button id="bulkRemoveFromSet" data-translate="removeFromSet">Remove from Set</button>
+            <button id="bulkExcludeFromMultiHit" data-translate="excludeFromMultiHit">Exclude from Multi-Hit</button>
+            <button id="bulkIncludeInMultiHit" data-translate="includeInMultiHit">Include in Multi-Hit</button>
+            <button id="applySmartDefaults" class="btn-secondary" data-translate="applySmartDefaults">Apply Smart Defaults</button>
             <button id="bulkDelete" class="btn-danger" data-translate="deleteSelected">Delete Selected</button>
             <button id="bulkClearSelection" data-translate="clearSelection">Clear Selection</button>
+          </div>
+        </div>
+
+        <!-- AI Features Panel -->
+        <div class="ai-features-panel" id="aiFeatures" style="display: none;">
+          <div class="ai-panel-header">
+            <h3>
+              <span data-translate="aiFeatures">AI Features</span>
+            </h3>
+            <button id="closeAIPanel" class="btn-close">&times;</button>
+          </div>
+          
+          <div class="ai-panel-content">
+            <!-- AI Analysis Section -->
+            <div class="ai-section">
+              <h4 data-translate="aiAnalysis">AI Analysis</h4>
+              <p class="ai-description" data-translate="aiAnalysisDesc">Let AI suggest categories, tags, and difficulty ratings for your icons</p>
+              <div class="ai-actions">
+                <button id="analyzeSelectedIcons" class="btn-primary" disabled>
+                  <span data-translate="analyzeSelected">Analyze Selected Icons</span>
+                  <span class="ai-cost">(~$0.01)</span>
+                </button>
+                <button id="analyzeAllIcons" class="btn-secondary">
+                  <span data-translate="analyzeAll">Analyze All Icons</span>
+                  <span class="ai-cost" id="analyzeAllCost">(~$0.10)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Duplicate Detection Section -->
+            <div class="ai-section">
+              <h4 data-translate="duplicateDetection">Duplicate Detection</h4>
+              <p class="ai-description" data-translate="duplicateDetectionDesc">Find semantically similar or duplicate icons in your library</p>
+              <div class="ai-actions">
+                <button id="detectDuplicates" class="btn-primary">
+                  <span data-translate="scanForDuplicates">Scan for Duplicates</span>
+                  <span class="ai-cost">(~$0.02)</span>
+                </button>
+                <div class="ai-settings">
+                  <label>
+                    <span data-translate="sensitivity">Sensitivity:</span>
+                    <input type="range" id="duplicateSensitivity" min="0.5" max="1" step="0.1" value="0.8">
+                    <span id="sensitivityValue">0.8</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Content Suggestions Section -->
+            <div class="ai-section">
+              <h4 data-translate="contentSuggestions">Content Suggestions</h4>
+              <p class="ai-description" data-translate="contentSuggestionsDesc">Get AI recommendations for missing icons to improve your sets</p>
+              <div class="ai-actions">
+                <button id="getContentSuggestions" class="btn-primary">
+                  <span data-translate="getSuggestions">Get Suggestions</span>
+                  <span class="ai-cost">(~$0.01)</span>
+                </button>
+                <select id="targetSetSelect" class="ai-select">
+                  <option value="general" data-translate="generalSet">General Set</option>
+                  <option value="highway" data-translate="highwaySet">Highway Set</option>
+                  <option value="urban" data-translate="urbanSet">Urban Set</option>
+                  <option value="nature" data-translate="natureSet">Nature Set</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Smart Set Generation Section -->
+            <div class="ai-section">
+              <h4 data-translate="smartSetGeneration">Smart Set Generation</h4>
+              <p class="ai-description" data-translate="smartSetDesc">Generate complete themed icon sets with AI</p>
+              <div class="ai-actions">
+                <input type="text" id="setThemeInput" placeholder="Enter theme (e.g., Winter Road Trip)" class="ai-input">
+                <button id="generateSmartSet" class="btn-primary">
+                  <span data-translate="generateSet">Generate Set</span>
+                  <span class="ai-cost">(~$0.03)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- AI Settings -->
+            <div class="ai-section ai-settings-section">
+              <h4 data-translate="aiSettings">AI Settings</h4>
+              <div class="ai-settings-grid">
+                <div class="ai-status-section">
+                  <h5 data-translate="aiStatus">AI Status</h5>
+                  <div class="ai-status-indicator">
+                    <span id="aiStatusIndicator" class="status-indicator">●</span>
+                    <span id="aiStatusText" data-translate="aiNotConfigured">Not Configured</span>
+                  </div>
+                  <p class="ai-status-description" data-translate="aiStatusDescription">
+                    AI features require an OpenAI API key to be configured by the server administrator.
+                  </p>
+                </div>
+                
+                <label class="ai-toggle">
+                  <input type="checkbox" id="aiEnabled" checked>
+                  <span data-translate="enableAI">Enable AI Features</span>
+                </label>
+                <label class="ai-toggle">
+                  <input type="checkbox" id="autoApplySuggestions">
+                  <span data-translate="autoApply">Auto-apply Suggestions</span>
+                </label>
+                <label>
+                  <span data-translate="aiModel">AI Model:</span>
+                  <select id="aiModelSelect">
+                    <option value="gpt-4o-mini" selected>GPT-4o Mini (Faster, Cheaper)</option>
+                    <option value="gpt-4o">GPT-4o (More Accurate)</option>
+                  </select>
+                </label>
+                <div class="duplicate-sensitivity-section">
+                  <label>
+                    <span data-translate="duplicateSensitivity">Duplicate Detection Sensitivity:</span>
+                    <input type="range" id="duplicateSensitivity" min="0.5" max="1" step="0.1" value="0.8">
+                    <span id="sensitivityValue">0.8</span>
+                  </label>
+                </div>
+              </div>
+              <div class="ai-usage-info">
+                <span data-translate="monthlyUsage">Monthly Usage:</span>
+                <span id="aiUsageDisplay">0 / 1000</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -298,6 +424,7 @@
                     <span data-translate="difficulty">Difficulty</span>
                     <span class="sort-indicator"></span>
                   </th>
+                  <th data-translate="multiHitExclusion">Multi-Hit Exclusion</th>
                   <th data-translate="sets">Sets</th>
                   <th data-translate="translations">Translations</th>
                   <th data-translate="actions">Actions</th>
@@ -465,6 +592,13 @@
             <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
           </select>
           <small class="help-text">Rate how difficult this icon is to spot during gameplay</small>
+        </div>
+        <div class="form-group">
+          <label for="editIconExcludeFromMultiHit" class="checkbox-label">
+            <input type="checkbox" id="editIconExcludeFromMultiHit">
+            <span data-translate="excludeFromMultiHitToggle">Exclude from Multi-Hit Mode</span>
+          </label>
+          <small class="help-text" data-translate="excludeFromMultiHitHelp">Icons excluded from multi-hit mode won't be selected for tiles that require multiple hits</small>
         </div>
       </div>
       <div class="modal-footer">

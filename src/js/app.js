@@ -7,6 +7,7 @@ import { setLanguage, getTranslatedText, initLanguageSelector } from './modules/
 import { convertBlobToBase64Icon } from './modules/imageUtils.js';
 import { generateBingoCards, calculateExpectedMultiHitCount } from './modules/cardGenerator.js';
 import { generatePDF, downloadPDFBlob } from './modules/pdfGenerator.js';
+import aiService from './modules/aiService.js';
 
 // DOM elements
 let titleInput;
@@ -56,6 +57,7 @@ let editIconCategory;
 let editIconTags;
 let editIconAltText;
 let editIconDifficulty;
+let editIconExcludeFromMultiHit;
 let editIconPreview;
 let editIconSaveBtn;
 let editIconCancelBtn;
@@ -369,6 +371,7 @@ function initializeDOMElements() {
     editIconTags = document.getElementById('editIconTags');
     editIconAltText = document.getElementById('editIconAltText');
     editIconDifficulty = document.getElementById('editIconDifficulty');
+    editIconExcludeFromMultiHit = document.getElementById('editIconExcludeFromMultiHit');
     editIconPreview = document.getElementById('editIconPreview');
     editIconSaveBtn = document.getElementById('saveIconChanges');
     editIconCancelBtn = document.getElementById('cancelEditIcon');
@@ -1615,12 +1618,14 @@ function openEditModal(iconId) {
     
     currentEditingIcon = icon;
     
+    
     // Populate modal fields
     if (editIconName) editIconName.value = icon.name || '';
     if (editIconCategory) editIconCategory.value = icon.category || 'default';
     if (editIconTags) editIconTags.value = (icon.tags || []).join(', ');
     if (editIconAltText) editIconAltText.value = icon.altText || '';
     if (editIconDifficulty) editIconDifficulty.value = icon.difficulty || 3;
+    if (editIconExcludeFromMultiHit) editIconExcludeFromMultiHit.checked = icon.excludeFromMultiHit || false;
     if (editIconPreview) {
         editIconPreview.src = icon.data || icon.image;
         editIconPreview.alt = icon.name || 'Icon preview';
@@ -1645,6 +1650,7 @@ function closeEditModal() {
     if (editIconTags) editIconTags.value = '';
     if (editIconAltText) editIconAltText.value = '';
     if (editIconDifficulty) editIconDifficulty.value = '3';
+    if (editIconExcludeFromMultiHit) editIconExcludeFromMultiHit.checked = false;
     if (editIconPreview) editIconPreview.src = '';
 }
 
@@ -1659,6 +1665,7 @@ async function saveIconChanges() {
         const newTags = editIconTags ? editIconTags.value.split(',').map(tag => tag.trim()).filter(tag => tag) : currentEditingIcon.tags;
         const newAltText = editIconAltText ? editIconAltText.value.trim() : currentEditingIcon.altText;
         const newDifficulty = editIconDifficulty ? parseInt(editIconDifficulty.value) : currentEditingIcon.difficulty;
+        const newExcludeFromMultiHit = editIconExcludeFromMultiHit ? editIconExcludeFromMultiHit.checked : currentEditingIcon.excludeFromMultiHit;
         
         // Update icon in available icons array
         const iconIndex = availableIcons.findIndex(i => i.id === currentEditingIcon.id);
@@ -1669,7 +1676,8 @@ async function saveIconChanges() {
                 category: newCategory || 'default',
                 tags: newTags || [],
                 altText: newAltText || '',
-                difficulty: newDifficulty || 3
+                difficulty: newDifficulty || 3,
+                excludeFromMultiHit: newExcludeFromMultiHit || false
             };
         }
         
@@ -1679,7 +1687,8 @@ async function saveIconChanges() {
             category: newCategory || 'default',
             tags: newTags || [],
             alt_text: newAltText || '',
-            difficulty: newDifficulty || 3
+            difficulty: newDifficulty || 3,
+            excludeFromMultiHit: newExcludeFromMultiHit || false
         });
         
         // Reload categories and apply filters
@@ -1821,6 +1830,12 @@ function renderIconTable() {
         // Convert difficulty to stars
         const difficultyStars = '⭐'.repeat(icon.difficulty || 3);
         
+        // Format multi-hit exclusion status
+        const excludeFromMultiHit = icon.excludeFromMultiHit || false;
+        const exclusionHtml = excludeFromMultiHit ? 
+            '<span class="exclusion-badge excluded">Excluded</span>' : 
+            '<span class="exclusion-badge included">Included</span>';
+        
         // Format sets
         const setsHtml = (icon.sets || []).map(set => 
             `<span class="set-tag">${set.name}</span>`
@@ -1842,6 +1857,7 @@ function renderIconTable() {
             <td class="icon-name-cell">${icon.name || 'Unnamed'}</td>
             <td class="icon-category-cell">${icon.category || 'default'}</td>
             <td class="icon-difficulty-cell">${difficultyStars}</td>
+            <td class="icon-exclusion-cell">${exclusionHtml}</td>
             <td class="icon-sets-cell">${setsHtml}</td>
             <td class="icon-translations-cell">${translationsHtml}</td>
             <td class="icon-actions-cell">
@@ -1866,6 +1882,11 @@ function toggleIconSelection(iconId) {
     }
     
     updateBulkOperationsVisibility();
+    
+    // Trigger selection change event for AI button
+    const selectionChangedEvent = new CustomEvent('selectionChanged');
+    document.dispatchEvent(selectionChangedEvent);
+    
     renderIconTable(); // Re-render to update selection visual
 }
 
@@ -1950,6 +1971,9 @@ function setupIconManagerEventListeners() {
     // Bulk operations
     const bulkAddToSetBtn = document.getElementById('bulkAddToSet');
     const bulkRemoveFromSetBtn = document.getElementById('bulkRemoveFromSet');
+    const bulkExcludeFromMultiHitBtn = document.getElementById('bulkExcludeFromMultiHit');
+    const bulkIncludeInMultiHitBtn = document.getElementById('bulkIncludeInMultiHit');
+    const applySmartDefaultsBtn = document.getElementById('applySmartDefaults');
     const bulkDeleteBtn = document.getElementById('bulkDelete');
     const bulkClearSelectionBtn = document.getElementById('bulkClearSelection');
     
@@ -1961,6 +1985,18 @@ function setupIconManagerEventListeners() {
         bulkRemoveFromSetBtn.addEventListener('click', bulkRemoveFromSet);
     }
     
+    if (bulkExcludeFromMultiHitBtn) {
+        bulkExcludeFromMultiHitBtn.addEventListener('click', bulkExcludeFromMultiHit);
+    }
+    
+    if (bulkIncludeInMultiHitBtn) {
+        bulkIncludeInMultiHitBtn.addEventListener('click', bulkIncludeInMultiHit);
+    }
+    
+    if (applySmartDefaultsBtn) {
+        applySmartDefaultsBtn.addEventListener('click', applySmartDefaults);
+    }
+    
     if (bulkDeleteBtn) {
         bulkDeleteBtn.addEventListener('click', bulkDeleteIcons);
     }
@@ -1968,6 +2004,417 @@ function setupIconManagerEventListeners() {
     if (bulkClearSelectionBtn) {
         bulkClearSelectionBtn.addEventListener('click', clearSelection);
     }
+
+    // AI Features event listeners
+    initializeAIFeatures();
+}
+
+// Initialize AI features
+function initializeAIFeatures() {
+    const openAIFeaturesBtn = document.getElementById('openAIFeatures');
+    const closeAIPanelBtn = document.getElementById('closeAIPanel');
+    const aiPanel = document.getElementById('aiFeatures');
+    const analyzeSelectedBtn = document.getElementById('analyzeSelectedIcons');
+    const analyzeAllBtn = document.getElementById('analyzeAllIcons');
+    const detectDuplicatesBtn = document.getElementById('detectDuplicates');
+    const getContentSuggestionsBtn = document.getElementById('getContentSuggestions');
+    const generateSmartSetBtn = document.getElementById('generateSmartSet');
+    const duplicateSensitivity = document.getElementById('duplicateSensitivity');
+    const sensitivityValue = document.getElementById('sensitivityValue');
+
+    // Initialize AI service
+    aiService.initialize().then(() => {
+        updateAIStatusDisplay();
+    });
+
+    // Open AI panel
+    if (openAIFeaturesBtn) {
+        openAIFeaturesBtn.addEventListener('click', () => {
+            aiPanel.style.display = 'block';
+            document.body.appendChild(createOverlay());
+            updateAIUsageDisplay();
+            updateAIStatusDisplay();
+        });
+    }
+
+    // Close AI panel
+    if (closeAIPanelBtn) {
+        closeAIPanelBtn.addEventListener('click', closeAIPanel);
+    }
+
+    // Analyze selected icons
+    if (analyzeSelectedBtn) {
+        analyzeSelectedBtn.addEventListener('click', analyzeSelectedIcons);
+    }
+
+    // Analyze all icons
+    if (analyzeAllBtn) {
+        analyzeAllBtn.addEventListener('click', analyzeAllIcons);
+    }
+
+    // Detect duplicates
+    if (detectDuplicatesBtn) {
+        detectDuplicatesBtn.addEventListener('click', detectDuplicates);
+    }
+
+    // Get content suggestions
+    if (getContentSuggestionsBtn) {
+        getContentSuggestionsBtn.addEventListener('click', getContentSuggestions);
+    }
+
+    // Generate smart set
+    if (generateSmartSetBtn) {
+        generateSmartSetBtn.addEventListener('click', generateSmartSet);
+    }
+
+    // Duplicate sensitivity slider
+    if (duplicateSensitivity && sensitivityValue) {
+        duplicateSensitivity.addEventListener('input', (e) => {
+            sensitivityValue.textContent = e.target.value;
+        });
+    }
+
+    // Update analyze selected button state based on selection
+    document.addEventListener('selectionChanged', () => {
+        if (analyzeSelectedBtn) {
+            const selectedCount = getSelectedIcons().length;
+            analyzeSelectedBtn.disabled = selectedCount === 0;
+            analyzeSelectedBtn.querySelector('.ai-cost').textContent = `(~$${(selectedCount * 0.01).toFixed(2)})`;
+        }
+    });
+}
+
+// Create overlay for modal
+function createOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'ai-overlay';
+    overlay.addEventListener('click', closeAIPanel);
+    return overlay;
+}
+
+// Close AI panel
+function closeAIPanel() {
+    const aiPanel = document.getElementById('aiFeatures');
+    const overlay = document.querySelector('.ai-overlay');
+    
+    if (aiPanel) aiPanel.style.display = 'none';
+    if (overlay) overlay.remove();
+}
+
+// Analyze selected icons
+async function analyzeSelectedIcons() {
+    console.log('analyzeSelectedIcons called');
+    const selectedIcons = getSelectedIcons();
+    console.log('Selected icons:', selectedIcons);
+    
+    if (selectedIcons.length === 0) {
+        window.notifications.show('Please select icons to analyze', 'warning');
+        return;
+    }
+
+    try {
+        window.notifications.show('Analyzing icons with AI...', 'info');
+        const iconIds = selectedIcons.map(icon => icon.id);
+        console.log('Icon IDs to analyze:', iconIds);
+        
+        const response = await fetch('/api/ai/analyze-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ iconIds })
+        });
+
+        console.log('API response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API error response:', errorText);
+            throw new Error('Failed to analyze icons');
+        }
+
+        const result = await response.json();
+        console.log('Analysis result:', result);
+        showAIAnalysisResults(result.data);
+        window.notifications.show('AI analysis complete', 'success');
+    } catch (error) {
+        console.error('Error analyzing icons:', error);
+        window.notifications.show('Failed to analyze icons: ' + error.message, 'error');
+    }
+}
+
+// Analyze all icons
+async function analyzeAllIcons() {
+    try {
+        const icons = await storage.loadIcons();
+        if (icons.length === 0) {
+            window.notifications.show('No icons to analyze', 'warning');
+            return;
+        }
+
+        window.notifications.show('Analyzing all icons with AI...', 'info');
+        const iconIds = icons.map(icon => icon.id);
+        const response = await fetch('/api/ai/analyze-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ iconIds })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to analyze icons');
+        }
+
+        const result = await response.json();
+        showAIAnalysisResults(result.data);
+        window.notifications.show('AI analysis complete', 'success');
+    } catch (error) {
+        console.error('Error analyzing icons:', error);
+        window.notifications.show('Failed to analyze icons: ' + error.message, 'error');
+    }
+}
+
+// Detect duplicates
+async function detectDuplicates() {
+    try {
+        window.notifications.show('Detecting duplicates with AI...', 'info');
+        const response = await fetch('/api/ai/detect-duplicates', {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to detect duplicates');
+        }
+
+        const result = await response.json();
+        showDuplicateResults(result.data);
+        window.notifications.show('Duplicate detection complete', 'success');
+    } catch (error) {
+        console.error('Error detecting duplicates:', error);
+        window.notifications.show('Failed to detect duplicates: ' + error.message, 'error');
+    }
+}
+
+// Get content suggestions
+async function getContentSuggestions() {
+    try {
+        const targetSet = document.getElementById('targetSetSelect').value;
+        window.notifications.show('Getting AI content suggestions...', 'info');
+        
+        const response = await fetch(`/api/ai/content-suggestions?targetSet=${targetSet}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to get content suggestions');
+        }
+
+        const result = await response.json();
+        showContentSuggestions(result.data);
+        window.notifications.show('Content suggestions ready', 'success');
+    } catch (error) {
+        console.error('Error getting content suggestions:', error);
+        window.notifications.show('Failed to get suggestions: ' + error.message, 'error');
+    }
+}
+
+// Generate smart set
+async function generateSmartSet() {
+    try {
+        const theme = document.getElementById('setThemeInput').value.trim();
+        if (!theme) {
+            window.notifications.show('Please enter a theme for the set', 'warning');
+            return;
+        }
+
+        window.notifications.show('Generating smart set with AI...', 'info');
+        const response = await fetch('/api/ai/generate-set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to generate smart set');
+        }
+
+        const result = await response.json();
+        showSmartSetResults(result.data);
+        window.notifications.show('Smart set generated', 'success');
+    } catch (error) {
+        console.error('Error generating smart set:', error);
+        window.notifications.show('Failed to generate set: ' + error.message, 'error');
+    }
+}
+
+// Update AI status display
+async function updateAIStatusDisplay() {
+    const statusIndicator = document.getElementById('aiStatusIndicator');
+    const statusText = document.getElementById('aiStatusText');
+    
+    if (!statusIndicator || !statusText) return;
+    
+    const status = aiService.getStatus();
+    
+    if (status && status.configured) {
+        statusIndicator.className = 'status-indicator configured';
+        statusText.textContent = 'Configured';
+        statusText.style.color = '#28a745';
+    } else {
+        statusIndicator.className = 'status-indicator not-configured';
+        statusText.textContent = 'Not Configured';
+        statusText.style.color = '#dc3545';
+    }
+}
+
+// Show AI analysis results
+function showAIAnalysisResults(results) {
+    console.log('Showing AI results:', results);
+    
+    if (!results || results.length === 0) {
+        window.notifications.show('No analysis results to display', 'info');
+        return;
+    }
+    
+    // Create and show results modal
+    const modal = document.createElement('div');
+    modal.className = 'ai-results-modal';
+    
+    const resultsHTML = results.map(result => {
+        // Handle different result structures
+        const data = result.success ? result.data : result;
+        const iconId = data.icon_id;
+        const category = data.category_suggestion;
+        const difficulty = data.difficulty_suggestion;
+        const name = data.name_suggestion;
+        const tags = data.tags_suggestion;
+        const confidence = Math.round((data.confidence_score || 0) * 100);
+        
+        return `
+            <div class="ai-result-item">
+                <h5>Analysis for Icon ID: ${iconId}</h5>
+                <div class="ai-suggestion">
+                    <span><strong>Category:</strong> ${category}</span>
+                    <div class="ai-suggestion-actions">
+                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'category', '${category}')">Accept</button>
+                        <button class="ai-reject">Reject</button>
+                    </div>
+                </div>
+                <div class="ai-suggestion">
+                    <span><strong>Name:</strong> ${name}</span>
+                    <div class="ai-suggestion-actions">
+                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'name', '${name}')">Accept</button>
+                        <button class="ai-reject">Reject</button>
+                    </div>
+                </div>
+                <div class="ai-suggestion">
+                    <span><strong>Difficulty:</strong> ${difficulty}/5</span>
+                    <div class="ai-suggestion-actions">
+                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'difficulty', ${difficulty})">Accept</button>
+                        <button class="ai-reject">Reject</button>
+                    </div>
+                </div>
+                <div class="ai-suggestion">
+                    <span><strong>Tags:</strong> ${tags}</span>
+                    <div class="ai-suggestion-actions">
+                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', '${tags}')">Accept</button>
+                        <button class="ai-reject">Reject</button>
+                    </div>
+                </div>
+                <div class="ai-confidence">
+                    <small>Confidence: ${confidence}%</small>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    modal.innerHTML = `
+        <div class="modal-header">
+            <h3>AI Analysis Results</h3>
+            <button class="btn-close" onclick="this.parentElement.parentElement.remove(); document.querySelector('.ai-overlay').remove();">&times;</button>
+        </div>
+        <div class="modal-content">
+            ${resultsHTML}
+            <div style="margin-top: 20px; text-align: center;">
+                <button onclick="this.parentElement.parentElement.parentElement.remove(); document.querySelector('.ai-overlay').remove();" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.appendChild(createOverlay());
+}
+
+// Show duplicate results
+function showDuplicateResults(results) {
+    console.log('Duplicate results:', results);
+    window.notifications.show(`Found ${results.duplicates_found} potential duplicates`, 'info');
+}
+
+// Show content suggestions
+function showContentSuggestions(suggestions) {
+    console.log('Content suggestions:', suggestions);
+    window.notifications.show('Content suggestions available in console', 'info');
+}
+
+// Show smart set results
+function showSmartSetResults(setData) {
+    console.log('Smart set data:', setData);
+    window.notifications.show(`Generated set: ${setData.name}`, 'info');
+}
+
+// Accept AI suggestion
+window.acceptSuggestion = async function(iconId, field, value) {
+    try {
+        console.log('Accepting suggestion:', { iconId, field, value });
+        
+        const updateData = {};
+        updateData[field] = value;
+        
+        console.log('Update data:', updateData);
+        
+        const response = await fetch(`/api/icons/${iconId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
+
+        console.log('Update response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Update error response:', errorText);
+            throw new Error(`Failed to update icon: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Update result:', result);
+        
+        window.notifications.show('Suggestion applied', 'success');
+        await loadIconsForTable(); // Refresh the icon list
+    } catch (error) {
+        console.error('Error accepting suggestion:', error);
+        window.notifications.show('Failed to apply suggestion: ' + error.message, 'error');
+    }
+};
+
+// Update AI usage display
+async function updateAIUsageDisplay() {
+    try {
+        const response = await fetch('/api/ai/usage/check');
+        if (response.ok) {
+            const usage = await response.json();
+            const display = document.getElementById('aiUsageDisplay');
+            if (display) {
+                display.textContent = `${usage.data.usage} / ${usage.data.limit}`;
+                display.style.color = usage.data.within_limits ? '#333' : '#dc3545';
+            }
+        }
+    } catch (error) {
+        console.error('Error updating usage display:', error);
+    }
+}
+
+// Helper function to get selected icons
+function getSelectedIcons() {
+    const selectedIds = Array.from(selectedIcons).map(id => ({ id }));
+    console.log('Selected icon IDs from Set:', selectedIds);
+    return selectedIds;
 }
 
 // Handle table sorting
@@ -2647,6 +3094,100 @@ function openBulkAddToSetModal() {
 function bulkRemoveFromSet() {
     console.log('Bulk removing from set...');
     // TODO: Implement bulk remove from set
+}
+
+async function bulkExcludeFromMultiHit() {
+    if (selectedIcons.size === 0) return;
+    
+    const count = selectedIcons.size;
+    notificationSystem.show(`Excluding ${count} icon${count > 1 ? 's' : ''} from multi-hit mode...`, 'info');
+    
+    try {
+        const iconIds = Array.from(selectedIcons);
+        const promises = iconIds.map(iconId => 
+            fetch(`/api/icons/${iconId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    excludeFromMultiHit: true
+                })
+            })
+            .then(response => response.json())
+        );
+        
+        await Promise.all(promises);
+        notificationSystem.show(`${count} icon${count > 1 ? 's' : ''} excluded from multi-hit mode successfully!`, 'success');
+        
+        // Refresh the icon list
+        await loadIcons();
+        clearSelection();
+    } catch (error) {
+        console.error('Error excluding icons from multi-hit:', error);
+        notificationSystem.show('Failed to exclude icons from multi-hit mode', 'error');
+    }
+}
+
+async function bulkIncludeInMultiHit() {
+    if (selectedIcons.size === 0) return;
+    
+    const count = selectedIcons.size;
+    notificationSystem.show(`Including ${count} icon${count > 1 ? 's' : ''} in multi-hit mode...`, 'info');
+    
+    try {
+        const iconIds = Array.from(selectedIcons);
+        const promises = iconIds.map(iconId => 
+            fetch(`/api/icons/${iconId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    excludeFromMultiHit: false
+                })
+            })
+            .then(response => response.json())
+        );
+        
+        await Promise.all(promises);
+        notificationSystem.show(`${count} icon${count > 1 ? 's' : ''} included in multi-hit mode successfully!`, 'success');
+        
+        // Refresh the icon list
+        await loadIcons();
+        clearSelection();
+    } catch (error) {
+        console.error('Error including icons in multi-hit:', error);
+        notificationSystem.show('Failed to include icons in multi-hit mode', 'error');
+    }
+}
+
+async function applySmartDefaults() {
+    notificationSystem.show('Applying smart defaults for multi-hit exclusion...', 'info');
+    
+    try {
+        const response = await fetch('/api/icons/smart-defaults', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            notificationSystem.show(`Smart defaults applied successfully! ${result.updated} icons updated.`, 'success');
+            
+            // Refresh the icon list
+            await loadIcons();
+            clearSelection();
+        } else {
+            notificationSystem.show('Failed to apply smart defaults', 'error');
+        }
+    } catch (error) {
+        console.error('Error applying smart defaults:', error);
+        notificationSystem.show('Failed to apply smart defaults', 'error');
+    }
 }
 
 async function bulkDeleteIcons() {

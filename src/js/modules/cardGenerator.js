@@ -149,14 +149,16 @@ function applyMultiHitMode(grid, gridSize, difficulty) {
     const totalCells = gridSize * gridSize;
     
     // Get all non-free space positions with their icon difficulty
+    // Exclude icons that are marked as excluded from multi-hit mode
     const availablePositions = [];
     for (let row = 0; row < gridSize; row++) {
         for (let col = 0; col < gridSize; col++) {
-            if (!grid[row][col].isFreeSpace) {
+            const cell = grid[row][col];
+            if (!cell.isFreeSpace && !cell.excludeFromMultiHit) {
                 availablePositions.push({ 
                     row, 
                     col, 
-                    iconDifficulty: grid[row][col].difficulty || 3 
+                    iconDifficulty: cell.difficulty || 3 
                 });
             }
         }
