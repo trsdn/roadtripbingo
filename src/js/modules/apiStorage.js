@@ -122,6 +122,8 @@ class APIStorage {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (category) params.append('category', category);
+      // Add cache-busting parameter to ensure fresh data
+      params.append('_t', Date.now().toString());
       
       const endpoint = `/api/icons${params.toString() ? '?' + params.toString() : ''}`;
       console.log('API Storage: Loading icons from:', `${this.baseURL}${endpoint}`);

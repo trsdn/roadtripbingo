@@ -897,24 +897,48 @@ async function uploadIcons(files = null) {
                 }
             }
             
-            // Reload all icons from storage to get the latest data
-            await loadIcons();
+            // Show success notification first
+            window.notifications.success(`Successfully uploaded ${newIcons.length} icon${newIcons.length > 1 ? 's' : ''}. Refreshing...`);
             
             // Reset the file input if it was used
             if (!files && iconUploadInput) {
                 iconUploadInput.value = '';
             }
             
-            // Update categories and apply filters
-            await loadCategories();
-            filterIcons();
+            // Force a complete refresh of the icon data
+            // Clear the current icons to force a fresh load
+            availableIcons = [];
+            filteredIcons = [];
             
-            // Update UI
+            // Small delay to ensure database write is complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Reload all icons from storage to get the latest data
+            await loadIcons();
+            
+            // Update categories
+            await loadCategories();
+            
+            // Force UI refresh by clearing and rebuilding gallery
+            const iconGallery = document.getElementById('iconGallery');
+            if (iconGallery) {
+                iconGallery.innerHTML = ''; // Clear existing icons
+            }
+            
+            // Apply filters and update UI
+            filterIcons();
             updateIconGallery();
             updateRequiredIconCount();
+            updateSelectedIconsPreview();
             
-            // Show success notification
-            window.notifications.success(`Successfully uploaded ${newIcons.length} icon${newIcons.length > 1 ? 's' : ''}`);
+            // If still no icons showing, try one more time with a longer delay
+            if (filteredIcons.length === 0 && availableIcons.length === 0) {
+                console.warn('No icons loaded after upload, trying again...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await loadIcons();
+                filterIcons();
+                updateIconGallery();
+            }
         }
     } catch (error) {
         console.error('Error uploading icons:', error);
