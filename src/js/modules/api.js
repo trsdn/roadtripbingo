@@ -127,7 +127,7 @@ class API {
     async addIconTranslation(iconId, language, translation) {
         return this.request(`/api/icons/${iconId}/translations`, {
             method: 'POST',
-            body: JSON.stringify({ language, translation })
+            body: JSON.stringify({ languageCode: language, translatedName: translation })
         });
     }
 

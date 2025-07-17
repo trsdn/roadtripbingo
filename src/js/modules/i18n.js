@@ -1,6 +1,9 @@
 // Road Trip Bingo - Internationalization
 // Provides language translations and utilities
 
+// Current language state
+let currentLanguage = 'en';
+
 // Define all supported languages and their translations
 const languages = {
     en: {
@@ -227,8 +230,6 @@ const languages = {
         enableAI: "KI-Funktionen aktivieren",
         autoApply: "Vorschläge automatisch anwenden",
         aiModel: "KI-Modell:",
-        duplicateSensitivity: "Duplikaterkennung Empfindlichkeit:",
-        monthlyUsage: "Monatlicher Verbrauch:",
         // Additional AI-related translations for icon name translations
         suggestedName: "Vorgeschlagener Name:",
         suggestedCategory: "Vorgeschlagene Kategorie:",
@@ -254,6 +255,8 @@ function setLanguage(lang) {
         return;
     }
     
+    currentLanguage = lang;
+    
     const elements = document.querySelectorAll('[data-translate]');
     console.log(`🔄 Found ${elements.length} elements to translate`);
     
@@ -271,13 +274,24 @@ function setLanguage(lang) {
 }
 
 /**
+ * Get the current language
+ * @returns {string} - The current language code
+ */
+function getCurrentLanguage() {
+    return currentLanguage;
+}
+
+/**
  * Get translated text with optional replacements
  * @param {string} key - The translation key
  * @param {Object} replacements - Key-value pairs for replacements
- * @param {string} language - The language code (defaults to 'en')
+ * @param {string} language - The language code (defaults to current language)
  * @returns {string} - The translated text with replacements
  */
-function getTranslatedText(key, replacements = {}, language = 'en') {
+function getTranslatedText(key, replacements = {}, language = null) {
+    if (!language) {
+        language = currentLanguage;
+    }
     if (!languages[language]) {
         console.warn(`Language '${language}' not found, falling back to English`);
         language = 'en';
@@ -332,5 +346,6 @@ export {
     languages,
     setLanguage,
     getTranslatedText,
+    getCurrentLanguage,
     initLanguageSelector
 }; 

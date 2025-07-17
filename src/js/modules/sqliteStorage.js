@@ -143,8 +143,8 @@ class SQLiteStorage {
   async saveIcon(iconData) {
     if (!this.isInitialized) await this.init();
     
-    // Generate ID if not provided
-    const iconId = iconData.id || Date.now().toString();
+    // Generate ID if not provided - ensure it's never undefined
+    const iconId = iconData.id || `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     
     let blobData;
     let mimeType;
@@ -154,14 +154,36 @@ class SQLiteStorage {
     if (iconData.image) {
       // Base64 data URL format (from frontend)
       const base64Data = iconData.image;
-      if (base64Data.startsWith('data:')) {
-        // Extract MIME type and base64 data
-        const [mimePrefix, base64String] = base64Data.split(',');
-        mimeType = mimePrefix.match(/data:(.*?);/)[1];
-        blobData = Buffer.from(base64String, 'base64');
-        dataSize = blobData.length;
+      console.log('Input image data type:', typeof base64Data);
+      console.log('Input image data starts with data:', base64Data?.startsWith('data:'));
+      
+      if (base64Data && base64Data.startsWith('data:')) {
+        try {
+          // Extract MIME type and base64 data
+          const parts = base64Data.split(',');
+          if (parts.length !== 2) {
+            throw new Error('Invalid data URL format');
+          }
+          const [mimePrefix, base64String] = parts;
+          const mimeMatch = mimePrefix.match(/data:(.*?);/);
+          if (!mimeMatch) {
+            throw new Error('Invalid MIME type in data URL');
+          }
+          mimeType = mimeMatch[1];
+          // Convert base64 to Buffer (like Python bytes) immediately
+          blobData = Buffer.from(base64String, 'base64');
+          dataSize = blobData.length;
+          
+          console.log('Extracted data:', {
+            mimeType: mimeType,
+            base64Length: base64String.length
+          });
+        } catch (error) {
+          console.error('Error parsing base64 data:', error);
+          throw new Error(`Invalid image data format: ${error.message}`);
+        }
       } else {
-        throw new Error('Invalid image data format');
+        throw new Error('Invalid image data format - must be data URL');
       }
     } else if (iconData.blob) {
       // Blob format (from IndexedDB migration)
@@ -177,23 +199,45 @@ class SQLiteStorage {
       throw new Error('No image data provided');
     }
     
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO icons (id, name, data, type, size, category, tags, alt_text, difficulty, exclude_from_multi_hit, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `);
+    // Include ALL required fields based on schema (id, name, data, type are NOT NULL)
+    const insertSQL = `INSERT INTO icons (id, name, data, type, category, tags, alt_text, difficulty, exclude_from_multi_hit, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     
     try {
+      // Debug each parameter
+      console.log('iconId:', typeof iconId, iconId);
+      console.log('name:', typeof (iconData.name || 'Untitled Icon'), iconData.name || 'Untitled Icon');
+      console.log('blobData:', typeof blobData, blobData ? `${blobData.length} bytes` : 'null/undefined');
+      console.log('mimeType:', typeof mimeType, mimeType);
+      console.log('dataSize:', typeof dataSize, dataSize);
+      
+      // Use the data directly (already converted to Buffer above)
+      const safeIconId = iconId;
+      const safeName = iconData.name || 'Untitled Icon';
+      const safeData = blobData; // Already a Buffer from above
+      const safeType = mimeType || 'image/png'; 
+      const safeSize = dataSize;
+      
+      console.log('Saving icon with all required fields:', {
+        id: typeof safeIconId,
+        name: typeof safeName,
+        data: Buffer.isBuffer(safeData),
+        type: typeof safeType,
+        size: typeof safeSize
+      });
+      
+      const stmt = this.db.prepare(insertSQL);
+      
       const result = stmt.run(
-        iconId,
-        iconData.name || 'Untitled Icon',
-        blobData,
-        mimeType,
-        dataSize,
+        safeIconId,
+        safeName,
+        safeData,
+        safeType,
         iconData.category || 'default',
         JSON.stringify(iconData.tags || []),
         iconData.altText || iconData.name || 'Icon',
         iconData.difficulty || 3,
-        iconData.excludeFromMultiHit || false
+        iconData.excludeFromMultiHit ? 1 : 0,
+        safeSize || 0
       );
       
       return { 
@@ -211,7 +255,15 @@ class SQLiteStorage {
         } 
       };
     } catch (error) {
-      console.error('Error saving icon:', error);
+      console.error('Error saving icon to database:', error);
+      console.error('Icon data that caused error:', {
+        id: iconId,
+        name: iconData.name,
+        hasImage: !!iconData.image,
+        imageLength: iconData.image ? iconData.image.length : 0,
+        mimeType,
+        dataSize
+      });
       throw new Error(`Failed to save icon: ${error.message}`);
     }
   }
@@ -947,13 +999,19 @@ class SQLiteStorage {
   async saveIconTranslation(iconId, languageCode, translatedName) {
     if (!this.isInitialized) await this.init();
     
+    // Validate inputs to prevent null/empty values
+    if (!iconId || !languageCode || !translatedName || 
+        languageCode.trim() === '' || translatedName.trim() === '') {
+      return { success: false, error: 'Icon ID, language code, and translated name are required' };
+    }
+    
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO icon_translations (icon_id, language_code, translated_name)
       VALUES (?, ?, ?)
     `);
     
     try {
-      stmt.run(iconId, languageCode, translatedName);
+      stmt.run(iconId, languageCode.trim(), translatedName.trim());
       return { success: true };
     } catch (error) {
       console.error('Error saving icon translation:', error);
@@ -988,13 +1046,18 @@ class SQLiteStorage {
   async deleteIconTranslation(iconId, languageCode) {
     if (!this.isInitialized) await this.init();
     
+    // Validate inputs to prevent accidental deletion
+    if (!iconId || !languageCode || languageCode.trim() === '') {
+      return { success: false, error: 'Icon ID and language code are required' };
+    }
+    
     const stmt = this.db.prepare(`
       DELETE FROM icon_translations
       WHERE icon_id = ? AND language_code = ?
     `);
     
     try {
-      const result = stmt.run(iconId, languageCode);
+      const result = stmt.run(iconId, languageCode.trim());
       return { success: true, deleted: result.changes > 0 };
     } catch (error) {
       console.error('Error deleting icon translation:', error);

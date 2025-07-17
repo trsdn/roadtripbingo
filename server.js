@@ -306,6 +306,13 @@ async function handleAPIRequest(req, res) {
         // Save translation for an icon
         const body = await parseRequestBody(req);
         const { languageCode, translatedName } = body;
+        
+        // Server-side validation
+        if (!languageCode || !translatedName || languageCode.trim() === '' || translatedName.trim() === '') {
+          sendJSON(res, { success: false, error: 'Language code and translated name are required' }, 400);
+          return true;
+        }
+        
         const result = await storage.saveIconTranslation(iconId, languageCode, translatedName);
         sendJSON(res, result);
         return true;
@@ -319,6 +326,12 @@ async function handleAPIRequest(req, res) {
       const languageCode = pathParts[5];
       
       if (method === 'DELETE') {
+        // Server-side validation for deletion
+        if (!languageCode || languageCode.trim() === '') {
+          sendJSON(res, { success: false, error: 'Language code is required for deletion' }, 400);
+          return true;
+        }
+        
         const result = await storage.deleteIconTranslation(iconId, languageCode);
         sendJSON(res, result);
         return true;

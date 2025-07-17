@@ -57,12 +57,31 @@ class ServerAIService {
       const data = await response.json();
       const analysis = JSON.parse(data.choices[0].message.content);
       
+      // Get German translation separately using 4o-mini for better reliability
+      let germanName = null;
+      try {
+        console.log('Attempting German translation for:', analysis.name_suggestion);
+        germanName = await this.translateToGerman(analysis.name_suggestion);
+        console.log('German translation result:', germanName);
+        
+        // Ensure we have a valid translation
+        if (!germanName || germanName.trim() === '') {
+          console.warn('Empty German translation, using fallback');
+          germanName = analysis.name_suggestion; // Fallback to English
+        }
+      } catch (translationError) {
+        console.error('German translation failed:', translationError.message);
+        console.error('Translation error details:', translationError);
+        germanName = analysis.name_suggestion; // Fallback to English
+      }
+
       return {
         icon_id: icon.id,
         category_suggestion: analysis.category_suggestion,
         tags_suggestion: JSON.stringify(analysis.tags_suggestion || []),
         difficulty_suggestion: analysis.difficulty_suggestion,
         name_suggestion: analysis.name_suggestion,
+        name_suggestion_de: germanName,
         description_suggestion: analysis.description_suggestion,
         reasoning: analysis.reasoning,
         confidence_score: this.calculateConfidence(analysis),
@@ -341,13 +360,13 @@ Current Category: ${icon.category || 'None'}
 Current Difficulty: ${icon.difficulty || 'Not set'}
 Current Tags: ${icon.tags || 'None'}
 
-Please provide the following in JSON format. ALL fields are required:
+Please provide the following in JSON format. ALL fields are MANDATORY and REQUIRED:
 {
   "category_suggestion": "Most appropriate category (Transport, Animals, Buildings, Nature, People, Signs, Food, Objects, Weather, Technology)",
   "tags_suggestion": ["array", "of", "relevant", "tags", "max 8"],
   "difficulty_suggestion": 1-5 (1=very easy to spot, 5=very hard to spot),
   "name_suggestion": "Clear, concise name for the icon",
-  "name_suggestion_de": "REQUIRED: German translation of the name (e.g. 'Airplane' -> 'Flugzeug')",
+  "name_suggestion_de": "MANDATORY: German translation of the name. Examples: 'Airplane'→'Flugzeug', 'Car'→'Auto', 'Tree'→'Baum', 'House'→'Haus'",
   "description_suggestion": "Brief description of what to look for (max 100 chars)",
   "reasoning": "Brief explanation of your suggestions"
 }
@@ -357,9 +376,15 @@ Consider:
 - How easy it is to spot while moving
 - Size and visibility from a car
 
-For the German translation, provide a natural German term that would be appropriate for a road trip bingo game played in Germany.
-- Regional variations
-- Typical road trip scenarios`;
+IMPORTANT: You MUST provide a German translation in the "name_suggestion_de" field. Do not leave it empty or null.
+
+Examples of good German translations:
+- "Car" → "Auto"
+- "Truck" → "Lastwagen" 
+- "Bridge" → "Brücke"
+- "Gas Station" → "Tankstelle"
+- "Traffic Light" → "Ampel"
+- "Airplane" → "Flugzeug"`;
   }
 
   summarizeIconSet(icons) {
@@ -405,6 +430,74 @@ For the German translation, provide a natural German term that would be appropri
     }
     
     return Math.min(confidence, 1.0);
+  }
+
+  async translateToGerman(englishText) {
+    if (!this.isConfigured()) {
+      console.error('OpenAI API key not configured for translation');
+      return null;
+    }
+
+    // Simple fallback translations for common terms
+    const simpleTranslations = {
+      'car': 'Auto',
+      'truck': 'Lastwagen',
+      'airplane': 'Flugzeug',
+      'bridge': 'Brücke',
+      'gas station': 'Tankstelle',
+      'traffic light': 'Ampel',
+      'tree': 'Baum',
+      'house': 'Haus',
+      'recreational vehicle': 'Wohnmobil',
+      'rv': 'Wohnmobil',
+      'motorhome': 'Wohnmobil'
+    };
+
+    const lowerText = englishText.toLowerCase();
+    if (simpleTranslations[lowerText]) {
+      console.log('Using simple translation for:', englishText, '->', simpleTranslations[lowerText]);
+      return simpleTranslations[lowerText];
+    }
+
+    try {
+      console.log('Calling OpenAI API for translation of:', englishText);
+      const response = await fetch(this.baseURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a German translator. Translate the given English text to German. Respond with only the German translation, no explanation or quotes.'
+            },
+            {
+              role: 'user',
+              content: `Translate this to German: "${englishText}"`
+            }
+          ],
+          max_tokens: 50,
+          temperature: 0.1
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`Translation API error: ${response.status} ${response.statusText}`, errorData);
+        return null;
+      }
+
+      const data = await response.json();
+      const translation = data.choices[0].message.content.trim();
+      console.log('OpenAI translation result:', englishText, '->', translation);
+      return translation;
+    } catch (error) {
+      console.error('German translation failed:', error.message);
+      return null;
+    }
   }
 
   getStatus() {

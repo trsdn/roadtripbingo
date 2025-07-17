@@ -704,9 +704,14 @@ async function loadIcons() {
         
         // Load translations for each icon
         for (const icon of availableIcons) {
-            const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
-            const translationsResult = await translationsResponse.json();
-            icon.translations = translationsResult.success ? translationsResult.data : {};
+            try {
+                const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
+                const translationsResult = await translationsResponse.json();
+                icon.translations = translationsResult.success ? translationsResult.data : {};
+            } catch (error) {
+                console.warn(`Failed to load translations for icon ${icon.id}:`, error);
+                icon.translations = {};
+            }
         }
         
         // Apply current filters
@@ -1856,10 +1861,11 @@ function renderIconTable() {
             `<span class="set-tag">${set.name}</span>`
         ).join('');
         
-        // Format translations
-        const translationsHtml = Object.keys(icon.translations || {}).map(lang => 
-            `<span class="translation-badge">${lang}</span>`
-        ).join('');
+        // Format translations (filter out null/empty keys)
+        const translationsHtml = Object.keys(icon.translations || {})
+            .filter(lang => lang && lang.trim() !== '')
+            .map(lang => `<span class="translation-badge">${lang}</span>`)
+            .join('');
         
         row.innerHTML = `
             <td class="select-column">
@@ -2986,18 +2992,20 @@ async function loadTranslationsForIcon(iconId, translationsList) {
                 return;
             }
             
-            Object.entries(translations).forEach(([language, text]) => {
-                const translationItem = document.createElement('div');
-                translationItem.className = 'translation-item';
-                translationItem.innerHTML = `
-                    <div class="translation-info">
-                        <div class="translation-lang">${language.toUpperCase()}</div>
-                        <div class="translation-text">${text}</div>
-                    </div>
-                    <button class="btn-danger" onclick="deleteTranslation('${iconId}', '${language}')">Delete</button>
-                `;
-                translationsList.appendChild(translationItem);
-            });
+            Object.entries(translations)
+                .filter(([language, text]) => language && language.trim() !== '' && text && text.trim() !== '')
+                .forEach(([language, text]) => {
+                    const translationItem = document.createElement('div');
+                    translationItem.className = 'translation-item';
+                    translationItem.innerHTML = `
+                        <div class="translation-info">
+                            <div class="translation-lang">${language.toUpperCase()}</div>
+                            <div class="translation-text">${text}</div>
+                        </div>
+                        <button class="btn-danger" onclick="deleteTranslation('${iconId}', '${language}')">Delete</button>
+                    `;
+                    translationsList.appendChild(translationItem);
+                });
         }
     } catch (error) {
         console.error('Error loading translations:', error);
