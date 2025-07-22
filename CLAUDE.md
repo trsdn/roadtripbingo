@@ -477,10 +477,39 @@ import { getTranslatedText } from './modules/i18n.js';
 const text = getTranslatedText('key');
 ```
 
+### Browser Debugging
+- **Use Playwright MCP for direct browser access and console debugging**
+- When debugging UI issues, checking browser console logs, or needing real browser interaction
+- Playwright MCP provides direct access to browser developer tools and console output
+- Standard Playwright tests are for automated testing; MCP is for interactive debugging
+
 ## Development Workflow
 
 1. Work on feature branches (never commit directly to `main`)
-2. Place temporary files in `temp/` directory
+2. **STRICTLY PROHIBITED: Creating temporary files in root directory**
+   - All temporary files MUST go in `temp/` directory
+   - Test scripts MUST go in `tests/` or `temp/` directory
+   - Debug files, experimental code → `temp/` directory only
+   - Root directory must remain clean per project structure charter
 3. Run tests before committing
 4. Use the built-in server for development: `npm start`
 5. Clean up temporary files and dead code before merging
+
+### File Organization Rules
+- **NEVER create temporary files in root directory**
+- Use `temp/` for: debug files, temporary test scripts, experimental code, quick prototypes
+- Use `tests/` for: permanent test files that should be committed to repository
+- Root directory is for: package.json, config files, documentation only
+
+### When to Use Playwright MCP
+Use Playwright MCP when you need direct browser access:
+- Debugging UI rendering issues
+- Checking browser console logs and errors
+- Testing real browser behavior (drag & drop, file uploads)
+- Inspecting DOM state and CSS styling
+- Interactive debugging sessions
+
+Example use cases:
+- "Check if the icon upload is working in the browser"
+- "Debug why the PDF generation modal isn't appearing"
+- "Inspect console errors when loading icons"
