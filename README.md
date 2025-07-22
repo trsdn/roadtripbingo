@@ -1,210 +1,324 @@
-# Road Trip Bingo Generator
+# Road Trip Bingo Generator 2.0
 
-A customizable bingo card generator for road trips. Create, customize, and print bingo cards for your next adventure!
+A modern, AI-powered bingo card generator built with React. Create intelligent, customizable bingo cards for your next road trip adventure with advanced features like AI-powered icon suggestions, semantic search, and batch upload capabilities.
 
-## Features
+## 🚀 New in Version 2.0
 
-- Generate custom bingo cards with different grid sizes (3x3, 4x4, 5x5, 6x6, 7x7, 8x8)
-- Create multiple card sets with unique content
-- Upload custom icons with intelligent compression
-- **Center blank toggle**: Leave center cell blank for odd-sized grids (5x5, 7x7, 9x9)
-- **Icon labels toggle**: Show/hide text labels on icons for cleaner cards
-- **Multi-Hit Mode**: Add challenge with tiles requiring multiple hits to complete
-  - Three difficulty levels: Light (20-30% tiles), Medium (40-50% tiles), Hard (60-70% tiles)
-  - Smart hit count assignment (2-5 hits per multi-hit tile)
-  - Visual counters in both preview and PDF output
-- PDF download with adjustable compression
-- Multi-language support (English, German)
-- Data backup and restore
-- SQLite database storage with robust data management
-- RESTful API for data operations
-- Automatic storage optimization and quota management
-- Mobile-friendly responsive design
+### 🤖 AI-Powered Features
+- **Smart Icon Analysis**: AI automatically suggests names, tags, and difficulty levels for uploaded images
+- **Semantic Search**: Find icons using natural language and context understanding
+- **Intelligent Suggestions**: Get alternative icon recommendations for balanced card generation
 
-## Project Structure
+### 📱 Modern UI/UX
+- **React 18 Architecture**: Built with modern React hooks and components
+- **Drag & Drop Upload**: Batch upload multiple icons with progress tracking
+- **Advanced Filtering**: Search and filter icons by difficulty, tags, and semantic similarity
+- **Real-time Preview**: Instant feedback with loading states and progress indicators
 
-The project has been restructured into a modern, modular architecture:
+### 🎯 Enhanced Functionality
+- **Batch Operations**: Upload and process multiple icons simultaneously
+- **Tag Management**: Comprehensive tagging system with AI-generated suggestions
+- **Comprehensive Backup**: Full data backup and restore with selective import/export options
+- **Error Boundaries**: Robust error handling with graceful fallbacks
+
+## ✨ Features
+
+### Core Functionality
+- **Multiple Grid Sizes**: Generate cards from 3x3 to 8x8 grids
+- **Center Blank Toggle**: Traditional bingo experience for odd-sized grids
+- **Icon Labels**: Show/hide text labels for clean card appearance
+- **Multi-Hit Mode**: Advanced challenge mode with 3 difficulty levels
+- **PDF Generation**: High-quality PDF export with compression options
+- **Multi-language Support**: English and German localization
+
+### AI & Intelligence
+- **Image Analysis**: Automatic content recognition and metadata generation
+- **Smart Search**: Context-aware search with synonym recognition
+- **Alternative Suggestions**: Intelligent icon recommendations for variety
+- **Batch Processing**: AI-enhanced bulk icon management
+
+### Data Management
+- **SQLite Database**: Robust, ACID-compliant data storage
+- **RESTful API**: Clean server-side architecture with Fastify
+- **Prisma ORM**: Type-safe database operations
+- **Automatic Migration**: Seamless upgrade from legacy storage systems
+- **Comprehensive Backup**: JSON and SQL export/import capabilities
+
+## 🏗️ Architecture
+
+Built with modern web technologies:
+
+- **Frontend**: React 18 + Vite + Tailwind CSS
+- **Backend**: Fastify + Prisma ORM
+- **Database**: SQLite with versioned migrations
+- **Testing**: Vitest (unit) + Playwright (E2E)
+- **AI Integration**: Modular service architecture ready for production APIs
+- **Build Tools**: Vite with HMR and optimized production builds
+
+### Project Structure
 
 ```
 roadtripbingo/
-├── config/               # Configuration files
-│   ├── .babelrc          # Babel configuration
-│   ├── jest.config.js    # Jest unit test configuration
-│   ├── jest.setup.js     # Jest setup file
-│   └── webpack.config.js # Webpack build configuration
-├── data/                 # SQLite database and related files
-│   ├── README.md         # Database schema documentation
-│   ├── backups/          # Database backup files
-│   └── migrations/       # Database migration scripts
-├── src/                  # Source files
-│   ├── js/               # JavaScript modules
-│   │   ├── app.js        # Main application logic
-│   │   └── modules/      # Modular components
-│   │       ├── storage.js           # Legacy localStorage storage
-│   │       ├── indexedDBStorage.js  # Legacy IndexedDB storage
-│   │       ├── sqliteStorage.js     # Modern SQLite storage system
-│   │       ├── indexedDBMigrator.js # Migration from IndexedDB to SQLite
-│   │       ├── backupManager.js     # Backup and restore utilities
-│   │       ├── i18n.js              # Internationalization 
-│   │       ├── imageUtils.js        # Image handling & compression
-│   │       ├── cardGenerator.js     # Bingo card generation
-│   │       ├── db.js                # Database layer
-│   │       ├── languages.js         # Language definitions
-│   │       └── pdfGenerator.js      # PDF generation
-│   ├── css/              # CSS styles
-│   │   └── styles.css    # Main stylesheet
-│   └── index.html        # Main HTML file
-├── public/               # Public assets
-│   └── assets/           # Static assets
-│       └── icons/        # Default icons
-├── tests/                # Test files (mirrors src structure)
-│   ├── js/modules/       # Module tests
-│   │   ├── indexedDBStorage.test.js # IndexedDB storage tests
-│   │   └── ...           # Other module tests
-│   ├── e2e/              # End-to-end tests (Playwright)
-│   └── db.test.js        # Database tests
-├── playwright.config.js  # Playwright configuration
-├── server.js             # Simple development server
-└── package.json          # Project dependencies and scripts
+├── src/                      # React application
+│   ├── components/           # Reusable React components
+│   │   ├── AiSuggestionsPanel.jsx    # AI-powered suggestions
+│   │   ├── BatchIconUploadModal.jsx  # Batch upload interface
+│   │   ├── DragDropUpload.jsx        # Drag & drop functionality
+│   │   ├── IconSearch.jsx            # Advanced search & filtering
+│   │   ├── BingoCard.jsx             # Card generation & preview
+│   │   ├── Navigation.jsx            # App navigation
+│   │   ├── ErrorBoundary.jsx         # Error handling
+│   │   └── ...                       # Other components
+│   ├── pages/                # Main application pages
+│   │   ├── Generator.jsx             # Card generation interface
+│   │   ├── Icons.jsx                 # Icon management
+│   │   ├── Settings.jsx              # App configuration
+│   │   └── Backup.jsx                # Data backup/restore
+│   ├── services/             # Business logic services
+│   │   ├── aiService.js              # AI integration & analysis
+│   │   ├── iconService.js            # Icon CRUD operations
+│   │   ├── settingsService.js        # Settings management
+│   │   ├── backupService.js          # Backup/restore logic
+│   │   ├── pdfGenerator.js           # PDF generation
+│   │   └── imageUtils.js             # Image processing
+│   ├── hooks/                # Custom React hooks
+│   ├── context/              # React context providers
+│   └── main.jsx              # Application entry point
+├── server/                   # Fastify backend
+│   ├── routes/               # API route handlers
+│   ├── plugins/              # Fastify plugins
+│   └── index.js              # Server entry point
+├── prisma/                   # Database configuration
+│   └── schema.prisma         # Database schema definition
+├── tests/                    # Test suites
+│   ├── unit/                 # Vitest unit tests
+│   └── e2e/                  # Playwright E2E tests
+└── data/                     # SQLite database storage
 ```
 
-## Development
+## 🛠️ Development
 
 ### Prerequisites
 
-- Node.js (v14+)
+- Node.js 18+
 - npm or yarn
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/roadtripbingo.git
+cd roadtripbingo
+
+# Install dependencies
 npm install
+
+# Initialize the database
+npx prisma generate
+npx prisma db push
 ```
 
-### Database Setup
-
-The application uses SQLite for data storage. The database will be automatically initialized on first run. No additional setup is required.
-
-### Development Server
-
-Start the development server with hot reload:
+### Development Commands
 
 ```bash
+# Start development server with HMR (port 3000)
 npm run dev
-```
 
-Or use the simple HTTP server:
+# Start backend API server (port 8080)
+npm run server
 
-```bash
-npm run start
-```
-
-### Build
-
-Build for production:
-
-```bash
+# Build for production
 npm run build
-```
 
-Build for development:
-
-```bash
+# Build for development
 npm run build:dev
 ```
 
-## Testing
+### Database Management
 
-### Unit Tests
+```bash
+# Generate Prisma client
+npx prisma generate
 
-Run Jest unit tests:
+# Apply schema changes
+npx prisma db push
+
+# View database in browser
+npx prisma studio
+
+# Create new migration
+npx prisma migrate dev --name migration_name
+```
+
+## 🧪 Testing
+
+### Unit Tests (Vitest)
 
 ```bash
 npm test              # Run tests once with coverage
 npm run test:watch    # Run tests in watch mode
+npx vitest run        # Run Vitest directly
 ```
 
-### E2E Tests
-
-Run Playwright end-to-end tests:
+### E2E Tests (Playwright)
 
 ```bash
-npm run playwright:test         # Run all tests
+npm run playwright:test         # Run all E2E tests
 npm run playwright:test:headed  # Run with browser UI
-npm run playwright:test:debug   # Interactive debugging
+npm run playwright:test:debug   # Interactive debugging mode
 npm run playwright:show-report  # View test results
 ```
 
-Run all tests:
+### Run All Tests
 
 ```bash
-npm run test:all
+npm run test:all      # Run both unit and E2E tests
 ```
 
-## Storage System
+## 🤖 AI Integration
 
-The application uses **SQLite** for data storage, providing:
+The application includes a modular AI service architecture:
 
-### Features
+### Current Features
+- **Mock AI Service**: Complete implementation for development and testing
+- **Image Analysis**: Content recognition with confidence scoring
+- **Semantic Search**: Context-aware icon discovery
+- **Smart Suggestions**: Alternative icon recommendations
 
-- **Robust Data Management**: SQLite database with ACID compliance and data integrity
-- **RESTful API**: Server-side API endpoints for all data operations
-- **Automatic Migration**: Seamlessly migrates data from legacy IndexedDB storage
-- **Backup & Restore**: Built-in tools for data backup and restore (JSON and SQL formats)
-- **Versioning Support**: Database schema versioning with forward/backward migration
-- **Transaction Support**: Atomic operations with rollback capability
+### Production Setup
+To integrate with production AI services (OpenAI, Google Vision, etc.):
 
-### API Endpoints
+1. Update `src/services/aiService.js`
+2. Add API keys to environment variables
+3. Configure service endpoints
+4. Enable production AI features in settings
 
-The server provides RESTful endpoints for data operations:
+### AI Service API
 
-- **Icons**: `GET/POST/PUT/DELETE /api/icons`
-- **Settings**: `GET/POST/PUT/DELETE /api/settings`
-- **Card Generations**: `GET/POST/PUT/DELETE /api/generations`
-- **Storage Info**: `GET /api/storage/info`
-- **Export/Import**: `GET /api/export`, `POST /api/import`
+```javascript
+// Analyze uploaded image
+const analysis = await aiService.analyzeIcon(imageData);
 
-### Migration from IndexedDB
+// Enhanced search with semantic understanding
+const results = await aiService.enhancedSearch(icons, query);
 
-Users with existing IndexedDB data will be automatically migrated to SQLite on first load. The migration process:
+// Get alternative suggestions
+const alternatives = await aiService.suggestAlternatives(currentIcons, allIcons);
+```
 
-- Validates existing data integrity
-- Transfers all icons, settings, and card generations
-- Provides rollback capability if migration fails
-- Maintains data consistency throughout the process
+## 📱 Usage
 
-### Center Blank Feature
-- **Toggle available**: Leave center cell blank for traditional bingo experience
-- **Works with odd grids**: Only applies to 5x5, 7x7, and 9x9 grids
-- **Smart calculation**: Automatically adjusts required icon count when enabled
-- **Default enabled**: Center blank is enabled by default for new users
+### Basic Workflow
 
-### Icon Labels Toggle
-- **Show/hide labels**: Toggle text labels on icons for cleaner card appearance
-- **Dynamic preview**: Changes are reflected immediately in card preview
-- **Persistent setting**: Your preference is saved and restored across sessions
+1. **Upload Icons**: Use drag & drop or batch upload with AI suggestions
+2. **Organize**: Tag and categorize icons with AI-generated metadata
+3. **Generate Cards**: Create customized bingo cards with various options
+4. **Export**: Download high-quality PDFs for printing
 
-### Automatic Image Compression
-- Images are automatically compressed when they exceed 200KB
-- Maximum dimensions: 400x400 pixels
-- JPEG quality: 70%, PNG quality: 80%
-- Maintains visual quality while minimizing storage usage
+### Advanced Features
 
-## PDF Compression Options
+- **AI Suggestions**: Let AI analyze images and suggest names/tags
+- **Semantic Search**: Find icons using natural language queries
+- **Batch Processing**: Upload multiple icons with automated processing
+- **Smart Alternatives**: Get AI-recommended icon variations for better gameplay
 
-The generator offers four levels of PDF compression:
+### Settings & Configuration
 
-- **None**: Highest quality, largest file size
-- **Light**: Slight compression, good quality
-- **Medium**: Balanced compression (recommended)
-- **High**: Maximum compression, smallest file size
+- **Generator Defaults**: Set preferred grid size, difficulty, and options
+- **AI Features**: Enable/disable AI-powered suggestions and search
+- **Backup/Restore**: Manage data with comprehensive backup tools
+- **Language**: Switch between English and German interfaces
 
-## Languages
+## 🔄 Migration from v1.x
 
-Currently supported languages:
-- English
-- German
+Version 2.0 automatically migrates data from the legacy vanilla JavaScript version:
 
-## License
+- **Automatic Detection**: Identifies existing IndexedDB or localStorage data
+- **Seamless Transfer**: Migrates all icons, settings, and card generations
+- **Data Validation**: Ensures data integrity throughout migration
+- **Backup Creation**: Creates backup of original data before migration
 
-MIT License
+No manual action required - just start the application and migration happens automatically.
+
+## 🌐 API Endpoints
+
+The Fastify backend provides RESTful APIs:
+
+### Icons
+- `GET /api/icons` - List all icons
+- `POST /api/icons` - Create new icon
+- `PUT /api/icons/:id` - Update icon
+- `DELETE /api/icons/:id` - Delete icon
+
+### Settings
+- `GET /api/settings` - Get all settings
+- `POST /api/settings` - Update settings (batch)
+- `PUT /api/settings/:key` - Update single setting
+
+### Backup/Export
+- `GET /api/backup` - Export all data
+- `POST /api/backup/import` - Import backup data
+- `GET /api/storage/info` - Get storage statistics
+
+## 🎨 Styling & Theming
+
+The application uses Tailwind CSS with a custom design system:
+
+- **Component Classes**: Pre-defined classes for buttons, cards, inputs
+- **Color Scheme**: Custom primary/secondary color palette
+- **Responsive Design**: Mobile-first responsive breakpoints
+- **Dark Mode Ready**: Architecture supports future dark mode implementation
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Build Errors**
+- Ensure Node.js 18+ is installed
+- Clear `node_modules` and reinstall: `rm -rf node_modules package-lock.json && npm install`
+
+**Database Issues**
+- Regenerate Prisma client: `npx prisma generate`
+- Reset database: `rm data/roadtripbingo.db && npx prisma db push`
+
+**Development Server**
+- Check port availability (3000 for frontend, 8080 for backend)
+- Ensure both servers are running for full functionality
+
+### Getting Help
+
+- Check the [Issues](https://github.com/yourusername/roadtripbingo/issues) page
+- Review the test files for usage examples
+- Examine the `CLAUDE.md` file for development guidelines
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Run tests: `npm run test:all`
+4. Commit changes: `git commit -m 'Add amazing feature'`
+5. Push to branch: `git push origin feature/amazing-feature`
+6. Open a Pull Request
+
+### Development Guidelines
+
+- Follow the existing code style and patterns
+- Add tests for new features
+- Update documentation as needed
+- Ensure all tests pass before submitting
+
+## 📄 License
+
+MIT License - see the [LICENSE](LICENSE.md) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with React, Vite, and Tailwind CSS
+- AI integration architecture inspired by modern AI/ML workflows
+- PDF generation powered by html2pdf.js
+- Database management with Prisma ORM
+- Testing with Vitest and Playwright
+
+---
+
+**Road Trip Bingo Generator 2.0** - Making road trips more fun with AI-powered customization! 🚗✨

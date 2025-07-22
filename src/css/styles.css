@@ -209,6 +209,8 @@ h1 {
     cursor: pointer;
     font-weight: 500;
     transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .nav-btn:hover {
@@ -529,12 +531,11 @@ button:disabled {
 
 .file-input-wrapper input[type=file] {
     position: absolute;
-    left: 0;
-    top: 0;
+    left: -9999px;
     opacity: 0;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
 }
 
 .data-management {
@@ -1243,6 +1244,29 @@ button:disabled {
 
 .icon-table tr.selected {
     background-color: #e3f2fd;
+}
+
+/* Column widths and text wrapping */
+.icon-table .name-column {
+    max-width: 150px;
+    width: 150px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.icon-table .icon-preview-cell {
+    width: 70px;
+    text-align: center;
+}
+
+.icon-table .select-column {
+    width: 40px;
+    text-align: center;
+}
+
+.icon-table .actions-column {
+    width: 200px;
 }
 
 /* Sort Column */
