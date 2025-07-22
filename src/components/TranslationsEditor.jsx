@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTimes } from 'react-icons/fa';
 import { useLanguage } from '../context/LanguageContext';
+import { getBaseLanguage, isBaseLanguage } from '../utils/translationUtils';
 
 const SUPPORTED_LANGUAGES = [
   { code: 'de', name: 'German', nativeName: 'Deutsch' },
@@ -20,7 +21,8 @@ const SUPPORTED_LANGUAGES = [
   { code: 'ko', name: 'Korean', nativeName: '한국어' },
 ];
 
-function TranslationsEditor({ translations, onChange, existingNameDE }) {
+function TranslationsEditor({ translations, onChange, currentLanguage, baseName = '', baseLanguage }) {
+  const baseLanguageCode = baseLanguage || getBaseLanguage();
   const { t } = useLanguage();
   const [localTranslations, setLocalTranslations] = useState({});
   const [selectedLanguage, setSelectedLanguage] = useState('');
@@ -29,13 +31,13 @@ function TranslationsEditor({ translations, onChange, existingNameDE }) {
     // Initialize with existing translations
     const parsed = typeof translations === 'string' ? JSON.parse(translations || '{}') : translations || {};
     
-    // Migrate legacy nameDE if it exists and not in translations
-    if (existingNameDE && !parsed.de) {
-      parsed.de = existingNameDE;
+    // If we're in a non-base language and base name exists, show it as a translation
+    if (!isBaseLanguage(currentLanguage) && baseName) {
+      parsed[baseLanguageCode] = baseName;
     }
     
     setLocalTranslations(parsed);
-  }, [translations, existingNameDE]);
+  }, [translations, currentLanguage, baseName, baseLanguageCode]);
 
   const addTranslation = () => {
     if (!selectedLanguage) return;
@@ -60,8 +62,19 @@ function TranslationsEditor({ translations, onChange, existingNameDE }) {
   };
 
   const availableLanguages = SUPPORTED_LANGUAGES.filter(
-    lang => !Object.keys(localTranslations).includes(lang.code)
+    lang => lang.code !== currentLanguage && !Object.keys(localTranslations).includes(lang.code)
   );
+  
+  // Add base language to available languages if we're not in base language mode and it's not already shown
+  if (!isBaseLanguage(currentLanguage) && !localTranslations[baseLanguageCode] && baseName) {
+    // Base language is automatically shown, so don't add it to available languages
+  } else if (!isBaseLanguage(currentLanguage) && !baseName) {
+    // Add base language as an option if no base name exists
+    const baseLang = { code: baseLanguageCode, name: 'English', nativeName: 'English' };
+    if (!availableLanguages.find(l => l.code === baseLanguageCode)) {
+      availableLanguages.unshift(baseLang);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -70,29 +83,46 @@ function TranslationsEditor({ translations, onChange, existingNameDE }) {
       </label>
       
       {/* Existing translations */}
-      {Object.entries(localTranslations).map(([langCode, translation]) => {
-        const language = SUPPORTED_LANGUAGES.find(l => l.code === langCode);
+      {Object.entries(localTranslations).filter(([langCode]) => langCode !== currentLanguage).map(([langCode, translation]) => {
+        const language = SUPPORTED_LANGUAGES.find(l => l.code === langCode) || { code: langCode, name: langCode.toUpperCase(), nativeName: langCode.toUpperCase() };
+        const isBaseLanguage = langCode === baseLanguageCode;
+        const isReadOnly = isBaseLanguage && !isBaseLanguage(currentLanguage) && baseName;
+        
         return (
           <div key={langCode} className="flex gap-2">
             <div className="w-32 flex items-center">
               <span className="text-sm font-medium text-gray-600">
                 {language?.nativeName || langCode}
+                {isBaseLanguage && !isBaseLanguage(currentLanguage) && (
+                  <span className="text-xs text-gray-400 block">(Original)</span>
+                )}
               </span>
             </div>
             <input
               type="text"
               value={translation}
-              onChange={(e) => updateTranslation(langCode, e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              onChange={(e) => !isReadOnly && updateTranslation(langCode, e.target.value)}
+              className={`flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 ${
+                isReadOnly ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+              }`}
               placeholder={`${t('translation')} (${language?.name || langCode})`}
+              readOnly={isReadOnly}
+              title={isReadOnly ? t('originalEnglishName') : ''}
             />
-            <button
-              type="button"
-              onClick={() => removeTranslation(langCode)}
-              className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-            >
-              <FaTimes className="w-4 h-4" />
-            </button>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => removeTranslation(langCode)}
+                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+              >
+                <FaTimes className="w-4 h-4" />
+              </button>
+            )}
+            {isReadOnly && (
+              <div className="p-2 text-gray-400">
+                <span className="text-xs">{t('original')}</span>
+              </div>
+            )}
           </div>
         );
       })}

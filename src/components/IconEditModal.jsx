@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IoMdClose } from 'react-icons/io';
 import { FaSave, FaTags, FaBan } from 'react-icons/fa';
 import { useLanguage } from '../context/LanguageContext';
+import { getTranslatedIconName, getBaseLanguage, isBaseLanguage } from '../utils/translationUtils';
 import TranslationsEditor from './TranslationsEditor';
 
 function IconEditModal({ icon, onClose, onSave }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [formData, setFormData] = useState({
     name: icon.name,
-    nameDE: icon.nameDE || '',
     translations: icon.translations || '{}',
     difficulty: icon.difficulty,
     tags: Array.isArray(icon.tags) ? icon.tags : [],
@@ -16,6 +16,14 @@ function IconEditModal({ icon, onClose, onSave }) {
     altText: icon.altText || '',
     category: icon.category || 'default'
   });
+  
+  const [currentLanguageName, setCurrentLanguageName] = useState('');
+  
+  // Initialize the current language name when modal opens or language changes
+  useEffect(() => {
+    const displayName = getTranslatedIconName(icon, language);
+    setCurrentLanguageName(displayName);
+  }, [icon, language]);
   const [newTag, setNewTag] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -41,7 +49,30 @@ function IconEditModal({ icon, onClose, onSave }) {
     e.preventDefault();
     setSaving(true);
     try {
-      await onSave(formData);
+      // Prepare the data based on current language
+      let updatedData = { ...formData };
+      
+      if (isBaseLanguage(language)) {
+        // Editing base language name directly
+        updatedData.name = currentLanguageName;
+      } else {
+        // Editing a translation - update translations object
+        let translations = {};
+        try {
+          translations = JSON.parse(formData.translations || '{}');
+        } catch (error) {
+          translations = {};
+        }
+        
+        // Update the translation for the current language
+        translations[language] = currentLanguageName;
+        updatedData.translations = JSON.stringify(translations);
+        
+        // Keep the original base language name unchanged
+        updatedData.name = icon.name;
+      }
+      
+      await onSave(updatedData);
     } catch (error) {
       console.error('Save error:', error);
     } finally {
@@ -73,28 +104,35 @@ function IconEditModal({ icon, onClose, onSave }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('iconName')}
+              {t('iconName')} {!isBaseLanguage(language) && `(${language.toUpperCase()})`}
             </label>
             <input
               type="text"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={currentLanguageName}
+              onChange={(e) => setCurrentLanguageName(e.target.value)}
               className="input"
+              placeholder={isBaseLanguage(language) ? t('iconName') : `${t('iconName')} in ${language.toUpperCase()}`}
             />
+            {!isBaseLanguage(language) && (
+              <p className="text-xs text-gray-500 mt-1">
+                {t('editingTranslation')} • {t('originalName')}: {icon.name}
+              </p>
+            )}
           </div>
 
-          {/* Multilingual Translations */}
+          {/* Show other translations (excluding current language) */}
           <TranslationsEditor
             translations={formData.translations}
-            existingNameDE={formData.nameDE}
+            currentLanguage={language}
+            currentLanguageName={currentLanguageName}
+            baseName={icon.name}
+            baseLanguage={getBaseLanguage()}
             onChange={(translations) => {
-              // Update translations and also update nameDE for backward compatibility
               const translationsStr = JSON.stringify(translations);
               setFormData({ 
                 ...formData, 
-                translations: translationsStr,
-                nameDE: translations.de || formData.nameDE || ''
+                translations: translationsStr
               });
             }}
           />

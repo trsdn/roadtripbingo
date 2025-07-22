@@ -2,9 +2,10 @@ import React from 'react';
 import { FaEdit, FaTrash, FaBan } from 'react-icons/fa';
 import { useLanguage } from '../context/LanguageContext';
 import { getDifficultyLabel } from '../utils/difficultyUtils';
+import { getTranslatedIconName } from '../utils/translationUtils';
 
 function IconGrid({ icons, onEdit, onDelete }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -20,7 +21,7 @@ function IconGrid({ icons, onEdit, onDelete }) {
           
           <div className="text-center">
             <h4 className="text-sm font-medium text-gray-800 truncate">
-              {icon.name}
+              {getTranslatedIconName(icon, language)}
             </h4>
             <p className="text-xs text-gray-500 mb-1">
               {t('difficulty')}: {getDifficultyLabel(icon.difficulty, t)}

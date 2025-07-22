@@ -2,9 +2,10 @@ import React from 'react';
 import { FaEdit, FaTrash, FaBan, FaCheck, FaTimes, FaLanguage } from 'react-icons/fa';
 import { useLanguage } from '../context/LanguageContext';
 import { getDifficultyLabel, getDifficultyColorClasses, getMultiHitColorClasses } from '../utils/difficultyUtils';
+import { getTranslatedIconName } from '../utils/translationUtils';
 
 function IconTable({ icons, onEdit, onDelete }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   return (
     <div className="card overflow-x-auto">
@@ -31,10 +32,7 @@ function IconTable({ icons, onEdit, onDelete }) {
                 />
               </td>
               <td className="py-3 px-4 max-w-xs">
-                <div className="font-medium text-gray-900 break-words">{icon.name}</div>
-                {icon.altText && (
-                  <div className="text-sm text-gray-500 break-words">{icon.altText}</div>
-                )}
+                <div className="font-medium text-gray-900 break-words">{getTranslatedIconName(icon, language)}</div>
               </td>
               <td className="py-3 px-4">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">

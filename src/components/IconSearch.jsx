@@ -2,8 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FaSearch, FaRobot, FaTimes, FaFilter } from 'react-icons/fa';
 import aiService from '../services/aiService';
 import LoadingSpinner from './LoadingSpinner';
+import { getTranslatedIconName } from '../utils/translationUtils';
+import { useLanguage } from '../context/LanguageContext';
 
 function IconSearch({ icons, onFilteredIcons, className = '' }) {
+  const { language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [useAiSearch, setUseAiSearch] = useState(false);
   const [aiSearching, setAiSearching] = useState(false);
@@ -45,22 +48,26 @@ function IconSearch({ icons, onFilteredIcons, className = '' }) {
           } catch (error) {
             console.error('AI search failed, falling back to basic search:', error);
             // Fall back to basic search
-            filtered = filtered.filter(icon =>
-              icon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (icon.tags && icon.tags.some(tag => 
-                tag.toLowerCase().includes(searchQuery.toLowerCase())
-              ))
-            );
+            filtered = filtered.filter(icon => {
+              const translatedName = getTranslatedIconName(icon, language);
+              return icon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                     translatedName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                     (icon.tags && icon.tags.some(tag => 
+                       tag.toLowerCase().includes(searchQuery.toLowerCase())
+                     ));
+            });
           }
           setAiSearching(false);
         } else {
           // Basic text search
-          filtered = filtered.filter(icon =>
-            icon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (icon.tags && icon.tags.some(tag => 
-              tag.toLowerCase().includes(searchQuery.toLowerCase())
-            ))
-          );
+          filtered = filtered.filter(icon => {
+            const translatedName = getTranslatedIconName(icon, language);
+            return icon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                   translatedName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                   (icon.tags && icon.tags.some(tag => 
+                     tag.toLowerCase().includes(searchQuery.toLowerCase())
+                   ));
+          });
         }
       }
 
