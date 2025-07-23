@@ -6,11 +6,31 @@ import { getTranslatedIconName, getBaseLanguage, isBaseLanguage } from '../utils
 import TranslationsEditor from './TranslationsEditor';
 
 function IconEditModal({ icon, onClose, onSave }) {
-  const { t, language } = useLanguage();
+  try {
+    const { t, language } = useLanguage();
+    
+    // Early return if no icon is provided
+    if (!icon) {
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Error: No icon data provided</p>
+              <button onClick={onClose} className="btn-primary">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  
   const [formData, setFormData] = useState({
-    name: icon.name,
-    translations: icon.translations || '{}',
-    difficulty: icon.difficulty,
+    name: icon.name || '',
+    translations: typeof icon.translations === 'string' 
+      ? JSON.parse(icon.translations || '{}') 
+      : icon.translations || {},
+    difficulty: icon.difficulty || 1,
     tags: Array.isArray(icon.tags) ? icon.tags : [],
     excludeFromMultiHit: Boolean(icon.excludeFromMultiHit),
     altText: icon.altText || '',
@@ -52,25 +72,28 @@ function IconEditModal({ icon, onClose, onSave }) {
       // Prepare the data based on current language
       let updatedData = { ...formData };
       
+      // Parse translations from string to object
+      let translations = {};
+      try {
+        translations = typeof formData.translations === 'string' 
+          ? JSON.parse(formData.translations || '{}') 
+          : formData.translations || {};
+      } catch (error) {
+        translations = {};
+      }
+      
       if (isBaseLanguage(language)) {
         // Editing base language name directly
         updatedData.name = currentLanguageName;
       } else {
         // Editing a translation - update translations object
-        let translations = {};
-        try {
-          translations = JSON.parse(formData.translations || '{}');
-        } catch (error) {
-          translations = {};
-        }
-        
-        // Update the translation for the current language
         translations[language] = currentLanguageName;
-        updatedData.translations = JSON.stringify(translations);
-        
         // Keep the original base language name unchanged
         updatedData.name = icon.name;
       }
+      
+      // Send translations as object, not string
+      updatedData.translations = translations;
       
       await onSave(updatedData);
     } catch (error) {
@@ -94,11 +117,23 @@ function IconEditModal({ icon, onClose, onSave }) {
         </div>
         
         <div className="flex justify-center mb-4">
-          <img
-            src={icon.data}
-            alt={icon.name}
-            className="w-20 h-20 object-contain border rounded"
-          />
+          {icon.data ? (
+            <img
+              src={icon.data}
+              alt={icon.name || 'Icon'}
+              className="w-20 h-20 object-contain border rounded"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'block';
+              }}
+            />
+          ) : null}
+          <div 
+            className="w-20 h-20 border rounded flex items-center justify-center text-gray-400 text-xs"
+            style={{ display: icon.data ? 'none' : 'block' }}
+          >
+            No Image
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,11 +164,17 @@ function IconEditModal({ icon, onClose, onSave }) {
             baseName={icon.name}
             baseLanguage={getBaseLanguage()}
             onChange={(translations) => {
-              const translationsStr = JSON.stringify(translations);
-              setFormData({ 
+              let updatedFormData = { 
                 ...formData, 
-                translations: translationsStr
-              });
+                translations: translations  // Keep as object
+              };
+              
+              // If English name was changed through the translations editor, update the base name too
+              if (translations.en && translations.en !== icon.name) {
+                updatedFormData.name = translations.en;
+              }
+              
+              setFormData(updatedFormData);
             }}
           />
           
@@ -261,6 +302,21 @@ function IconEditModal({ icon, onClose, onSave }) {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error('IconEditModal render error:', error);
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Error loading edit modal: {error.message}</p>
+            <button onClick={onClose} className="px-4 py-2 bg-blue-600 text-white rounded">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
 
 export default IconEditModal;

@@ -22,10 +22,11 @@ const SUPPORTED_LANGUAGES = [
 ];
 
 function TranslationsEditor({ translations, onChange, currentLanguage, baseName = '', baseLanguage }) {
-  const baseLanguageCode = baseLanguage || getBaseLanguage();
-  const { t } = useLanguage();
-  const [localTranslations, setLocalTranslations] = useState({});
-  const [selectedLanguage, setSelectedLanguage] = useState('');
+  try {
+    const baseLanguageCode = baseLanguage || getBaseLanguage();
+    const { t } = useLanguage();
+    const [localTranslations, setLocalTranslations] = useState({});
+    const [selectedLanguage, setSelectedLanguage] = useState('');
 
   useEffect(() => {
     // Initialize with existing translations
@@ -85,15 +86,15 @@ function TranslationsEditor({ translations, onChange, currentLanguage, baseName 
       {/* Existing translations */}
       {Object.entries(localTranslations).filter(([langCode]) => langCode !== currentLanguage).map(([langCode, translation]) => {
         const language = SUPPORTED_LANGUAGES.find(l => l.code === langCode) || { code: langCode, name: langCode.toUpperCase(), nativeName: langCode.toUpperCase() };
-        const isBaseLanguage = langCode === baseLanguageCode;
-        const isReadOnly = isBaseLanguage && !isBaseLanguage(currentLanguage) && baseName;
+        const isBaseLang = langCode === baseLanguageCode;
+        const isReadOnly = false; // Make all languages editable
         
         return (
           <div key={langCode} className="flex gap-2">
             <div className="w-32 flex items-center">
               <span className="text-sm font-medium text-gray-600">
                 {language?.nativeName || langCode}
-                {isBaseLanguage && !isBaseLanguage(currentLanguage) && (
+                {isBaseLang && !isBaseLanguage(currentLanguage) && (
                   <span className="text-xs text-gray-400 block">(Original)</span>
                 )}
               </span>
@@ -101,28 +102,17 @@ function TranslationsEditor({ translations, onChange, currentLanguage, baseName 
             <input
               type="text"
               value={translation}
-              onChange={(e) => !isReadOnly && updateTranslation(langCode, e.target.value)}
-              className={`flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 ${
-                isReadOnly ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-              }`}
+              onChange={(e) => updateTranslation(langCode, e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
               placeholder={`${t('translation')} (${language?.name || langCode})`}
-              readOnly={isReadOnly}
-              title={isReadOnly ? t('originalEnglishName') : ''}
             />
-            {!isReadOnly && (
-              <button
-                type="button"
-                onClick={() => removeTranslation(langCode)}
-                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-              >
-                <FaTimes className="w-4 h-4" />
-              </button>
-            )}
-            {isReadOnly && (
-              <div className="p-2 text-gray-400">
-                <span className="text-xs">{t('original')}</span>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => removeTranslation(langCode)}
+              className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+            >
+              <FaTimes className="w-4 h-4" />
+            </button>
           </div>
         );
       })}
@@ -155,6 +145,19 @@ function TranslationsEditor({ translations, onChange, currentLanguage, baseName 
       )}
     </div>
   );
+  } catch (error) {
+    console.error('TranslationsEditor render error:', error);
+    return (
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700">
+          Translations (Error: {error.message})
+        </label>
+        <div className="text-red-600 text-sm">
+          Unable to load translations editor. Please try again.
+        </div>
+      </div>
+    );
+  }
 }
 
 export default TranslationsEditor;

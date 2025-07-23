@@ -14,7 +14,6 @@ async function iconRoutes(fastify, options) {
             properties: {
               id: { type: 'string' },
               name: { type: 'string' },
-              nameDE: { type: 'string' },
               translations: { type: 'object' },
               data: { type: 'string' },
               difficulty: { type: 'number' },
@@ -78,7 +77,6 @@ async function iconRoutes(fastify, options) {
         type: 'object',
         properties: {
           name: { type: 'string' },
-          nameDE: { type: 'string' },
           translations: { type: 'object' },
           data: { type: 'string' },
           difficulty: { type: 'number' },
@@ -123,7 +121,6 @@ async function iconRoutes(fastify, options) {
         type: 'object',
         properties: {
           name: { type: 'string' },
-          nameDE: { type: 'string' },
           translations: { type: 'object' },
           difficulty: { type: 'number' },
           tags: { type: 'array', items: { type: 'string' } },

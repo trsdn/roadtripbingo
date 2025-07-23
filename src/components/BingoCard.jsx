@@ -1,7 +1,10 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import { getTranslatedIconName } from '../utils/translationUtils';
 
 function BingoCard({ card, settings }) {
   const { gridSize, showLabels, title } = settings;
+  const { language } = useLanguage();
   
   // Map grid sizes to CSS classes (Tailwind needs explicit classes)
   const gridClasses = {
@@ -39,7 +42,7 @@ function BingoCard({ card, settings }) {
                 />
                 {showLabels && (
                   <span className="text-xs text-center mt-1 text-gray-700">
-                    {cell.icon.name}
+                    {getTranslatedIconName(cell.icon, language)}
                   </span>
                 )}
               </>
