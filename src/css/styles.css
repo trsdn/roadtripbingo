@@ -2006,7 +2006,141 @@ button:disabled {
     background: #ffc107;
     color: #333;
 }
-EOF < /dev/null
+
+/* AI Results Panel - Inline Display */
+.ai-results-panel {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.ai-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ai-results-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: #333;
+}
+
+.ai-results-header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-results-content {
+  padding: 20px;
+}
+
+/* Collapsible result items */
+.ai-result-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  overflow: hidden;
+}
+
+.ai-result-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.ai-result-item-header:hover {
+  background: #e9ecef;
+}
+
+.result-icon-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confidence-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: #007bff;
+  color: white;
+  border-radius: 12px;
+  margin-left: 10px;
+}
+
+.ai-result-item-header .toggle-icon {
+  transition: transform 0.2s;
+  font-size: 14px;
+}
+
+.ai-result-item.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.ai-result-item-body {
+  padding: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.ai-result-item.collapsed .ai-result-item-body {
+  display: none;
+}
+
+.ai-result-actions {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 10px;
+}
+
+.ai-confidence {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Accept All / Reject All buttons */
+.ai-bulk-actions {
+  display: flex;
+  gap: 10px;
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  position: sticky;
+  bottom: 0;
+}
+
+.completed-badge {
+  color: #28a745;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+.ai-result-item.completed {
+  opacity: 0.7;
+}
+
+.no-results {
+  text-align: center;
+  padding: 30px;
+  color: #666;
+}
+
 /* AI Status Indicator */
 .ai-status-section {
   margin-bottom: 20px;
