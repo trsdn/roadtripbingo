@@ -2007,6 +2007,25 @@ function setupIconManagerEventListeners() {
 
     // AI Features event listeners
     initializeAIFeatures();
+    
+    // AI Results panel close button
+    const closeResultsPanelBtn = document.getElementById('closeResultsPanel');
+    if (closeResultsPanelBtn) {
+        closeResultsPanelBtn.addEventListener('click', closeResultsPanel);
+    }
+    
+    // AI Results panel collapse button
+    const collapseResultsPanelBtn = document.getElementById('collapseResultsPanel');
+    if (collapseResultsPanelBtn) {
+        collapseResultsPanelBtn.addEventListener('click', () => {
+            const resultsContent = document.getElementById('aiResultsContent');
+            if (resultsContent) {
+                const isCollapsed = resultsContent.style.display === 'none';
+                resultsContent.style.display = isCollapsed ? 'block' : 'none';
+                collapseResultsPanelBtn.textContent = isCollapsed ? '−' : '+';
+            }
+        });
+    }
 }
 
 // Initialize AI features
@@ -2262,21 +2281,26 @@ async function updateAIStatusDisplay() {
     }
 }
 
-// Show AI analysis results
+// Show AI analysis results in inline panel (not popup)
 function showAIAnalysisResults(results) {
-    console.log('Showing AI results:', results);
+    console.log('Showing AI results inline:', results);
     
-    if (!results || results.length === 0) {
-        window.notifications.show('No analysis results to display', 'info');
+    const resultsPanel = document.getElementById('aiResultsPanel');
+    const resultsContent = document.getElementById('aiResultsContent');
+    
+    if (!resultsPanel || !resultsContent) {
+        console.error('AI Results panel elements not found');
         return;
     }
     
-    // Create and show results modal
-    const modal = document.createElement('div');
-    modal.className = 'ai-results-modal';
+    if (!results || results.length === 0) {
+        resultsContent.innerHTML = '<p class="no-results">No analysis results to display</p>';
+        resultsPanel.style.display = 'block';
+        return;
+    }
     
-    const resultsHTML = results.map(result => {
-        // Handle different result structures
+    // Build results HTML with collapsible items
+    const resultsHTML = results.map((result, index) => {
         const data = result.success ? result.data : result;
         const iconId = data.icon_id;
         const category = data.category_suggestion;
@@ -2285,60 +2309,178 @@ function showAIAnalysisResults(results) {
         const tags = data.tags_suggestion;
         const confidence = Math.round((data.confidence_score || 0) * 100);
         
+        // Find icon name for display
+        const icon = availableIcons.find(i => i.id === iconId);
+        const iconName = icon ? icon.name : `Icon ${iconId.substring(0, 8)}...`;
+        
+        // Escape quotes for JSON stringification in HTML attributes
+        const dataStr = JSON.stringify(data).replace(/"/g, '&quot;');
+        const tagsStr = Array.isArray(tags) ? tags.join(',') : tags;
+        const tagsDisplay = Array.isArray(tags) ? tags.join(', ') : tags;
+        
         return `
-            <div class="ai-result-item">
-                <h5>Analysis for Icon ID: ${iconId}</h5>
-                <div class="ai-suggestion">
-                    <span><strong>Category:</strong> ${category}</span>
-                    <div class="ai-suggestion-actions">
-                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'category', '${category}')">Accept</button>
-                        <button class="ai-reject">Reject</button>
+            <div class="ai-result-item" data-icon-id="${iconId}">
+                <div class="ai-result-item-header" onclick="window.toggleResultItem(this)">
+                    <div class="result-icon-info">
+                        ${icon ? `<img src="${icon.image || icon.data}" alt="${iconName}" style="width: 30px; height: 30px; object-fit: contain; margin-right: 10px;">` : ''}
+                        <strong>${iconName}</strong>
+                        <span class="confidence-badge">${confidence}% confidence</span>
                     </div>
+                    <span class="toggle-icon">▼</span>
                 </div>
-                <div class="ai-suggestion">
-                    <span><strong>Name:</strong> ${name}</span>
-                    <div class="ai-suggestion-actions">
-                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'name', '${name}')">Accept</button>
-                        <button class="ai-reject">Reject</button>
+                <div class="ai-result-item-body">
+                    <div class="ai-suggestion">
+                        <span><strong>Category:</strong> ${category}</span>
+                        <div class="ai-suggestion-actions">
+                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'category', '${category}')">Accept</button>
+                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
+                        </div>
                     </div>
-                </div>
-                <div class="ai-suggestion">
-                    <span><strong>Difficulty:</strong> ${difficulty}/5</span>
-                    <div class="ai-suggestion-actions">
-                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'difficulty', ${difficulty})">Accept</button>
-                        <button class="ai-reject">Reject</button>
+                    <div class="ai-suggestion">
+                        <span><strong>Name:</strong> ${name}</span>
+                        <div class="ai-suggestion-actions">
+                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'name', '${name}')">Accept</button>
+                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
+                        </div>
                     </div>
-                </div>
-                <div class="ai-suggestion">
-                    <span><strong>Tags:</strong> ${tags}</span>
-                    <div class="ai-suggestion-actions">
-                        <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', '${tags}')">Accept</button>
-                        <button class="ai-reject">Reject</button>
+                    <div class="ai-suggestion">
+                        <span><strong>Difficulty:</strong> ${'⭐'.repeat(difficulty)} (${difficulty}/5)</span>
+                        <div class="ai-suggestion-actions">
+                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'difficulty', ${difficulty})">Accept</button>
+                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
+                        </div>
                     </div>
-                </div>
-                <div class="ai-confidence">
-                    <small>Confidence: ${confidence}%</small>
+                    <div class="ai-suggestion">
+                        <span><strong>Tags:</strong> ${tagsDisplay}</span>
+                        <div class="ai-suggestion-actions">
+                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', '${tagsStr}')">Accept</button>
+                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
+                        </div>
+                    </div>
+                    <div class="ai-result-actions">
+                        <button class="btn-primary" onclick="window.acceptAllForIcon('${iconId}', ${dataStr})">Accept All</button>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
     
-    modal.innerHTML = `
-        <div class="modal-header">
-            <h3>AI Analysis Results</h3>
-            <button class="btn-close" onclick="this.parentElement.parentElement.remove(); document.querySelector('.ai-overlay').remove();">&times;</button>
-        </div>
-        <div class="modal-content">
-            ${resultsHTML}
-            <div style="margin-top: 20px; text-align: center;">
-                <button onclick="this.parentElement.parentElement.parentElement.remove(); document.querySelector('.ai-overlay').remove();" class="btn-secondary">Close</button>
-            </div>
+    resultsContent.innerHTML = resultsHTML;
+    
+    // Add bulk actions footer
+    const bulkActionsHTML = `
+        <div class="ai-bulk-actions">
+            <button class="btn-primary" onclick="window.acceptAllResults()">Accept All Suggestions</button>
+            <button class="btn-secondary" onclick="window.closeResultsPanel()">Close</button>
         </div>
     `;
     
-    document.body.appendChild(modal);
-    document.body.appendChild(createOverlay());
+    resultsContent.insertAdjacentHTML('beforeend', bulkActionsHTML);
+    
+    // Show panel with smooth animation
+    resultsPanel.style.display = 'block';
+    resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// Toggle collapsible result item
+function toggleResultItem(headerElement) {
+    const resultItem = headerElement.closest('.ai-result-item');
+    resultItem.classList.toggle('collapsed');
+}
+
+// Reject suggestion (hide the row)
+function rejectSuggestion(buttonElement) {
+    const suggestionRow = buttonElement.closest('.ai-suggestion');
+    suggestionRow.style.display = 'none';
+}
+
+// Close results panel
+function closeResultsPanel() {
+    const resultsPanel = document.getElementById('aiResultsPanel');
+    if (resultsPanel) {
+        resultsPanel.style.display = 'none';
+    }
+}
+
+// Accept all suggestions for one icon
+async function acceptAllForIcon(iconId, data) {
+    try {
+        const updateData = {
+            category: data.category_suggestion,
+            name: data.name_suggestion,
+            difficulty: data.difficulty_suggestion,
+            tags: data.tags_suggestion
+        };
+        
+        const response = await fetch(`/api/icons/${iconId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            window.notifications.show('All suggestions applied for this icon', 'success');
+            // Mark this result item as completed
+            const resultItem = document.querySelector(`.ai-result-item[data-icon-id="${iconId}"]`);
+            if (resultItem) {
+                resultItem.classList.add('completed');
+                const header = resultItem.querySelector('.ai-result-item-header .result-icon-info');
+                if (header && !header.querySelector('.completed-badge')) {
+                    header.insertAdjacentHTML('beforeend', ' <span class="completed-badge">✓ Applied</span>');
+                }
+            }
+            await loadIconsForTable();
+        } else {
+            throw new Error('Failed to update icon');
+        }
+    } catch (error) {
+        console.error('Error accepting all suggestions:', error);
+        window.notifications.show('Failed to apply suggestions', 'error');
+    }
+}
+
+// Accept all results - apply all suggestions for all icons
+async function acceptAllResults() {
+    const resultItems = document.querySelectorAll('.ai-result-item:not(.completed)');
+    let successCount = 0;
+    let failureCount = 0;
+    
+    for (const item of resultItems) {
+        const iconId = item.getAttribute('data-icon-id');
+        // Extract data from the "Accept All" button's onclick attribute
+        const acceptAllBtn = item.querySelector('[onclick*="acceptAllForIcon"]');
+        if (acceptAllBtn) {
+            const onclickAttr = acceptAllBtn.getAttribute('onclick');
+            // Extract the data object from the onclick string
+            const match = onclickAttr.match(/acceptAllForIcon\('([^']+)',\s*({[^}]+})\)/);
+            if (match) {
+                try {
+                    const dataStr = match[2].replace(/&quot;/g, '"');
+                    const data = JSON.parse(dataStr);
+                    await acceptAllForIcon(iconId, data);
+                    successCount++;
+                } catch (error) {
+                    console.error('Error processing icon:', iconId, error);
+                    failureCount++;
+                }
+            }
+        }
+    }
+    
+    if (successCount > 0) {
+        window.notifications.show(`Applied suggestions for ${successCount} icon(s)`, 'success');
+    }
+    if (failureCount > 0) {
+        window.notifications.show(`Failed to apply suggestions for ${failureCount} icon(s)`, 'error');
+    }
+}
+
+// Make functions globally accessible
+window.toggleResultItem = toggleResultItem;
+window.rejectSuggestion = rejectSuggestion;
+window.closeResultsPanel = closeResultsPanel;
+window.acceptAllForIcon = acceptAllForIcon;
+window.acceptAllResults = acceptAllResults;
 
 // Show duplicate results
 function showDuplicateResults(results) {
