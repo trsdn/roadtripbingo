@@ -35,7 +35,24 @@ module.exports = {
   verbose: true,
 
   // Indicates whether the coverage information should be collected
-  collectCoverage: false,
+  collectCoverage: true,
+
+  // Collect coverage from these files
+  collectCoverageFrom: [
+    '<rootDir>/../src/js/modules/*.js',
+    '!<rootDir>/../src/js/modules/__mocks__/**',
+    '!<rootDir>/../src/js/modules/*.test.js',
+  ],
+
+  // Coverage thresholds
+  coverageThresholds: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
 
   // The directory where Jest should output its coverage files
   coverageDirectory: '../coverage',
