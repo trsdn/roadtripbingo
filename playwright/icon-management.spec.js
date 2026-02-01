@@ -4,8 +4,8 @@ const path = require('path');
 test.describe('Icon Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for app to initialize
-    await page.waitForTimeout(1000);
+    // Wait for app initialization by checking icon count is visible
+    await expect(page.locator('#iconCount')).toBeVisible();
   });
 
   test('should show 0 icons initially', async ({ page }) => {
@@ -20,10 +20,7 @@ test.describe('Icon Management', () => {
     const fileInput = page.locator('#iconUpload');
     await fileInput.setInputFiles(iconPath);
     
-    // Wait for upload to complete
-    await page.waitForTimeout(2000);
-    
-    // Check icon count increased
+    // Wait for icon count to increase
     const iconCount = page.locator('#iconCount');
     await expect(iconCount).toHaveText('1');
     
@@ -46,7 +43,9 @@ test.describe('Icon Management', () => {
     const fileInput = page.locator('#iconUpload');
     await fileInput.setInputFiles(iconPaths);
     
-    await page.waitForTimeout(3000);
+    // Wait for icons to be processed
+    const iconCount = page.locator('#iconCount');
+    await expect(iconCount).not.toHaveText('0');
     
     // Button might still be disabled if not enough unique icons
     // This is expected behavior

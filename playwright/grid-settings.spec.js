@@ -39,13 +39,13 @@ test.describe('Grid Size and Settings', () => {
     
     // Select 3x3 (needs 9 icons, or 8 with center blank)
     await gridSelect.selectOption('3');
-    await page.waitForTimeout(500);
+    await expect(availability).toBeVisible();
     let text = await availability.textContent();
     expect(text).toMatch(/\d+/);
     
     // Select 8x8 (needs 64 icons, or 63 with center blank if applicable)
     await gridSelect.selectOption('8');
-    await page.waitForTimeout(500);
+    await expect(availability).toBeVisible();
     text = await availability.textContent();
     expect(text).toMatch(/\d+/);
   });

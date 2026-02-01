@@ -22,10 +22,7 @@ test.describe('App Initialization and Language', () => {
     const languageSelect = page.locator('#languageSelect');
     await languageSelect.selectOption('de');
     
-    // Wait a bit for translation to apply
-    await page.waitForTimeout(500);
-    
-    // Check that some German text appears
+    // Check that heading is still visible after language change
     const heading = page.locator('h1');
     await expect(heading).toBeVisible();
   });

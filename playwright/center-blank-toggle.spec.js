@@ -28,17 +28,16 @@ test.describe('Center Blank Toggle', () => {
   test('should update icon requirements when toggled', async ({ page }) => {
     const availability = page.locator('#iconAvailability');
     
-    // Get initial text
+    // Wait for initial text to load
+    await expect(availability).toBeVisible();
     const initialText = await availability.textContent();
     
     // Toggle center blank
     const toggle = page.locator('#centerBlankToggle');
     await toggle.click();
-    await page.waitForTimeout(500);
     
-    // Text should change (different icon count needed)
-    const newText = await availability.textContent();
-    expect(newText).not.toBe(initialText);
+    // Wait for text to change
+    await expect(availability).not.toHaveText(initialText);
   });
 
   test('should only apply to odd grids', async ({ page }) => {
@@ -47,14 +46,10 @@ test.describe('Center Blank Toggle', () => {
     
     // Test with even grid (4x4)
     await gridSelect.selectOption('4');
-    await page.waitForTimeout(300);
-    
-    // Toggle should still work but not affect even grids
     await expect(toggle).toBeVisible();
     
     // Test with odd grid (5x5)
     await gridSelect.selectOption('5');
-    await page.waitForTimeout(300);
     await expect(toggle).toBeVisible();
   });
 });

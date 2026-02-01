@@ -20,7 +20,6 @@ test.describe('Multi-Hit Mode', () => {
     
     // Enable multi-hit mode
     await toggle.click();
-    await page.waitForTimeout(300);
     
     // Options should now be visible
     await expect(options).toBeVisible();
@@ -29,7 +28,9 @@ test.describe('Multi-Hit Mode', () => {
   test('should have three difficulty levels', async ({ page }) => {
     const toggle = page.locator('#multiHitToggle');
     await toggle.click();
-    await page.waitForTimeout(300);
+    
+    // Wait for options to be visible
+    await expect(page.locator('#multiHitOptions')).toBeVisible();
     
     const lightRadio = page.locator('input[name="difficulty"][value="LIGHT"]');
     const mediumRadio = page.locator('input[name="difficulty"][value="MEDIUM"]');
@@ -46,7 +47,9 @@ test.describe('Multi-Hit Mode', () => {
   test('should allow difficulty selection', async ({ page }) => {
     const toggle = page.locator('#multiHitToggle');
     await toggle.click();
-    await page.waitForTimeout(300);
+    
+    // Wait for options to be visible
+    await expect(page.locator('#multiHitOptions')).toBeVisible();
     
     const lightRadio = page.locator('input[name="difficulty"][value="LIGHT"]');
     const hardRadio = page.locator('input[name="difficulty"][value="HARD"]');
@@ -64,8 +67,8 @@ test.describe('Multi-Hit Mode', () => {
   test('should show multi-hit preview info', async ({ page }) => {
     const toggle = page.locator('#multiHitToggle');
     await toggle.click();
-    await page.waitForTimeout(300);
     
+    // Wait for preview to be visible
     const preview = page.locator('#multiHitPreview');
     await expect(preview).toBeVisible();
   });
@@ -80,7 +83,9 @@ test.describe('Multi-Hit Mode', () => {
     
     // Enable multi-hit
     await multiHitToggle.click();
-    await page.waitForTimeout(300);
+    
+    // Wait for multi-hit options to be visible
+    await expect(page.locator('#multiHitOptions')).toBeVisible();
     
     // Center blank should still be checked
     await expect(centerBlankToggle).toBeChecked();
