@@ -4,11 +4,19 @@ const path = require('path');
 const url = require('url');
 const SQLiteStorage = require('./src/js/modules/sqliteStorage');
 const ServerAIService = require('./src/js/modules/serverAIService');
+const validation = require('./src/js/modules/validation');
 
 // Load environment variables
 require('dotenv').config();
 
 const PORT = process.env.PORT || 8080;
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 30; // Max 30 requests per minute per IP
+const RATE_LIMIT_AI_MAX_REQUESTS = 10; // Max 10 AI requests per minute per IP
+const rateLimitMap = new Map(); // Track requests per IP
+
 const mimeTypes = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -39,23 +47,93 @@ const storage = new SQLiteStorage();
 const aiService = new ServerAIService();
 storage.init().catch(console.error);
 
-// Parse request body for POST/PUT requests
+// Constants for request limits
+const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB limit for requests
+const MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit for JSON payloads
+
+// Parse request body for POST/PUT requests with size limits
 function parseRequestBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    let size = 0;
+    
     req.on('data', chunk => {
+      size += chunk.length;
+      
+      // Check if request exceeds maximum size
+      if (size > MAX_REQUEST_SIZE) {
+        req.connection.destroy();
+        reject(new Error(`Request body too large. Maximum size is ${MAX_REQUEST_SIZE / 1024 / 1024}MB`));
+        return;
+      }
+      
       body += chunk.toString();
+      
+      // Additional check for JSON size
+      if (body.length > MAX_JSON_SIZE) {
+        req.connection.destroy();
+        reject(new Error(`JSON payload too large. Maximum size is ${MAX_JSON_SIZE / 1024 / 1024}MB`));
+        return;
+      }
     });
+    
     req.on('end', () => {
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (error) {
-        reject(error);
+        reject(new Error(`Invalid JSON: ${error.message}`));
       }
     });
+    
     req.on('error', reject);
   });
 }
+
+/**
+ * Rate limiting middleware
+ * @param {string} clientIP - Client IP address
+ * @param {boolean} isAIEndpoint - Whether this is an AI endpoint (stricter limits)
+ * @returns {boolean} True if rate limit exceeded, false otherwise
+ */
+function checkRateLimit(clientIP, isAIEndpoint = false) {
+  const now = Date.now();
+  const maxRequests = isAIEndpoint ? RATE_LIMIT_AI_MAX_REQUESTS : RATE_LIMIT_MAX_REQUESTS;
+  
+  if (!rateLimitMap.has(clientIP)) {
+    rateLimitMap.set(clientIP, []);
+  }
+  
+  const requests = rateLimitMap.get(clientIP);
+  
+  // Remove requests outside the time window
+  const recentRequests = requests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+  
+  // Check if rate limit exceeded
+  if (recentRequests.length >= maxRequests) {
+    return true; // Rate limit exceeded
+  }
+  
+  // Add current request
+  recentRequests.push(now);
+  rateLimitMap.set(clientIP, recentRequests);
+  
+  return false; // Within rate limit
+}
+
+/**
+ * Clean up old rate limit entries periodically
+ */
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, requests] of rateLimitMap.entries()) {
+    const recentRequests = requests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+    if (recentRequests.length === 0) {
+      rateLimitMap.delete(ip);
+    } else {
+      rateLimitMap.set(ip, recentRequests);
+    }
+  }
+}, RATE_LIMIT_WINDOW);
 
 // Send JSON response
 function sendJSON(res, data, statusCode = 200) {
@@ -87,6 +165,31 @@ async function handleAPIRequest(req, res) {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const method = req.method;
+  
+  // Get client IP for rate limiting
+  const clientIP = req.socket.remoteAddress || req.connection.remoteAddress || 'unknown';
+  
+  // Check if this is an AI endpoint
+  const isAIEndpoint = pathname.startsWith('/api/ai/');
+  
+  // Apply rate limiting (except for health checks)
+  if (pathname !== '/api/health') {
+    if (checkRateLimit(clientIP, isAIEndpoint)) {
+      const retryAfter = Math.ceil(RATE_LIMIT_WINDOW / 1000); // seconds
+      res.writeHead(429, {
+        'Content-Type': 'application/json',
+        'Retry-After': retryAfter,
+        'X-RateLimit-Limit': isAIEndpoint ? RATE_LIMIT_AI_MAX_REQUESTS : RATE_LIMIT_MAX_REQUESTS,
+        'X-RateLimit-Window': RATE_LIMIT_WINDOW / 1000
+      });
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Too many requests. Please try again later.',
+        retryAfter: retryAfter
+      }));
+      return true;
+    }
+  }
 
   try {
     // Health check API
@@ -98,12 +201,37 @@ async function handleAPIRequest(req, res) {
     // Icons API
     if (pathname === '/api/icons') {
       if (method === 'GET') {
+        // Validate query parameters
+        const allowedParams = ['search', 'category'];
+        const queryValidation = validation.validateQueryParams(parsedUrl.query, allowedParams);
+        if (!queryValidation.valid) {
+          sendJSON(res, { success: false, errors: queryValidation.errors }, 400);
+          return true;
+        }
+        
         const { search, category } = parsedUrl.query;
         const icons = await storage.loadIcons(search || '', category || '');
         sendJSON(res, { success: true, data: icons });
         return true;
       } else if (method === 'POST') {
         const body = await parseRequestBody(req);
+        
+        // Validate icon data
+        const iconValidation = validation.validateIcon(body);
+        if (!iconValidation.valid) {
+          sendJSON(res, { success: false, errors: iconValidation.errors }, 400);
+          return true;
+        }
+        
+        // Validate file upload if imageData is present
+        if (body.imageData) {
+          const fileValidation = validation.validateFileUpload(body.imageData);
+          if (!fileValidation.valid) {
+            sendJSON(res, { success: false, errors: fileValidation.errors }, 400);
+            return true;
+          }
+        }
+        
         const result = await storage.saveIcon(body);
         sendJSON(res, result, 201);
         return true;
@@ -141,7 +269,29 @@ async function handleAPIRequest(req, res) {
     // Update icon API
     if (pathname.startsWith('/api/icons/') && method === 'PUT') {
       const iconId = pathname.split('/')[3];
+      
+      // Validate icon ID
+      if (!iconId || typeof iconId !== 'string') {
+        sendJSON(res, { success: false, error: 'Invalid icon ID' }, 400);
+        return true;
+      }
+      
       const body = await parseRequestBody(req);
+      
+      // Validate icon data (partial update allowed)
+      if (body.imageData) {
+        const fileValidation = validation.validateFileUpload(body.imageData);
+        if (!fileValidation.valid) {
+          sendJSON(res, { success: false, errors: fileValidation.errors }, 400);
+          return true;
+        }
+      }
+      
+      if (body.name && (typeof body.name !== 'string' || body.name.length > 100)) {
+        sendJSON(res, { success: false, error: 'Icon name must be a string with max 100 characters' }, 400);
+        return true;
+      }
+      
       const result = await storage.updateIcon(iconId, body);
       sendJSON(res, result);
       return true;
@@ -155,6 +305,13 @@ async function handleAPIRequest(req, res) {
         return true;
       } else if (method === 'POST' || method === 'PUT') {
         const body = await parseRequestBody(req);
+        
+        // Validate setting data
+        const settingValidation = validation.validateSetting(body);
+        if (!settingValidation.valid) {
+          sendJSON(res, { success: false, errors: settingValidation.errors }, 400);
+          return true;
+        }
         const result = await storage.saveSettings(body);
         sendJSON(res, result);
         return true;

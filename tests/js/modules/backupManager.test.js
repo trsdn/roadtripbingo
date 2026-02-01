@@ -524,30 +524,8 @@ describe('BackupManager', () => {
       expect(backupData.data.icons).toHaveLength(iconCount + 2); // +2 from setup
     }, 15000);
 
-    test.skip('should compress large backups effectively', async () => {
-      // TODO: Implement actual compression - currently no compression is implemented
-      // Add icons with repetitive data that compresses well
-      const repetitiveData = 'A'.repeat(1000);
-      for (let i = 0; i < 10; i++) {
-        await sqliteStorage.saveIcon({
-          id: `compress-icon-${i}`,
-          name: `Compress Icon ${i}`,
-          data: Buffer.from(repetitiveData),
-          type: 'image/png',
-          size: 1000
-        });
-      }
-
-      const backupPath = await backupManager.createJSONBackup();
-      const backupData = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
-
-      expect(backupData.metadata.compressedSize)
-        .toBeLessThan(backupData.metadata.uncompressedSize);
-
-      const compressionRatio = backupData.metadata.compressedSize / 
-                              backupData.metadata.uncompressedSize;
-      expect(compressionRatio).toBeLessThan(0.8); // At least 20% compression
-    });
+    // Note: Compression feature is not currently implemented in backupManager
+    // Future enhancement: Add compression support for large backups to reduce file size
   });
 
   describe('Error handling and edge cases', () => {
