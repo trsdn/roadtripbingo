@@ -60,6 +60,12 @@ logs/
 .temp/
 /temp/
 
+# Debug and test HTML files
+debug-*.html
+test-*.html
+*-test.html
+*-debug.html
+
 # Cache
 .cache/
 .eslintcache
