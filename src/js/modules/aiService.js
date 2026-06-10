@@ -142,8 +142,37 @@ class AIService {
     }
   }
 
+  async generateIcon(name, description, style) {
+    if (!this.isImageConfigured()) {
+      throw new Error('Image generation not configured on server');
+    }
+
+    try {
+      const response = await fetch('/api/ai/generate-icon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, style })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate icon');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Icon image generation failed:', error);
+      throw error;
+    }
+  }
+
   isConfigured() {
     return this.status && this.status.configured;
+  }
+
+  isImageConfigured() {
+    return !!(this.status && this.status.image_configured);
   }
 
   async checkUsageLimits() {

@@ -245,7 +245,6 @@
               <span data-translate="currentlyUsing">Currently using</span> 
               <span id="iconCount">0</span> 
               <span data-translate="icons">icons</span>
-              <small style="color: #666; margin-left: 8px;">(SQLite)</small>
             </span>
           </div>
         </div>
@@ -276,6 +275,25 @@
           </div>
           
           <div class="ai-panel-content">
+            <!-- AI Icon Generation Section -->
+            <div class="ai-section" id="iconGenSection">
+              <h4 data-translate="aiIconGeneration">AI Icon Generation</h4>
+              <p class="ai-description" data-translate="aiIconGenerationDesc">Generate a new icon image with AI and add it to your library</p>
+              <div class="ai-actions">
+                <input type="text" id="iconGenName" class="ai-input" placeholder="Icon name (e.g., Windmill)" data-translate-placeholder="iconGenNamePlaceholder">
+                <input type="text" id="iconGenDescription" class="ai-input" placeholder="Optional description" data-translate-placeholder="iconGenDescriptionPlaceholder">
+                <select id="iconGenStyle" class="ai-select">
+                  <option value="flat" selected data-translate="styleFlat">Flat</option>
+                  <option value="outline" data-translate="styleOutline">Outline</option>
+                  <option value="cartoon" data-translate="styleCartoon">Cartoon</option>
+                  <option value="realistic" data-translate="styleRealistic">Realistic</option>
+                </select>
+                <button id="generateIconImageBtn" class="btn-primary" data-translate="generateIconImage">Generate Icon</button>
+              </div>
+              <p id="iconGenNotConfigured" class="ai-description" style="display:none" data-translate="imageGenNotConfigured">Image generation is not configured on the server.</p>
+              <div id="iconGenResult" style="display:none"><img id="iconGenPreview" alt="Generated icon"><div class="icon-gen-actions"><button id="addGeneratedIconBtn" class="btn-primary" data-translate="addToLibrary">Add to library</button><button id="regenerateIconBtn" class="btn-secondary" data-translate="regenerate">Regenerate</button></div></div>
+            </div>
+
             <!-- AI Analysis Section -->
             <div class="ai-section">
               <h4 data-translate="aiAnalysis">AI Analysis</h4>
@@ -283,11 +301,9 @@
               <div class="ai-actions">
                 <button id="analyzeSelectedIcons" class="btn-primary" disabled>
                   <span data-translate="analyzeSelected">Analyze Selected Icons</span>
-                  <span class="ai-cost">(~$0.01)</span>
                 </button>
                 <button id="analyzeAllIcons" class="btn-secondary">
                   <span data-translate="analyzeAll">Analyze All Icons</span>
-                  <span class="ai-cost" id="analyzeAllCost">(~$0.10)</span>
                 </button>
               </div>
             </div>
@@ -299,7 +315,6 @@
               <div class="ai-actions">
                 <button id="detectDuplicates" class="btn-primary">
                   <span data-translate="scanForDuplicates">Scan for Duplicates</span>
-                  <span class="ai-cost">(~$0.02)</span>
                 </button>
                 <div class="ai-settings">
                   <label>
@@ -307,6 +322,7 @@
                     <input type="range" id="duplicateSensitivity" min="0.5" max="1" step="0.1" value="0.8">
                     <span id="sensitivityValue">0.8</span>
                   </label>
+                  <div class="slider-labels"><span data-translate="sensitivityMore">More duplicates</span><span data-translate="sensitivityStrict">Stricter (fewer)</span></div>
                 </div>
               </div>
             </div>
@@ -318,7 +334,6 @@
               <div class="ai-actions">
                 <button id="getContentSuggestions" class="btn-primary">
                   <span data-translate="getSuggestions">Get Suggestions</span>
-                  <span class="ai-cost">(~$0.01)</span>
                 </button>
                 <select id="targetSetSelect" class="ai-select">
                   <option value="general" data-translate="generalSet">General Set</option>
@@ -337,7 +352,6 @@
                 <input type="text" id="setThemeInput" placeholder="Enter theme (e.g., Winter Road Trip)" class="ai-input">
                 <button id="generateSmartSet" class="btn-primary">
                   <span data-translate="generateSet">Generate Set</span>
-                  <span class="ai-cost">(~$0.03)</span>
                 </button>
               </div>
             </div>
@@ -356,11 +370,7 @@
                     AI features require an OpenAI API key to be configured by the server administrator.
                   </p>
                 </div>
-                
-                <label class="ai-toggle">
-                  <input type="checkbox" id="aiEnabled" checked>
-                  <span data-translate="enableAI">Enable AI Features</span>
-                </label>
+
                 <label class="ai-toggle">
                   <input type="checkbox" id="autoApplySuggestions">
                   <span data-translate="autoApply">Auto-apply Suggestions</span>
@@ -368,21 +378,12 @@
                 <label>
                   <span data-translate="aiModel">AI Model:</span>
                   <select id="aiModelSelect">
-                    <option value="gpt-4o-mini" selected>GPT-4o Mini (Faster, Cheaper)</option>
-                    <option value="gpt-4o">GPT-4o (More Accurate)</option>
+                    <option value="" selected data-translate="modelServerDefault">Server default</option>
+                    <option value="gpt-5.4">GPT-5.4</option>
+                    <option value="gpt-5.4-mini">GPT-5.4 Mini (faster)</option>
+                    <option value="claude-sonnet-4.6">Claude Sonnet 4.6</option>
                   </select>
                 </label>
-                <div class="duplicate-sensitivity-section">
-                  <label>
-                    <span data-translate="duplicateSensitivity">Duplicate Detection Sensitivity:</span>
-                    <input type="range" id="duplicateSensitivity" min="0.5" max="1" step="0.1" value="0.8">
-                    <span id="sensitivityValue">0.8</span>
-                  </label>
-                </div>
-              </div>
-              <div class="ai-usage-info">
-                <span data-translate="monthlyUsage">Monthly Usage:</span>
-                <span id="aiUsageDisplay">0 / 1000</span>
               </div>
             </div>
           </div>
@@ -591,10 +592,6 @@
         <div class="form-group">
           <label for="editIconTags" data-translate="tags">Tags (comma-separated):</label>
           <input type="text" id="editIconTags" placeholder="tag1, tag2, tag3">
-        </div>
-        <div class="form-group">
-          <label for="editIconAltText" data-translate="altText">Alt Text:</label>
-          <input type="text" id="editIconAltText" placeholder="Describe the icon">
         </div>
         <div class="form-group">
           <label for="editIconDifficulty" data-translate="difficulty">Difficulty:</label>

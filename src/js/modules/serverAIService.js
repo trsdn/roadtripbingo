@@ -1,68 +1,84 @@
-// Server-side AI Service for OpenAI integration
-// This module handles AI operations on the server using environment variables
+// Server-side AI Service for OpenAI-compatible chat APIs and OpenAI image generation.
+// Chat requests go to OPENAI_BASE_URL (e.g. a local OpenAI-compatible proxy),
+// image generation always needs a real OpenAI account (OPENAI_IMAGE_API_KEY).
 
 class ServerAIService {
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY;
-    this.baseURL = 'https://api.openai.com/v1/chat/completions';
-    this.defaultModel = process.env.OPENAI_MODEL_DEFAULT || 'gpt-4o-mini';
+    this.baseURL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+    this.defaultModel = process.env.OPENAI_MODEL_DEFAULT || 'gpt-5.4';
     this.maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 1000;
     this.temperature = parseFloat(process.env.OPENAI_TEMPERATURE) || 0.3;
-    this.monthlyLimit = parseInt(process.env.AI_MONTHLY_LIMIT) || 1000;
-    this.costLimit = parseFloat(process.env.AI_COST_LIMIT) || 10.00;
+
+    // Image generation (separate credentials: must be a real OpenAI key)
+    this.imageApiKey = process.env.OPENAI_IMAGE_API_KEY || '';
+    this.imageBaseURL = (process.env.OPENAI_IMAGE_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+    this.imageModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
   }
 
   isConfigured() {
-    return !!this.apiKey && this.apiKey.startsWith('sk-');
+    return !!this.apiKey;
+  }
+
+  isImageConfigured() {
+    return !!this.imageApiKey;
+  }
+
+  /**
+   * Send a JSON-mode chat completion and return the parsed JSON content.
+   * @param {string} systemPrompt - system message
+   * @param {string} userPrompt - user message
+   * @param {object} options - { model, temperature }
+   * @returns {Promise<object>} parsed JSON response content
+   */
+  async chatJSON(systemPrompt, userPrompt, { model = null, temperature = null } = {}) {
+    if (!this.isConfigured()) {
+      throw new Error('AI API key not configured. Please set OPENAI_API_KEY environment variable.');
+    }
+
+    const response = await fetch(`${this.baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify({
+        model: model || this.defaultModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: this.maxTokens,
+        temperature: temperature !== null ? temperature : this.temperature,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`AI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return JSON.parse(data.choices[0].message.content);
   }
 
   async analyzeIcon(icon, model = null) {
-    if (!this.isConfigured()) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-    }
-
-    const prompt = this.buildIconAnalysisPrompt(icon);
     const selectedModel = model || this.defaultModel;
-
     try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an AI assistant helping to analyze icons for a road trip bingo game. Provide accurate categorization, tags, and difficulty ratings based on how easy the object would be to spot during a car journey.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: this.maxTokens,
-          temperature: this.temperature,
-          response_format: { type: 'json_object' }
-        })
-      });
+      const analysis = await this.chatJSON(
+        'You are an AI assistant helping to analyze icons for a road trip bingo game. Provide accurate categorization, tags, and difficulty ratings based on how easy the object would be to spot during a car journey.',
+        this.buildIconAnalysisPrompt(icon),
+        { model: selectedModel }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      const analysis = JSON.parse(data.choices[0].message.content);
-      
       return {
         icon_id: icon.id,
         category_suggestion: analysis.category_suggestion,
         tags_suggestion: JSON.stringify(analysis.tags_suggestion || []),
         difficulty_suggestion: analysis.difficulty_suggestion,
         name_suggestion: analysis.name_suggestion,
+        name_suggestion_de: analysis.name_suggestion_de,
         description_suggestion: analysis.description_suggestion,
         reasoning: analysis.reasoning,
         confidence_score: this.calculateConfidence(analysis),
@@ -82,10 +98,10 @@ class ServerAIService {
         const result = await this.analyzeIcon(icon, model);
         results.push({ success: true, data: result });
       } catch (error) {
-        results.push({ 
-          success: false, 
-          error: error.message, 
-          icon_id: icon.id 
+        results.push({
+          success: false,
+          error: error.message,
+          icon_id: icon.id
         });
       }
     }
@@ -93,10 +109,6 @@ class ServerAIService {
   }
 
   async detectDuplicates(icons, sensitivity = 0.8, model = null) {
-    if (!this.isConfigured()) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-    }
-
     const selectedModel = model || this.defaultModel;
     const iconList = icons.map(icon => ({
       id: icon.id,
@@ -121,42 +133,16 @@ class ServerAIService {
         }
       ]
     }
-    
+
     Icons to analyze:
     ${JSON.stringify(iconList, null, 2)}`;
 
     try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an AI assistant helping to identify duplicate or very similar icons in a road trip bingo game. Group icons that represent the same or very similar objects.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: this.maxTokens,
-          temperature: 0.1,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      const duplicates = JSON.parse(data.choices[0].message.content);
+      const duplicates = await this.chatJSON(
+        'You are an AI assistant helping to identify duplicate or very similar icons in a road trip bingo game. Group icons that represent the same or very similar objects.',
+        prompt,
+        { model: selectedModel, temperature: 0.1 }
+      );
 
       return {
         groups: duplicates.groups || [],
@@ -173,20 +159,16 @@ class ServerAIService {
   }
 
   async suggestMissingContent(icons, targetSet = 'general', model = null) {
-    if (!this.isConfigured()) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-    }
-
     const selectedModel = model || this.defaultModel;
     const iconSummary = this.summarizeIconSet(icons);
 
     const prompt = `Analyze this icon set and suggest missing content for a balanced road trip bingo game:
-    
+
     Current set summary:
     ${JSON.stringify(iconSummary, null, 2)}
-    
+
     Target set type: ${targetSet}
-    
+
     Please provide JSON with this structure:
     {
       "analysis": {
@@ -206,37 +188,11 @@ class ServerAIService {
     }`;
 
     try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an AI assistant helping to improve icon sets for a road trip bingo game. Suggest missing icons that would create a balanced, fun game experience.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: this.maxTokens,
-          temperature: 0.7,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      const suggestions = JSON.parse(data.choices[0].message.content);
+      const suggestions = await this.chatJSON(
+        'You are an AI assistant helping to improve icon sets for a road trip bingo game. Suggest missing icons that would create a balanced, fun game experience.',
+        prompt,
+        { model: selectedModel, temperature: 0.7 }
+      );
 
       return {
         target_set: targetSet,
@@ -253,21 +209,17 @@ class ServerAIService {
   }
 
   async generateSmartSet(criteria, model = null) {
-    if (!this.isConfigured()) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-    }
-
     const selectedModel = model || this.defaultModel;
     const theme = criteria.theme || 'General Road Trip';
     const gridSize = criteria.gridSize || 25;
     const difficultyDistribution = criteria.difficultyDistribution || 'balanced';
 
     const prompt = `Generate a themed icon set for a road trip bingo game:
-    
+
     Theme: ${theme}
     Required icons: ${gridSize}
     Difficulty distribution: ${difficultyDistribution}
-    
+
     Please provide JSON with this structure:
     {
       "set_name": "descriptive name",
@@ -284,41 +236,15 @@ class ServerAIService {
         }
       ]
     }
-    
+
     Ensure good difficulty distribution and thematic coherence.`;
 
     try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an AI assistant creating balanced icon sets for a road trip bingo game. Create sets with good difficulty distribution and thematic coherence.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: this.maxTokens,
-          temperature: 0.8,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      const setData = JSON.parse(data.choices[0].message.content);
+      const setData = await this.chatJSON(
+        'You are an AI assistant creating balanced icon sets for a road trip bingo game. Create sets with good difficulty distribution and thematic coherence.',
+        prompt,
+        { model: selectedModel, temperature: 0.8 }
+      );
 
       return {
         name: setData.set_name,
@@ -332,6 +258,68 @@ class ServerAIService {
       console.error('Set generation failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Generate a bingo icon image via the OpenAI Images API.
+   * @param {object} request - { name, description, style }
+   * @returns {Promise<object>} { imageData (data URL), prompt, model }
+   */
+  async generateIconImage({ name, description = '', style = 'flat' } = {}) {
+    if (!this.isImageConfigured()) {
+      throw new Error('Image generation not configured. Please set OPENAI_IMAGE_API_KEY environment variable.');
+    }
+    if (!name) {
+      throw new Error('Icon name is required for image generation.');
+    }
+
+    const styleHints = {
+      flat: 'flat design, simple solid colors, minimal details',
+      outline: 'bold outline style, line art, minimal fill',
+      cartoon: 'friendly cartoon style, soft colors, kid-friendly',
+      realistic: 'simplified realistic illustration, clear shapes'
+    };
+    const styleHint = styleHints[style] || styleHints.flat;
+
+    const prompt = `A single pictogram of "${name}" for a children's road trip bingo card.` +
+      (description ? ` ${description}.` : '') +
+      ` Style: ${styleHint}. Centered single object, no text, no border, no background scenery,` +
+      ' transparent background, high contrast, instantly recognizable at small print size.';
+
+    const response = await fetch(`${this.imageBaseURL}/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.imageApiKey}`
+      },
+      body: JSON.stringify({
+        model: this.imageModel,
+        prompt: prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'medium',
+        background: 'transparent',
+        output_format: 'png'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Image API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    const b64 = data.data?.[0]?.b64_json;
+    if (!b64) {
+      throw new Error('Image API returned no image data.');
+    }
+
+    return {
+      imageData: `data:image/png;base64,${b64}`,
+      prompt: prompt,
+      model: this.imageModel,
+      created_at: new Date().toISOString()
+    };
   }
 
   buildIconAnalysisPrompt(icon) {
@@ -356,10 +344,10 @@ Consider:
 - How common/rare the object is on roads
 - How easy it is to spot while moving
 - Size and visibility from a car
-
-For the German translation, provide a natural German term that would be appropriate for a road trip bingo game played in Germany.
 - Regional variations
-- Typical road trip scenarios`;
+- Typical road trip scenarios
+
+For the German translation, provide a natural German term that would be appropriate for a road trip bingo game played in Germany.`;
   }
 
   summarizeIconSet(icons) {
@@ -375,7 +363,7 @@ For the German translation, provide a natural German term that would be appropri
       if (icon.difficulty) {
         summary.difficulties[icon.difficulty]++;
       }
-      
+
       if (icon.tags) {
         try {
           const tags = typeof icon.tags === 'string' ? JSON.parse(icon.tags) : icon.tags;
@@ -395,24 +383,24 @@ For the German translation, provide a natural German term that would be appropri
 
   calculateConfidence(analysis) {
     let confidence = 0.8;
-    
+
     if (analysis.reasoning && analysis.reasoning.length > 50) {
       confidence += 0.1;
     }
-    
+
     if (analysis.tags_suggestion && analysis.tags_suggestion.length >= 3) {
       confidence += 0.1;
     }
-    
+
     return Math.min(confidence, 1.0);
   }
 
   getStatus() {
     return {
       configured: this.isConfigured(),
+      image_configured: this.isImageConfigured(),
       default_model: this.defaultModel,
-      monthly_limit: this.monthlyLimit,
-      cost_limit: this.costLimit
+      image_model: this.imageModel
     };
   }
 }
