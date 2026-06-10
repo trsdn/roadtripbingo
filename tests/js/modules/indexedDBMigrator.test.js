@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Mock paths
-const testDbPath = path.join(__dirname, '../../../temp/test-migration.db');
+const testDbPath = path.join(__dirname, '../../../temp/indexedDBMigrator/test-migration.db');
 const testDataDir = path.dirname(testDbPath);
 
 describe('IndexedDBMigrator - Basic Functionality', () => {

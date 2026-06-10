@@ -140,8 +140,33 @@ class SQLiteStorage {
   }
 
   // Icon management methods
+  /**
+   * Normalize incoming icon binary data to a value SQLite can bind.
+   * Accepts a Buffer, a JSON-serialized Buffer ({ type: 'Buffer', data: [...] }),
+   * a byte array, or a string (e.g. base64). Throws on unsupported shapes.
+   * @param {*} data Raw icon data from a caller or JSON-parsed HTTP body
+   * @returns {Buffer|string} A bindable value
+   */
+  _normalizeBinaryData(data) {
+    if (Buffer.isBuffer(data)) return data;
+    if (data && typeof data === 'object' && data.type === 'Buffer' &&
+        Array.isArray(data.data)) {
+      return Buffer.from(data.data);
+    }
+    if (Array.isArray(data)) return Buffer.from(data);
+    if (typeof data === 'string') return data;
+    throw new Error('Unsupported icon data format');
+  }
+
   async saveIcon(iconData) {
     if (!this.isInitialized) await this.init();
+
+    // Validate required fields up-front so callers (and the API) reject
+    // malformed payloads instead of persisting unusable rows.
+    if (!iconData.name || (typeof iconData.name === 'string' &&
+        iconData.name.trim() === '')) {
+      throw new Error('Icon name is required');
+    }
     
     // Generate ID if not provided
     const iconId = iconData.id || Date.now().toString();
@@ -168,13 +193,19 @@ class SQLiteStorage {
       blobData = iconData.blob;
       mimeType = iconData.type || 'image/png';
       dataSize = blobData.size || blobData.length;
-    } else if (iconData.data) {
-      // Raw data format
-      blobData = iconData.data;
+    } else if (iconData.data !== undefined && iconData.data !== null) {
+      // Raw data format (Buffer, JSON-serialized Buffer, byte array, or string)
+      blobData = this._normalizeBinaryData(iconData.data);
       mimeType = iconData.type || 'image/png';
       dataSize = blobData.length;
     } else {
       throw new Error('No image data provided');
+    }
+
+    // Prefer a caller-provided size when present; otherwise use the computed
+    // byte length of the decoded image data.
+    if (iconData.size != null) {
+      dataSize = iconData.size;
     }
     
     const stmt = this.db.prepare(`
@@ -193,7 +224,7 @@ class SQLiteStorage {
         JSON.stringify(iconData.tags || []),
         iconData.altText || iconData.name || 'Icon',
         iconData.difficulty || 3,
-        iconData.excludeFromMultiHit || false
+        iconData.excludeFromMultiHit ? 1 : 0
       );
       
       return { 
@@ -449,8 +480,20 @@ class SQLiteStorage {
       // Get database file size
       const stats = fs.statSync(this.dbPath);
       const dbSize = stats.size;
+
+      // Schema/data version stored in db_metadata (best-effort)
+      let version = '1.0.0';
+      try {
+        const verRow = this.db
+          .prepare('SELECT value FROM db_metadata WHERE key = ?')
+          .get('version');
+        if (verRow && verRow.value) version = verRow.value;
+      } catch (_) {
+        // db_metadata may be absent on very old databases; keep default
+      }
       
       return {
+        version,
         iconCount,
         iconSizeMB: iconSize / (1024 * 1024),
         settingsCount,

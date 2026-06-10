@@ -29,6 +29,7 @@ describe('Image Utils', () => {
       expect(result).toEqual({
         id: expect.any(String),
         name: 'test',
+        image: 'data:image/png;base64,dGVzdA==',
         data: 'data:image/png;base64,dGVzdA=='
       });
     });
