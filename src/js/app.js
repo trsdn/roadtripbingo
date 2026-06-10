@@ -1455,7 +1455,7 @@ async function restoreData() {
 // Manually optimize storage by removing older icons
 async function optimizeStorageManually() {
   if (availableIcons.length === 0) {
-    alert('No icons to optimize.');
+    window.notifications.warning('No icons to optimize.');
     return;
   }
 
@@ -3210,7 +3210,7 @@ function openCreateSetModal() {
     const description = setDescriptionInput?.value.trim();
 
     if (!name) {
-      alert('Set name is required');
+      window.notifications.warning('Set name is required');
       return;
     }
 
@@ -3232,14 +3232,14 @@ function openCreateSetModal() {
         // Refresh icon sets
         await loadIconSets();
 
-        alert('Icon set created successfully');
+        window.notifications.success('Icon set created successfully');
         closeModal();
       } else {
-        alert('Failed to create icon set: ' + (result.error || 'Unknown error'));
+        window.notifications.error('Failed to create icon set: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error creating icon set:', error);
-      alert('Error creating icon set');
+      window.notifications.error('Error creating icon set');
     }
   };
 
@@ -3292,7 +3292,7 @@ function editSet(setId) {
     const description = setDescriptionInput?.value.trim();
 
     if (!name) {
-      alert('Set name is required');
+      window.notifications.warning('Set name is required');
       return;
     }
 
@@ -3314,14 +3314,14 @@ function editSet(setId) {
         // Refresh icon sets
         await loadIconSets();
 
-        alert('Icon set updated successfully');
+        window.notifications.success('Icon set updated successfully');
         closeModal();
       } else {
-        alert('Failed to update icon set: ' + (result.error || 'Unknown error'));
+        window.notifications.error('Failed to update icon set: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error updating icon set:', error);
-      alert('Error updating icon set');
+      window.notifications.error('Error updating icon set');
     }
   };
 
@@ -3348,7 +3348,7 @@ function editSet(setId) {
 
 async function deleteSet(setId) {
   if (setId === 'all-icons') {
-    alert('Cannot delete the default "All Icons" set');
+    window.notifications.error('Cannot delete the default "All Icons" set');
     return;
   }
 
@@ -3367,13 +3367,13 @@ async function deleteSet(setId) {
         // Refresh icon sets
         await loadIconSets();
 
-        alert('Icon set deleted successfully');
+        window.notifications.success('Icon set deleted successfully');
       } else {
-        alert('Failed to delete icon set: ' + (result.error || 'Unknown error'));
+        window.notifications.error('Failed to delete icon set: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error deleting icon set:', error);
-      alert('Error deleting icon set');
+      window.notifications.error('Error deleting icon set');
     }
   }
 }
@@ -3424,7 +3424,7 @@ function openTranslationModal(iconId) {
     const text = translationTextInput?.value.trim();
 
     if (!language || !text) {
-      alert('Please select a language and enter a translation');
+      window.notifications.warning('Please select a language and enter a translation');
       return;
     }
 
@@ -3452,13 +3452,13 @@ function openTranslationModal(iconId) {
         // Refresh icon table to show updated translations
         await loadIconsForTable();
 
-        alert('Translation added successfully');
+        window.notifications.success('Translation added successfully');
       } else {
-        alert('Failed to add translation: ' + (result.error || 'Unknown error'));
+        window.notifications.error('Failed to add translation: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error adding translation:', error);
-      alert('Error adding translation');
+      window.notifications.error('Error adding translation');
     }
   };
 
@@ -3542,13 +3542,13 @@ async function deleteTranslation(iconId, language) {
         // Refresh icon table
         await loadIconsForTable();
 
-        alert('Translation deleted successfully');
+        window.notifications.success('Translation deleted successfully');
       } else {
-        alert('Failed to delete translation');
+        window.notifications.error('Failed to delete translation');
       }
     } catch (error) {
       console.error('Error deleting translation:', error);
-      alert('Error deleting translation');
+      window.notifications.error('Error deleting translation');
     }
   }
 }
@@ -3598,7 +3598,7 @@ function openBulkAddToSetModal() {
   const handleConfirm = async () => {
     const selectedSetId = targetSetSelect.value;
     if (!selectedSetId) {
-      alert('Please select a set');
+      window.notifications.warning('Please select a set');
       return;
     }
 
@@ -3618,14 +3618,14 @@ function openBulkAddToSetModal() {
         // Clear selection
         selectedIcons.clear();
 
-        alert(`Successfully added ${successCount} icon${successCount > 1 ? 's' : ''} to set`);
+        window.notifications.success(`Successfully added ${successCount} icon${successCount > 1 ? 's' : ''} to set`);
         closeModal();
       } else {
-        alert('Failed to add icons to set');
+        window.notifications.error('Failed to add icons to set');
       }
     } catch (error) {
       console.error('Error adding icons to set:', error);
-      alert('Error adding icons to set');
+      window.notifications.error('Error adding icons to set');
     }
   };
 
@@ -3767,13 +3767,13 @@ async function bulkDeleteIcons() {
         // Re-render
         renderIconTable();
 
-        alert(`Successfully deleted ${successCount} icon${successCount > 1 ? 's' : ''}`);
+        window.notifications.success(`Successfully deleted ${successCount} icon${successCount > 1 ? 's' : ''}`);
       } else {
-        alert('Failed to delete icons');
+        window.notifications.error('Failed to delete icons');
       }
     } catch (error) {
       console.error('Error bulk deleting icons:', error);
-      alert('Error deleting icons');
+      window.notifications.error('Error deleting icons');
     }
   }
 }
@@ -3798,11 +3798,11 @@ async function deleteIconFromManager(iconId) {
         console.log('Icon deleted successfully');
       } else {
         console.error('Failed to delete icon:', result.error);
-        alert('Failed to delete icon');
+        window.notifications.error('Failed to delete icon');
       }
     } catch (error) {
       console.error('Error deleting icon:', error);
-      alert('Error deleting icon');
+      window.notifications.error('Error deleting icon');
     }
   }
 }
