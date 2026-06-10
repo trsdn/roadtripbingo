@@ -36,7 +36,7 @@
     "@babel/preset-env": "^7.27.2",
     "@playwright/test": "^1.53.2",
     "babel-loader": "^10.0.0",
-    "copy-webpack-plugin": "^12.0.2",
+    "copy-webpack-plugin": "^14.0.0",
     "css-loader": "^7.1.2",
     "eslint": "^8.57.0",
     "fake-indexeddb": "^6.2.5",
@@ -53,5 +53,10 @@
   "dependencies": {
     "better-sqlite3": "^12.2.0",
     "dotenv": "^16.6.1"
+  },
+  "overrides": {
+    "sockjs": {
+      "uuid": "^11.1.1"
+    }
   }
 }
