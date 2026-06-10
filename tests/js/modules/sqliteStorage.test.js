@@ -8,7 +8,7 @@ const path = require('path');
 const SQLiteStorage = require('../../../src/js/modules/sqliteStorage.js');
 
 // Mock database path for tests
-const testDbPath = path.join(__dirname, '../../../temp/test-roadtripbingo.db');
+const testDbPath = path.join(__dirname, '../../../temp/sqliteStorage/test-roadtripbingo.db');
 const testDataDir = path.dirname(testDbPath);
 
 describe('SQLiteStorage', () => {

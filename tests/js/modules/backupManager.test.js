@@ -9,8 +9,8 @@ const BackupManager = require('../../../src/js/modules/backupManager.js');
 const SQLiteStorage = require('../../../src/js/modules/sqliteStorage.js');
 
 // Test paths
-const testDbPath = path.join(__dirname, '../../../temp/test-backup.db');
-const testBackupDir = path.join(__dirname, '../../../temp/backups');
+const testDbPath = path.join(__dirname, '../../../temp/backupManager/test-backup.db');
+const testBackupDir = path.join(__dirname, '../../../temp/backupManager/backups');
 const testDataDir = path.dirname(testDbPath);
 
 describe('BackupManager', () => {

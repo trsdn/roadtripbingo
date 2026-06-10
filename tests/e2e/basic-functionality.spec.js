@@ -16,18 +16,20 @@ test.describe('Road Trip Bingo - Basic Working Tests', () => {
   test('can select grid sizes', async ({ page }) => {
     await page.selectOption('#gridSize', '3');
     await expect(page.locator('#gridSize')).toHaveValue('3');
-    
+
     await page.selectOption('#gridSize', '5');
     await expect(page.locator('#gridSize')).toHaveValue('5');
   });
 
   test('icon upload interface exists', async ({ page }) => {
-    await expect(page.locator('#iconUpload')).toBeVisible();
+    await page.click('#navIconManager');
+    await expect(page.locator('#iconUpload')).toBeAttached();
     await expect(page.locator('#uploadBtn')).toBeVisible();
     await expect(page.locator('#clearIconsBtn')).toBeVisible();
   });
 
   test('backup and restore buttons exist', async ({ page }) => {
+    await page.click('#navIconManager');
     await expect(page.locator('#backupBtn')).toBeVisible();
     await expect(page.locator('#restoreBtn')).toBeVisible();
   });
@@ -51,10 +53,10 @@ test.describe('Road Trip Bingo - Basic Working Tests', () => {
     await page.waitForTimeout(3000);
 
     // Check that no critical storage errors occurred
-    const criticalErrors = consoleLogs.filter(log => 
+    const criticalErrors = consoleLogs.filter(log =>
       log.includes('ECONNREFUSED') || log.includes('SQLite') || log.includes('Failed to initialize')
     );
-    
+
     // If there are critical errors, log them for debugging but don't fail the test
     if (criticalErrors.length > 0) {
       console.log('Storage-related errors detected:', criticalErrors);

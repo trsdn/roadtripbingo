@@ -11,7 +11,7 @@ require('fake-indexeddb/auto');
 
 describe('Combined Test', () => {
   it('should handle both IndexedDB and SQLite setup without hanging', async () => {
-    const testDbPath = path.join(__dirname, '../temp/test-combined.db');
+    const testDbPath = path.join(__dirname, '../temp/combined/test-combined.db');
     const testDataDir = path.dirname(testDbPath);
     
     // Ensure temp directory exists

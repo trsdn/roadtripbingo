@@ -13,21 +13,3 @@ global.console = {
   error: console.error,
   debug: console.debug,
 };
-
-// Mock setTimeout and setInterval for consistent test timing
-global.setTimeout = jest.fn((fn, delay) => {
-  if (typeof fn === 'function') {
-    return setImmediate(fn);
-  }
-  return null;
-});
-
-global.setInterval = jest.fn((fn, interval) => {
-  if (typeof fn === 'function') {
-    return setImmediate(fn);
-  }
-  return null;
-});
-
-global.clearTimeout = jest.fn();
-global.clearInterval = jest.fn();

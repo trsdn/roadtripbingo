@@ -28,12 +28,6 @@ if (isJSDOMEnvironment) {
     writable: true,    // Allows tests or other code to modify/re-spy if necessary
     configurable: true // Allows it to be deleted or reconfigured
   });
-
-  // Mock URL for minimal support
-  global.URL = {
-    createObjectURL: jest.fn(() => 'blob:mock-url'),
-    revokeObjectURL: jest.fn()
-  };
 }
 
 // IndexedDB is no longer needed since we use SQLite
@@ -73,11 +67,23 @@ global.document = {
   }
 };
 
-// Mock URL for minimal support
-global.URL = {
-  createObjectURL: jest.fn(() => 'blob:mock-url'),
-  revokeObjectURL: jest.fn()
-};
+// Provide mock object-URL helpers WITHOUT destroying the real URL constructor.
+// The URL constructor is required by code that calls `new URL(...)` (e.g. the
+// API integration test server and browser modules); replacing it with a plain
+// object made `new URL()` throw, which silently broke those code paths.
+if (typeof global.URL === 'function') {
+  if (!global.URL.createObjectURL) {
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+  }
+  if (!global.URL.revokeObjectURL) {
+    global.URL.revokeObjectURL = jest.fn();
+  }
+} else {
+  global.URL = {
+    createObjectURL: jest.fn(() => 'blob:mock-url'),
+    revokeObjectURL: jest.fn()
+  };
+}
 
 // Mock FileReader for importData test
 global.FileReader = class FileReader {

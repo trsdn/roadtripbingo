@@ -1,7 +1,8 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('SQLite Storage Integration', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    await request.post('/api/test/reset');
     // Navigate to the app and clear any existing data
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
@@ -12,12 +13,18 @@ test.describe('SQLite Storage Integration', () => {
     // Upload test icons
     const iconInput = page.locator('#iconUpload');
     await iconInput.setInputFiles([
-      'icons copyright/car-parking.png',
-      'icons copyright/bus.png',
-      'icons copyright/train.png',
-      'icons copyright/airplane.png',
-      'icons copyright/truck.png'
+      'public/assets/icons/parking.png',
+      'public/assets/icons/bus.png',
+      'public/assets/icons/train.png',
+      'public/assets/icons/airplane.png',
+      'public/assets/icons/truck.png',
+      'public/assets/icons/motorcycle.png',
+      'public/assets/icons/gas station.png',
+      'public/assets/icons/bridge.png',
+      'public/assets/icons/traffic light.png'
     ]);
+
+    await page.selectOption('#gridSize', '3');
 
     // Wait for icons to be processed
     await page.waitForTimeout(3000);
@@ -32,17 +39,17 @@ test.describe('SQLite Storage Integration', () => {
 
     // Verify that data is persisted by reloading the page
     await page.reload();
-    
+
     // The icon count should be restored
-    await expect(page.locator('#iconCount')).toContainText('5');
+    await expect(page.locator('#iconCount')).toContainText('9');
   });
 
   test('handles storage migration correctly', async ({ page }) => {
     // This test verifies that the SQLite migration works
     // By checking that the app loads without errors after potential migrations
-    
+
     await page.goto('/');
-    
+
     // Check console for any migration errors
     const consoleLogs = [];
     page.on('console', msg => {
@@ -55,7 +62,7 @@ test.describe('SQLite Storage Integration', () => {
     await page.waitForTimeout(2000);
 
     // Check that no storage-related errors occurred
-    const storageErrors = consoleLogs.filter(log => 
+    const storageErrors = consoleLogs.filter(log =>
       log.includes('storage') || log.includes('migration') || log.includes('sqlite')
     );
     expect(storageErrors).toHaveLength(0);
@@ -68,13 +75,20 @@ test.describe('SQLite Storage Integration', () => {
     // Upload test data
     const iconInput = page.locator('#iconUpload');
     await iconInput.setInputFiles([
-      'icons copyright/car-parking.png',
-      'icons copyright/bus.png',
-      'icons copyright/train.png'
+      'public/assets/icons/parking.png',
+      'public/assets/icons/bus.png',
+      'public/assets/icons/train.png',
+      'public/assets/icons/airplane.png',
+      'public/assets/icons/truck.png',
+      'public/assets/icons/motorcycle.png',
+      'public/assets/icons/gas station.png',
+      'public/assets/icons/bridge.png',
+      'public/assets/icons/traffic light.png'
     ]);
 
+    await page.selectOption('#gridSize', '3');
     await page.waitForTimeout(3000);
-    
+
     // Wait for generate button to be enabled and generate card
     await expect(page.locator('#generateBtn')).toBeEnabled({ timeout: 10000 });
     await page.click('#generateBtn');
@@ -82,31 +96,31 @@ test.describe('SQLite Storage Integration', () => {
 
     // Verify data persistence
     const iconCount = await page.locator('#iconCount').textContent();
-    expect(iconCount).toContain('3');
+    expect(iconCount).toContain('9');
 
     // Reload and verify data is still there (indicating successful storage)
     await page.reload();
-    await expect(page.locator('#iconCount')).toContainText('3');
+    await expect(page.locator('#iconCount')).toContainText('9');
   });
 
   test('handles large datasets efficiently', async ({ page }) => {
     // Test with many icons to verify SQLite performance
     const iconFiles = [
-      'icons copyright/car-parking.png',
-      'icons copyright/bus.png',
-      'icons copyright/train.png',
-      'icons copyright/airplane.png',
-      'icons copyright/truck.png',
-      'icons copyright/motorbike.png',
-      'icons copyright/gas-station.png',
-      'icons copyright/bridge.png',
-      'icons copyright/traffic-light.png',
-      'icons copyright/church.png',
-      'icons copyright/cow.png',
-      'icons copyright/deer.png',
-      'icons copyright/tree.png',
-      'icons copyright/sun.png',
-      'icons copyright/cloud.png'
+      'public/assets/icons/parking.png',
+      'public/assets/icons/bus.png',
+      'public/assets/icons/train.png',
+      'public/assets/icons/airplane.png',
+      'public/assets/icons/truck.png',
+      'public/assets/icons/motorcycle.png',
+      'public/assets/icons/gas station.png',
+      'public/assets/icons/bridge.png',
+      'public/assets/icons/traffic light.png',
+      'public/assets/icons/church.png',
+      'public/assets/icons/cow.png',
+      'public/assets/icons/deer.png',
+      'public/assets/icons/tree.png',
+      'public/assets/icons/sun.png',
+      'public/assets/icons/cloud.png'
     ];
 
     const iconInput = page.locator('#iconUpload');
@@ -117,6 +131,8 @@ test.describe('SQLite Storage Integration', () => {
 
     // Verify all icons were processed
     await expect(page.locator('#iconCount')).toContainText('15');
+
+    await page.selectOption('#gridSize', '3');
 
     // Generate bingo card
     const startTime = Date.now();
@@ -130,6 +146,6 @@ test.describe('SQLite Storage Integration', () => {
 
     // Verify card was generated
     await expect(page.locator('#cardPreview')).toBeVisible();
-    await expect(page.locator('.bingo-cell')).toHaveCount(25);
+    await expect(page.locator('.bingo-cell')).toHaveCount(9);
   });
 });

@@ -12,9 +12,14 @@ require('dotenv').config();
 const PORT = process.env.PORT || 8080;
 
 // Rate limiting configuration
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
-const RATE_LIMIT_MAX_REQUESTS = 30; // Max 30 requests per minute per IP
-const RATE_LIMIT_AI_MAX_REQUESTS = 10; // Max 10 AI requests per minute per IP
+function readPositiveIntegerEnv(name, defaultValue) {
+  const value = Number.parseInt(process.env[name], 10);
+  return Number.isFinite(value) && value > 0 ? value : defaultValue;
+}
+
+const RATE_LIMIT_WINDOW = readPositiveIntegerEnv('RATE_LIMIT_WINDOW_MS', 60 * 1000);
+const RATE_LIMIT_MAX_REQUESTS = readPositiveIntegerEnv('RATE_LIMIT_MAX_REQUESTS', 30);
+const RATE_LIMIT_AI_MAX_REQUESTS = readPositiveIntegerEnv('RATE_LIMIT_AI_MAX_REQUESTS', 10);
 const rateLimitMap = new Map(); // Track requests per IP
 
 const mimeTypes = {
@@ -56,19 +61,19 @@ function parseRequestBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
     let size = 0;
-    
+
     req.on('data', chunk => {
       size += chunk.length;
-      
+
       // Check if request exceeds maximum size
       if (size > MAX_REQUEST_SIZE) {
         req.connection.destroy();
         reject(new Error(`Request body too large. Maximum size is ${MAX_REQUEST_SIZE / 1024 / 1024}MB`));
         return;
       }
-      
+
       body += chunk.toString();
-      
+
       // Additional check for JSON size
       if (body.length > MAX_JSON_SIZE) {
         req.connection.destroy();
@@ -76,7 +81,7 @@ function parseRequestBody(req) {
         return;
       }
     });
-    
+
     req.on('end', () => {
       try {
         resolve(body ? JSON.parse(body) : {});
@@ -84,7 +89,7 @@ function parseRequestBody(req) {
         reject(new Error(`Invalid JSON: ${error.message}`));
       }
     });
-    
+
     req.on('error', reject);
   });
 }
@@ -98,25 +103,25 @@ function parseRequestBody(req) {
 function checkRateLimit(clientIP, isAIEndpoint = false) {
   const now = Date.now();
   const maxRequests = isAIEndpoint ? RATE_LIMIT_AI_MAX_REQUESTS : RATE_LIMIT_MAX_REQUESTS;
-  
+
   if (!rateLimitMap.has(clientIP)) {
     rateLimitMap.set(clientIP, []);
   }
-  
+
   const requests = rateLimitMap.get(clientIP);
-  
+
   // Remove requests outside the time window
   const recentRequests = requests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
-  
+
   // Check if rate limit exceeded
   if (recentRequests.length >= maxRequests) {
     return true; // Rate limit exceeded
   }
-  
+
   // Add current request
   recentRequests.push(now);
   rateLimitMap.set(clientIP, recentRequests);
-  
+
   return false; // Within rate limit
 }
 
@@ -137,7 +142,7 @@ setInterval(() => {
 
 // Send JSON response
 function sendJSON(res, data, statusCode = 200) {
-  res.writeHead(statusCode, { 
+  res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -165,13 +170,13 @@ async function handleAPIRequest(req, res) {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const method = req.method;
-  
+
   // Get client IP for rate limiting
   const clientIP = req.socket.remoteAddress || req.connection.remoteAddress || 'unknown';
-  
+
   // Check if this is an AI endpoint
   const isAIEndpoint = pathname.startsWith('/api/ai/');
-  
+
   // Apply rate limiting (except for health checks)
   if (pathname !== '/api/health') {
     if (checkRateLimit(clientIP, isAIEndpoint)) {
@@ -208,30 +213,31 @@ async function handleAPIRequest(req, res) {
           sendJSON(res, { success: false, errors: queryValidation.errors }, 400);
           return true;
         }
-        
+
         const { search, category } = parsedUrl.query;
         const icons = await storage.loadIcons(search || '', category || '');
         sendJSON(res, { success: true, data: icons });
         return true;
       } else if (method === 'POST') {
         const body = await parseRequestBody(req);
-        
+
         // Validate icon data
         const iconValidation = validation.validateIcon(body);
         if (!iconValidation.valid) {
           sendJSON(res, { success: false, errors: iconValidation.errors }, 400);
           return true;
         }
-        
-        // Validate file upload if imageData is present
-        if (body.imageData) {
-          const fileValidation = validation.validateFileUpload(body.imageData);
+
+        // Validate file upload if image data is present
+        const imageData = body.imageData || body.image || body.data;
+        if (imageData) {
+          const fileValidation = validation.validateFileUpload(imageData);
           if (!fileValidation.valid) {
             sendJSON(res, { success: false, errors: fileValidation.errors }, 400);
             return true;
           }
         }
-        
+
         const result = await storage.saveIcon(body);
         sendJSON(res, result, 201);
         return true;
@@ -245,16 +251,16 @@ async function handleAPIRequest(req, res) {
       return true;
     }
 
-    if (pathname.startsWith('/api/icons/') && method === 'DELETE') {
-      const iconId = pathname.split('/')[3];
-      const result = await storage.deleteIcon(iconId);
+    // Clear all icons API
+    if (pathname === '/api/icons/clear' && method === 'DELETE') {
+      const result = await storage.clearIcons();
       sendJSON(res, result);
       return true;
     }
 
-    // Clear all icons API
-    if (pathname === '/api/icons/clear' && method === 'DELETE') {
-      const result = await storage.clearIcons();
+    if (pathname.startsWith('/api/icons/') && method === 'DELETE') {
+      const iconId = pathname.split('/')[3];
+      const result = await storage.deleteIcon(iconId);
       sendJSON(res, result);
       return true;
     }
@@ -269,15 +275,15 @@ async function handleAPIRequest(req, res) {
     // Update icon API
     if (pathname.startsWith('/api/icons/') && method === 'PUT') {
       const iconId = pathname.split('/')[3];
-      
+
       // Validate icon ID
       if (!iconId || typeof iconId !== 'string') {
         sendJSON(res, { success: false, error: 'Invalid icon ID' }, 400);
         return true;
       }
-      
+
       const body = await parseRequestBody(req);
-      
+
       // Validate icon data (partial update allowed)
       if (body.imageData) {
         const fileValidation = validation.validateFileUpload(body.imageData);
@@ -286,12 +292,12 @@ async function handleAPIRequest(req, res) {
           return true;
         }
       }
-      
+
       if (body.name && (typeof body.name !== 'string' || body.name.length > 100)) {
         sendJSON(res, { success: false, error: 'Icon name must be a string with max 100 characters' }, 400);
         return true;
       }
-      
+
       const result = await storage.updateIcon(iconId, body);
       sendJSON(res, result);
       return true;
@@ -305,7 +311,7 @@ async function handleAPIRequest(req, res) {
         return true;
       } else if (method === 'POST' || method === 'PUT') {
         const body = await parseRequestBody(req);
-        
+
         // Validate setting data
         const settingValidation = validation.validateSetting(body);
         if (!settingValidation.valid) {
@@ -346,7 +352,7 @@ async function handleAPIRequest(req, res) {
         sendJSON(res, { success: false, error: 'Reset not allowed in production' }, 403);
         return true;
       }
-      
+
       try {
         await storage.clearAllData();
         sendJSON(res, { success: true, message: 'Database reset successfully' });
@@ -410,7 +416,7 @@ async function handleAPIRequest(req, res) {
     if (pathname.startsWith('/api/icon-sets/')) {
       const pathParts = pathname.split('/');
       const setId = pathParts[3];
-      
+
       if (method === 'GET') {
         // Get icons in a specific set
         const icons = await storage.getIconsInSet(setId);
@@ -435,7 +441,7 @@ async function handleAPIRequest(req, res) {
       const pathParts = pathname.split('/');
       const setId = pathParts[3];
       const iconId = pathParts[5];
-      
+
       if (method === 'POST') {
         // Add icon to set
         const result = await storage.addIconToSet(iconId, setId);
@@ -453,7 +459,7 @@ async function handleAPIRequest(req, res) {
     if (pathname.startsWith('/api/icons/') && pathname.includes('/translations')) {
       const pathParts = pathname.split('/');
       const iconId = pathParts[3];
-      
+
       if (method === 'GET') {
         // Get translations for an icon
         const translations = await storage.getIconTranslations(iconId);
@@ -474,7 +480,7 @@ async function handleAPIRequest(req, res) {
       const pathParts = pathname.split('/');
       const iconId = pathParts[3];
       const languageCode = pathParts[5];
-      
+
       if (method === 'DELETE') {
         const result = await storage.deleteIconTranslation(iconId, languageCode);
         sendJSON(res, result);
@@ -486,7 +492,7 @@ async function handleAPIRequest(req, res) {
     if (pathname.startsWith('/api/icons/') && pathname.endsWith('/sets')) {
       const pathParts = pathname.split('/');
       const iconId = pathParts[3];
-      
+
       if (method === 'GET') {
         const sets = await storage.getSetsContainingIcon(iconId);
         sendJSON(res, { success: true, data: sets });
@@ -513,10 +519,10 @@ async function handleAPIRequest(req, res) {
         sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
         return true;
       }
-      
+
       const body = await parseRequestBody(req);
       const icon = await storage.db.prepare('SELECT * FROM icons WHERE id = ?').get(body.iconId);
-      
+
       if (!icon) {
         sendJSON(res, { success: false, error: 'Icon not found' }, 404);
         return true;
@@ -524,7 +530,7 @@ async function handleAPIRequest(req, res) {
 
       try {
         const analysis = await aiService.analyzeIcon(icon, body.model);
-        
+
         // Store analysis in database
         await storage.db.prepare(`
           INSERT OR REPLACE INTO ai_analysis (
@@ -544,7 +550,7 @@ async function handleAPIRequest(req, res) {
           analysis.ai_model,
           analysis.analysis_date
         );
-        
+
         await storage.trackAIUsage({ operation: 'analyze_icon', model: analysis.ai_model });
         sendJSON(res, { success: true, data: analysis });
       } catch (error) {
@@ -559,15 +565,15 @@ async function handleAPIRequest(req, res) {
         sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
         return true;
       }
-      
+
       const body = await parseRequestBody(req);
       const icons = [];
-      
+
       for (const iconId of body.iconIds) {
         const icon = await storage.db.prepare('SELECT * FROM icons WHERE id = ?').get(iconId);
-        if (icon) icons.push(icon);
+        if (icon) {icons.push(icon);}
       }
-      
+
       if (icons.length === 0) {
         sendJSON(res, { success: false, error: 'No valid icons found' }, 400);
         return true;
@@ -575,7 +581,7 @@ async function handleAPIRequest(req, res) {
 
       try {
         const results = await aiService.analyzeBatch(icons, body.model);
-        
+
         // Store successful analyses in database
         for (const result of results) {
           if (result.success) {
@@ -597,11 +603,11 @@ async function handleAPIRequest(req, res) {
               result.data.ai_model,
               result.data.analysis_date
             );
-            
+
             await storage.trackAIUsage({ operation: 'analyze_icon', model: result.data.ai_model });
           }
         }
-        
+
         sendJSON(res, { success: true, data: results });
       } catch (error) {
         console.error('AI batch analysis error:', error);
@@ -615,10 +621,10 @@ async function handleAPIRequest(req, res) {
         sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
         return true;
       }
-      
+
       const body = await parseRequestBody(req);
       const icons = await storage.db.prepare('SELECT id, name, category, tags FROM icons').all();
-      
+
       if (icons.length === 0) {
         sendJSON(res, { success: false, error: 'No icons found' }, 400);
         return true;
@@ -640,7 +646,7 @@ async function handleAPIRequest(req, res) {
         sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
         return true;
       }
-      
+
       const { targetSet, model } = parsedUrl.query;
       const icons = await storage.db.prepare('SELECT * FROM icons').all();
 
@@ -660,9 +666,9 @@ async function handleAPIRequest(req, res) {
         sendJSON(res, { success: false, error: 'OpenAI API key not configured' }, 400);
         return true;
       }
-      
+
       const body = await parseRequestBody(req);
-      
+
       try {
         const result = await aiService.generateSmartSet(body, body.model);
         await storage.trackAIUsage({ operation: 'generate_set', model: result.ai_model });
@@ -718,9 +724,9 @@ async function handleAPIRequest(req, res) {
     return false; // API route not found
   } catch (error) {
     console.error('API Error:', error);
-    sendJSON(res, { 
-      success: false, 
-      error: error.message 
+    sendJSON(res, {
+      success: false,
+      error: error.message
     }, 500);
     return true;
   }
@@ -728,7 +734,7 @@ async function handleAPIRequest(req, res) {
 
 const server = http.createServer(async (req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  
+
   // Handle CORS preflight requests
   if (handleCORS(req, res)) {
     return;
@@ -737,17 +743,17 @@ const server = http.createServer(async (req, res) => {
   // Handle API requests
   if (req.url.startsWith('/api/')) {
     const handled = await handleAPIRequest(req, res);
-    if (handled) return;
+    if (handled) {return;}
   }
 
   // Handle static file requests
   // Handle root URL
-  let filePath = req.url === '/' ? path.join(rootDir, 'index.html') : path.join(rootDir, req.url);
-  
+  const filePath = req.url === '/' ? path.join(rootDir, 'index.html') : path.join(rootDir, req.url);
+
   // Get the file extension
   const extname = path.extname(filePath);
   const contentType = mimeTypes[extname] || 'application/octet-stream';
-  
+
   // Read and serve the file
   fs.readFile(filePath, (error, content) => {
     if (error) {
@@ -783,5 +789,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}/`);
-  console.log(`Press Ctrl+C to stop the server`);
+  console.log('Press Ctrl+C to stop the server');
 });

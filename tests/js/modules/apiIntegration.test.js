@@ -9,7 +9,7 @@ const fs = require('fs');
 const SQLiteStorage = require('../../../src/js/modules/sqliteStorage.js');
 
 // Test database path
-const testDbPath = path.join(__dirname, '../../../temp/test-api.db');
+const testDbPath = path.join(__dirname, '../../../temp/apiIntegration/test-api.db');
 const testDataDir = path.dirname(testDbPath);
 
 // Test server port

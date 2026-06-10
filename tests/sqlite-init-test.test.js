@@ -8,7 +8,7 @@ const path = require('path');
 
 describe('SQLiteStorage Init Test', () => {
   it('should initialize SQLite storage without hanging', async () => {
-    const testDbPath = path.join(__dirname, '../temp/test-init.db');
+    const testDbPath = path.join(__dirname, '../temp/sqlite-init/test-init.db');
     const testDataDir = path.dirname(testDbPath);
     
     // Ensure temp directory exists

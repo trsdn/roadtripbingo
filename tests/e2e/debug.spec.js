@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test } = require('@playwright/test');
 
 test.describe('Debug Icon Loading', () => {
   test('debug icon loading with console output', async ({ page }) => {
@@ -27,14 +27,14 @@ test.describe('Debug Icon Loading', () => {
 
     // Navigate to the app
     await page.goto('/');
-    
+
     // Wait a bit for initialization
     await page.waitForTimeout(5000);
-    
+
     // Check icon count
     const iconCountText = await page.locator('#iconCount').textContent();
     console.log('Final icon count:', iconCountText);
-    
+
     // Check generate button state
     const generateBtnDisabled = await page.locator('#generateBtn').getAttribute('disabled');
     console.log('Generate button disabled:', generateBtnDisabled !== null);

@@ -50,7 +50,9 @@ module.exports = {
   },
   output: {
     filename: 'js/bundle.js',
-    path: path.resolve(__dirname, 'dist'),
+    // __dirname is the config/ folder, so resolve to the repo-root dist/ that
+    // server.js and devServer.static expect.
+    path: path.resolve(__dirname, '..', 'dist'),
     clean: true
   },
   devtool: 'source-map',

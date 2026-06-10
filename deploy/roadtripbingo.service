@@ -1,0 +1,30 @@
+[Unit]
+Description=Road Trip Bingo Generator
+Documentation=https://github.com/trsdn/roadtripbingo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=roadtripbingo
+Group=roadtripbingo
+WorkingDirectory=/opt/roadtripbingo
+
+# Load configuration (PORT, NODE_ENV, OPENAI_API_KEY, ...) from this file.
+# Copy deploy/.env.example -> /opt/roadtripbingo/.env and edit it.
+EnvironmentFile=/opt/roadtripbingo/.env
+
+ExecStart=/usr/bin/node server.js
+
+Restart=on-failure
+RestartSec=5
+
+# --- Lightweight hardening (LXC-compatible) ---
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+# server.js writes the SQLite DB and backups under ./data
+ReadWritePaths=/opt/roadtripbingo/data
+
+[Install]
+WantedBy=multi-user.target

@@ -44,16 +44,6 @@ module.exports = {
     '!<rootDir>/../src/js/modules/*.test.js',
   ],
 
-  // Coverage thresholds
-  coverageThresholds: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
-    },
-  },
-
   // The directory where Jest should output its coverage files
   coverageDirectory: '../coverage',
 

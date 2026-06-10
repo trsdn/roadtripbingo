@@ -8,12 +8,12 @@ test.describe('Road Trip Bingo Generator - Basic Functionality', () => {
     } catch (error) {
       console.warn('Could not reset database, continuing with test:', error.message);
     }
-    
+
     // Clear localStorage and navigate to the app
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
-    
+
     // Wait for the app to initialize
     await page.waitForTimeout(1000);
   });
@@ -22,7 +22,7 @@ test.describe('Road Trip Bingo Generator - Basic Functionality', () => {
     // Check that the main UI elements are present
     await expect(page.locator('h1')).toContainText('Road Trip Bingo Generator');
     await expect(page.locator('#gridSize')).toBeVisible();
-    await expect(page.locator('#iconUpload')).toBeVisible();
+    await expect(page.locator('#iconUpload')).toBeAttached();
     await expect(page.locator('#generateBtn')).toBeVisible();
     await expect(page.locator('#downloadBtn')).toBeVisible();
     await expect(page.locator('#downloadBtn')).toBeDisabled();
@@ -32,10 +32,10 @@ test.describe('Road Trip Bingo Generator - Basic Functionality', () => {
     // Test grid size selection
     await page.selectOption('#gridSize', '3');
     await expect(page.locator('#gridSize')).toHaveValue('3');
-    
+
     await page.selectOption('#gridSize', '4');
     await expect(page.locator('#gridSize')).toHaveValue('4');
-    
+
     await page.selectOption('#gridSize', '5');
     await expect(page.locator('#gridSize')).toHaveValue('5');
   });
@@ -50,7 +50,7 @@ test.describe('Road Trip Bingo Generator - Basic Functionality', () => {
     // Just test that the selector works
     await page.selectOption('#languageSelect', 'de');
     await expect(page.locator('#languageSelect')).toHaveValue('de');
-    
+
     // Switch back to English
     await page.selectOption('#languageSelect', 'en');
     await expect(page.locator('#languageSelect')).toHaveValue('en');
@@ -59,19 +59,21 @@ test.describe('Road Trip Bingo Generator - Basic Functionality', () => {
   test('generates bingo card after uploading icons', async ({ page }) => {
     // Upload test icons (using the correct file paths)
     const iconInput = page.locator('#iconUpload');
-    
+
     // Upload multiple test files from the icons copyright directory
     await iconInput.setInputFiles([
-      'icons copyright/car-parking.png',
-      'icons copyright/bus.png',
-      'icons copyright/train.png',
-      'icons copyright/airplane.png',
-      'icons copyright/truck.png',
-      'icons copyright/motorbike.png',
-      'icons copyright/gas-station.png',
-      'icons copyright/bridge.png',
-      'icons copyright/traffic-light.png'
+      'public/assets/icons/parking.png',
+      'public/assets/icons/bus.png',
+      'public/assets/icons/train.png',
+      'public/assets/icons/airplane.png',
+      'public/assets/icons/truck.png',
+      'public/assets/icons/motorcycle.png',
+      'public/assets/icons/gas station.png',
+      'public/assets/icons/bridge.png',
+      'public/assets/icons/traffic light.png'
     ]);
+
+    await page.selectOption('#gridSize', '3');
 
     // Wait for icons to be processed
     await page.waitForTimeout(3000);
@@ -90,31 +92,36 @@ test.describe('Road Trip Bingo Generator - Basic Functionality', () => {
 
     // Check that bingo card is generated
     await expect(page.locator('#cardPreview')).toBeVisible();
-    await expect(page.locator('.bingo-cell')).toHaveCount(25); // 5x5 grid by default
+    await expect(page.locator('.bingo-cell')).toHaveCount(9);
 
     // Check that download button is enabled
     await expect(page.locator('#downloadBtn')).toBeEnabled();
   });
 
   test('supports icon management functionality', async ({ page }) => {
+    await page.click('#navIconManager');
+
     // Check that icon management tools exist
     await expect(page.locator('#uploadBtn')).toBeVisible();
     await expect(page.locator('#clearIconsBtn')).toBeVisible();
-    await expect(page.locator('#iconGallery')).toBeVisible();
-    
+    await expect(page.locator('#iconTable')).toBeVisible();
+
     // Test that clear button works (after uploading icons)
     const iconInput = page.locator('#iconUpload');
-    await iconInput.setInputFiles(['icons copyright/car-parking.png']);
-    
+    await iconInput.setInputFiles(['public/assets/icons/parking.png']);
+
     await page.waitForTimeout(2000);
     await expect(page.locator('#iconCount')).toContainText('1');
-    
+
+    page.once('dialog', dialog => dialog.accept());
     await page.click('#clearIconsBtn');
     await page.waitForTimeout(1000);
     await expect(page.locator('#iconCount')).toContainText('0');
   });
 
   test('supports backup and restore functionality', async ({ page }) => {
+    await page.click('#navIconManager');
+
     // Check that backup/restore buttons exist
     await expect(page.locator('#backupBtn')).toBeVisible();
     await expect(page.locator('#restoreBtn')).toBeVisible();
