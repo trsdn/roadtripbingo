@@ -54,6 +54,9 @@ jobs:
         run: npm run build
       - name: Run E2E tests
         run: npx playwright test --project=chromium
+        env:
+          RATE_LIMIT_MAX_REQUESTS: 1000
+          RATE_LIMIT_AI_MAX_REQUESTS: 1000
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

@@ -1,7 +1,8 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('PDF Generation', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    await request.post('/api/test/reset');
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
@@ -11,17 +12,18 @@ test.describe('PDF Generation', () => {
     // Upload test icons
     const iconInput = page.locator('#iconUpload');
     await iconInput.setInputFiles([
-      'icons copyright/car-parking.png',
-      'icons copyright/bus.png',
-      'icons copyright/train.png',
-      'icons copyright/airplane.png',
-      'icons copyright/truck.png',
-      'icons copyright/motorbike.png',
-      'icons copyright/gas-station.png',
-      'icons copyright/bridge.png',
-      'icons copyright/traffic-light.png'
+      'public/assets/icons/parking.png',
+      'public/assets/icons/bus.png',
+      'public/assets/icons/train.png',
+      'public/assets/icons/airplane.png',
+      'public/assets/icons/truck.png',
+      'public/assets/icons/motorcycle.png',
+      'public/assets/icons/gas station.png',
+      'public/assets/icons/bridge.png',
+      'public/assets/icons/traffic light.png'
     ]);
 
+    await page.selectOption('#gridSize', '3');
     await page.waitForTimeout(3000);
 
     // Wait for generate button to be enabled
@@ -53,12 +55,26 @@ test.describe('PDF Generation', () => {
     // Upload test icons
     const iconInput = page.locator('#iconUpload');
     await iconInput.setInputFiles([
-      'icons copyright/car-parking.png',
-      'icons copyright/bus.png',
-      'icons copyright/train.png',
-      'icons copyright/airplane.png',
-      'icons copyright/truck.png',
-      'icons copyright/motorbike.png'
+      'public/assets/icons/parking.png',
+      'public/assets/icons/bus.png',
+      'public/assets/icons/train.png',
+      'public/assets/icons/airplane.png',
+      'public/assets/icons/truck.png',
+      'public/assets/icons/motorcycle.png',
+      'public/assets/icons/gas station.png',
+      'public/assets/icons/bridge.png',
+      'public/assets/icons/traffic light.png',
+      'public/assets/icons/church.png',
+      'public/assets/icons/cow.png',
+      'public/assets/icons/deer.png',
+      'public/assets/icons/tree.png',
+      'public/assets/icons/sun.png',
+      'public/assets/icons/cloud.png',
+      'public/assets/icons/tunnel.png',
+      'public/assets/icons/sheep.png',
+      'public/assets/icons/barn.png',
+      'public/assets/icons/river.png',
+      'public/assets/icons/factory.png'
     ]);
 
     await page.waitForTimeout(3000);
@@ -74,6 +90,7 @@ test.describe('PDF Generation', () => {
 
     // Test with 4x4 grid
     await page.selectOption('#gridSize', '4');
+    await expect(page.locator('#generateBtn')).toBeEnabled({ timeout: 10000 });
     await page.click('#generateBtn');
     await page.waitForTimeout(2000);
 
@@ -85,10 +102,10 @@ test.describe('PDF Generation', () => {
     // Try to generate PDF without icons (should show appropriate message)
     // The button should be disabled when no icons are uploaded
     await expect(page.locator('#generateBtn')).toBeDisabled();
-    
+
     // Verify that download button is also disabled
     await expect(page.locator('#downloadBtn')).toBeDisabled();
-    
+
     // Check that icon count shows 0
     await expect(page.locator('#iconCount')).toContainText('0');
   });
@@ -96,11 +113,11 @@ test.describe('PDF Generation', () => {
   test('supports PDF compression options', async ({ page }) => {
     // Check that PDF compression selector exists
     await expect(page.locator('#pdfCompression')).toBeVisible();
-    
+
     // Test different compression levels
     await page.selectOption('#pdfCompression', 'NONE');
     await expect(page.locator('#pdfCompression')).toHaveValue('NONE');
-    
+
     await page.selectOption('#pdfCompression', 'MEDIUM');
     await expect(page.locator('#pdfCompression')).toHaveValue('MEDIUM');
   });
