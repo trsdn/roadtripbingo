@@ -680,6 +680,33 @@ async function handleAPIRequest(req, res) {
       return true;
     }
 
+    if (pathname === '/api/ai/generate-icon' && method === 'POST') {
+      if (!aiService.isImageConfigured()) {
+        sendJSON(res, { success: false, error: 'Image generation not configured (OPENAI_IMAGE_API_KEY missing)' }, 400);
+        return true;
+      }
+
+      const body = await parseRequestBody(req);
+      if (!body.name || typeof body.name !== 'string' || !body.name.trim()) {
+        sendJSON(res, { success: false, error: 'Icon name is required' }, 400);
+        return true;
+      }
+
+      try {
+        const result = await aiService.generateIconImage({
+          name: body.name.trim(),
+          description: typeof body.description === 'string' ? body.description.trim() : '',
+          style: body.style
+        });
+        await storage.trackAIUsage({ operation: 'generate_icon_image', model: result.model });
+        sendJSON(res, { success: true, data: result });
+      } catch (error) {
+        console.error('AI icon image generation error:', error);
+        sendJSON(res, { success: false, error: error.message }, 500);
+      }
+      return true;
+    }
+
     if (pathname === '/api/ai/preferences') {
       if (method === 'GET') {
         const preferences = await storage.getAIPreferences();

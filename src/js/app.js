@@ -54,7 +54,6 @@ let editIconModal;
 let editIconName;
 let editIconCategory;
 let editIconTags;
-let editIconAltText;
 let editIconDifficulty;
 let editIconExcludeFromMultiHit;
 let editIconPreview;
@@ -300,6 +299,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     console.log('Event listeners setup complete');
 
+    // Restore active tab from URL hash
+    if (location.hash === '#iconmanager') {
+      switchToPage('iconManager');
+    }
+
     console.log('Application initialized successfully');
   } catch (error) {
     console.error('Error during initialization:', error);
@@ -363,7 +367,6 @@ function initializeDOMElements() {
   editIconName = document.getElementById('editIconName');
   editIconCategory = document.getElementById('editIconCategory');
   editIconTags = document.getElementById('editIconTags');
-  editIconAltText = document.getElementById('editIconAltText');
   editIconDifficulty = document.getElementById('editIconDifficulty');
   editIconExcludeFromMultiHit = document.getElementById('editIconExcludeFromMultiHit');
   editIconPreview = document.getElementById('editIconPreview');
@@ -658,6 +661,9 @@ function switchToPage(page) {
     generatorPage.classList.toggle('active', page === 'generator');
     iconManagerPage.classList.toggle('active', page === 'iconManager');
   }
+
+  // Persist active tab in the URL hash
+  location.hash = page === 'iconManager' ? '#iconmanager' : '#generator';
 
   // Initialize page-specific functionality
   if (page === 'iconManager') {
@@ -1615,7 +1621,6 @@ function openEditModal(iconId) {
   if (editIconName) {editIconName.value = icon.name || '';}
   if (editIconCategory) {editIconCategory.value = icon.category || 'default';}
   if (editIconTags) {editIconTags.value = (icon.tags || []).join(', ');}
-  if (editIconAltText) {editIconAltText.value = icon.altText || '';}
   if (editIconDifficulty) {editIconDifficulty.value = icon.difficulty || 3;}
   if (editIconExcludeFromMultiHit) {editIconExcludeFromMultiHit.checked = icon.excludeFromMultiHit || false;}
   if (editIconPreview) {
@@ -1640,7 +1645,6 @@ function closeEditModal() {
   if (editIconName) {editIconName.value = '';}
   if (editIconCategory) {editIconCategory.value = 'default';}
   if (editIconTags) {editIconTags.value = '';}
-  if (editIconAltText) {editIconAltText.value = '';}
   if (editIconDifficulty) {editIconDifficulty.value = '3';}
   if (editIconExcludeFromMultiHit) {editIconExcludeFromMultiHit.checked = false;}
   if (editIconPreview) {editIconPreview.src = '';}
@@ -1655,7 +1659,6 @@ async function saveIconChanges() {
     const newName = editIconName ? editIconName.value.trim() : currentEditingIcon.name;
     const newCategory = editIconCategory ? editIconCategory.value.trim() : currentEditingIcon.category;
     const newTags = editIconTags ? editIconTags.value.split(',').map(tag => tag.trim()).filter(tag => tag) : currentEditingIcon.tags;
-    const newAltText = editIconAltText ? editIconAltText.value.trim() : currentEditingIcon.altText;
     const newDifficulty = editIconDifficulty ? parseInt(editIconDifficulty.value) : currentEditingIcon.difficulty;
     const newExcludeFromMultiHit = editIconExcludeFromMultiHit ? editIconExcludeFromMultiHit.checked : currentEditingIcon.excludeFromMultiHit;
 
@@ -1667,7 +1670,6 @@ async function saveIconChanges() {
         name: newName || 'Unnamed',
         category: newCategory || 'default',
         tags: newTags || [],
-        altText: newAltText || '',
         difficulty: newDifficulty || 3,
         excludeFromMultiHit: newExcludeFromMultiHit || false
       };
@@ -1678,7 +1680,6 @@ async function saveIconChanges() {
       name: newName || 'Unnamed',
       category: newCategory || 'default',
       tags: newTags || [],
-      alt_text: newAltText || '',
       difficulty: newDifficulty || 3,
       excludeFromMultiHit: newExcludeFromMultiHit || false
     });
@@ -2020,6 +2021,45 @@ function setupIconManagerEventListeners() {
   }
 }
 
+// AI helpers
+const aiAnalysisResults = new Map();
+let aiResultsHandlerAttached = false;
+let lastIconGeneration = null;
+
+/**
+ * Translate a key using the currently selected UI language
+ * @param {string} key - Translation key
+ * @param {Object} replacements - Placeholder replacements
+ * @returns {string} - Translated text
+ */
+function t(key, replacements = {}) {
+  const lang = document.getElementById('languageSelect')?.value || 'en';
+  return getTranslatedText(key, replacements, lang);
+}
+
+/**
+ * Escape a value for safe insertion into HTML
+ * @param {*} value - Value to escape
+ * @returns {string} - HTML-escaped string
+ */
+function escapeHTML(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Get the AI model selected in the AI settings (undefined = server default)
+ * @returns {string|undefined} - Selected model or undefined
+ */
+function getSelectedAIModel() {
+  const sel = document.getElementById('aiModelSelect');
+  return sel && sel.value ? sel.value : undefined;
+}
+
 // Initialize AI features
 function initializeAIFeatures() {
   const openAIFeaturesBtn = document.getElementById('openAIFeatures');
@@ -2032,10 +2072,14 @@ function initializeAIFeatures() {
   const generateSmartSetBtn = document.getElementById('generateSmartSet');
   const duplicateSensitivity = document.getElementById('duplicateSensitivity');
   const sensitivityValue = document.getElementById('sensitivityValue');
+  const generateIconImageBtn = document.getElementById('generateIconImageBtn');
+  const addGeneratedIconBtn = document.getElementById('addGeneratedIconBtn');
+  const regenerateIconBtn = document.getElementById('regenerateIconBtn');
 
   // Initialize AI service
   aiService.initialize().then(() => {
     updateAIStatusDisplay();
+    updateIconGenAvailability();
   });
 
   // Open AI panel
@@ -2043,8 +2087,8 @@ function initializeAIFeatures() {
     openAIFeaturesBtn.addEventListener('click', () => {
       aiPanel.style.display = 'block';
       document.body.appendChild(createOverlay());
-      updateAIUsageDisplay();
       updateAIStatusDisplay();
+      updateIconGenAvailability();
     });
   }
 
@@ -2078,6 +2122,19 @@ function initializeAIFeatures() {
     generateSmartSetBtn.addEventListener('click', generateSmartSet);
   }
 
+  // AI icon image generation
+  if (generateIconImageBtn) {
+    generateIconImageBtn.addEventListener('click', handleGenerateIconImage);
+  }
+
+  if (addGeneratedIconBtn) {
+    addGeneratedIconBtn.addEventListener('click', addGeneratedIconToLibrary);
+  }
+
+  if (regenerateIconBtn) {
+    regenerateIconBtn.addEventListener('click', handleGenerateIconImage);
+  }
+
   // Duplicate sensitivity slider
   if (duplicateSensitivity && sensitivityValue) {
     duplicateSensitivity.addEventListener('input', (e) => {
@@ -2090,9 +2147,104 @@ function initializeAIFeatures() {
     if (analyzeSelectedBtn) {
       const selectedCount = getSelectedIcons().length;
       analyzeSelectedBtn.disabled = selectedCount === 0;
-      analyzeSelectedBtn.querySelector('.ai-cost').textContent = `(~$${(selectedCount * 0.01).toFixed(2)})`;
     }
   });
+}
+
+// Show or hide the icon generation UI depending on server configuration
+function updateIconGenAvailability() {
+  const status = aiService.getStatus();
+  const imageConfigured = !!(status && status.image_configured);
+  const notice = document.getElementById('iconGenNotConfigured');
+  const btn = document.getElementById('generateIconImageBtn');
+
+  if (notice) {notice.style.display = imageConfigured ? 'none' : 'block';}
+  if (btn) {btn.disabled = !imageConfigured;}
+}
+
+// Generate an icon image with AI
+async function handleGenerateIconImage() {
+  const nameInput = document.getElementById('iconGenName');
+  const descInput = document.getElementById('iconGenDescription');
+  const styleSelect = document.getElementById('iconGenStyle');
+  const generateIconBtn = document.getElementById('generateIconImageBtn');
+  const resultBox = document.getElementById('iconGenResult');
+  const preview = document.getElementById('iconGenPreview');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) {
+    window.notifications.show(t('iconGenNameRequired'), 'warning');
+    return;
+  }
+
+  const description = descInput ? descInput.value.trim() : '';
+  const style = styleSelect ? styleSelect.value : 'flat';
+  const originalText = generateIconBtn ? generateIconBtn.textContent : '';
+
+  if (generateIconBtn) {
+    generateIconBtn.disabled = true;
+    generateIconBtn.textContent = t('generating');
+  }
+
+  try {
+    const data = await aiService.generateIcon(name, description, style);
+    lastIconGeneration = { name, description, style, imageData: data.imageData };
+
+    if (preview) {preview.src = data.imageData;}
+    if (resultBox) {resultBox.style.display = 'block';}
+  } catch (error) {
+    console.error('Icon generation failed:', {
+      operation: 'generateIconImage',
+      error: error.message
+    });
+    window.notifications.show('Failed to generate icon: ' + error.message, 'error');
+  } finally {
+    if (generateIconBtn) {
+      generateIconBtn.disabled = false;
+      generateIconBtn.textContent = originalText;
+    }
+  }
+}
+
+// Save the last generated icon to the library
+async function addGeneratedIconToLibrary() {
+  if (!lastIconGeneration) {return;}
+
+  try {
+    await storage.saveIcon({
+      id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+      name: lastIconGeneration.name,
+      image: lastIconGeneration.imageData,
+      data: lastIconGeneration.imageData,
+      category: 'Uncategorized',
+      tags: []
+    });
+
+    await loadIcons();
+    filterIcons();
+    window.notifications.success(`Icon "${lastIconGeneration.name}" added to library`);
+  } catch (error) {
+    console.error('Failed to add generated icon:', {
+      operation: 'addGeneratedIcon',
+      error: error.message
+    });
+    window.notifications.error('Failed to add icon: ' + error.message);
+  }
+}
+
+// Prefill the icon generation form with a suggested name
+function useExampleForIconGen(name) {
+  const nameInput = document.getElementById('iconGenName');
+  if (nameInput) {nameInput.value = name || '';}
+
+  const aiPanel = document.getElementById('aiFeatures');
+  if (aiPanel && aiPanel.style.display !== 'block') {
+    aiPanel.style.display = 'block';
+    document.body.appendChild(createOverlay());
+  }
+
+  const section = document.getElementById('iconGenSection');
+  if (section) {section.scrollIntoView({ behavior: 'smooth', block: 'start' });}
 }
 
 // Create overlay for modal
@@ -2131,7 +2283,7 @@ async function analyzeSelectedIcons() {
     const response = await fetch('/api/ai/analyze-batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ iconIds })
+      body: JSON.stringify({ iconIds, model: getSelectedAIModel() })
     });
 
     console.log('API response status:', response.status);
@@ -2166,7 +2318,7 @@ async function analyzeAllIcons() {
     const response = await fetch('/api/ai/analyze-batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ iconIds })
+      body: JSON.stringify({ iconIds, model: getSelectedAIModel() })
     });
 
     if (!response.ok) {
@@ -2187,7 +2339,12 @@ async function detectDuplicates() {
   try {
     window.notifications.show('Detecting duplicates with AI...', 'info');
     const response = await fetch('/api/ai/detect-duplicates', {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sensitivity: parseFloat(document.getElementById('duplicateSensitivity')?.value || '0.8'),
+        model: getSelectedAIModel()
+      })
     });
 
     if (!response.ok) {
@@ -2209,7 +2366,11 @@ async function getContentSuggestions() {
     const targetSet = document.getElementById('targetSetSelect').value;
     window.notifications.show('Getting AI content suggestions...', 'info');
 
-    const response = await fetch(`/api/ai/content-suggestions?targetSet=${targetSet}`);
+    const model = getSelectedAIModel();
+    const params = new URLSearchParams({ targetSet });
+    if (model) {params.set('model', model);}
+
+    const response = await fetch(`/api/ai/content-suggestions?${params.toString()}`);
 
     if (!response.ok) {
       throw new Error('Failed to get content suggestions');
@@ -2237,7 +2398,7 @@ async function generateSmartSet() {
     const response = await fetch('/api/ai/generate-set', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme })
+      body: JSON.stringify({ theme, model: getSelectedAIModel() })
     });
 
     if (!response.ok) {
@@ -2264,13 +2425,32 @@ async function updateAIStatusDisplay() {
 
   if (status && status.configured) {
     statusIndicator.className = 'status-indicator configured';
-    statusText.textContent = 'Configured';
+    statusText.textContent = t('aiConfigured');
     statusText.style.color = '#28a745';
   } else {
     statusIndicator.className = 'status-indicator not-configured';
-    statusText.textContent = 'Not Configured';
+    statusText.textContent = t('aiNotConfigured');
     statusText.style.color = '#dc3545';
   }
+}
+
+// Normalize an AI tags suggestion into an array of strings
+function normalizeTags(tags) {
+  if (Array.isArray(tags)) {return tags.map(tag => String(tag).trim()).filter(Boolean);}
+  if (typeof tags === 'string') {return tags.split(',').map(tag => tag.trim()).filter(Boolean);}
+  return [];
+}
+
+// Build a single accept/reject suggestion row
+function renderSuggestionRow(iconId, field, labelKey, valueHTML) {
+  return `
+    <div class="ai-suggestion" data-field="${field}">
+      <span><strong>${t(labelKey)}:</strong> ${valueHTML}</span>
+      <div class="ai-suggestion-actions">
+        <button class="ai-accept" data-action="accept" data-icon-id="${escapeHTML(iconId)}" data-field="${field}">${t('aiAccept')}</button>
+        <button class="ai-reject" data-action="reject">${t('aiReject')}</button>
+      </div>
+    </div>`;
 }
 
 // Show AI analysis results in inline panel (not popup)
@@ -2285,6 +2465,8 @@ function showAIAnalysisResults(results) {
     return;
   }
 
+  aiAnalysisResults.clear();
+
   if (!results || results.length === 0) {
     resultsContent.innerHTML = '<p class="no-results">No analysis results to display</p>';
     resultsPanel.style.display = 'block';
@@ -2294,96 +2476,179 @@ function showAIAnalysisResults(results) {
   // Build results HTML with collapsible items
   const resultsHTML = results.map((result) => {
     const data = result.success ? result.data : result;
-    const iconId = data.icon_id;
-    const category = data.category_suggestion;
-    const difficulty = data.difficulty_suggestion;
-    const name = data.name_suggestion;
-    const tags = data.tags_suggestion;
+    if (!data || !data.icon_id) {return '';}
+
+    const iconId = String(data.icon_id);
+    aiAnalysisResults.set(iconId, data);
+
+    const difficulty = parseInt(data.difficulty_suggestion, 10) || 0;
+    const tags = normalizeTags(data.tags_suggestion);
     const confidence = Math.round((data.confidence_score || 0) * 100);
 
     // Find icon name for display
-    const icon = availableIcons.find(i => i.id === iconId);
+    const icon = availableIcons.find(i => i.id === data.icon_id);
     const iconName = icon ? icon.name : `Icon ${iconId.substring(0, 8)}...`;
 
-    // Escape quotes for JSON stringification in HTML attributes
-    const dataStr = JSON.stringify(data).replace(/"/g, '&quot;');
-    const tagsStr = Array.isArray(tags) ? tags.join(',') : tags;
-    const tagsDisplay = Array.isArray(tags) ? tags.join(', ') : tags;
+    const tagChips = tags.map(tag =>
+      `<span class="tag-chip selected" data-tag="${escapeHTML(tag)}">${escapeHTML(tag)}</span>`
+    ).join('');
+
+    const nameDeRow = data.name_suggestion_de
+      ? renderSuggestionRow(iconId, 'name_de', 'aiResultNameDe', escapeHTML(data.name_suggestion_de))
+      : '';
 
     return `
-            <div class="ai-result-item" data-icon-id="${iconId}">
-                <div class="ai-result-item-header" onclick="window.toggleResultItem(this)">
-                    <div class="result-icon-info">
-                        ${icon ? `<img src="${icon.image || icon.data}" alt="${iconName}" style="width: 30px; height: 30px; object-fit: contain; margin-right: 10px;">` : ''}
-                        <strong>${iconName}</strong>
-                        <span class="confidence-badge">${confidence}% confidence</span>
-                    </div>
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="ai-result-item-body">
-                    <div class="ai-suggestion">
-                        <span><strong>Category:</strong> ${category}</span>
-                        <div class="ai-suggestion-actions">
-                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'category', '${category}')">Accept</button>
-                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
-                        </div>
-                    </div>
-                    <div class="ai-suggestion">
-                        <span><strong>Name:</strong> ${name}</span>
-                        <div class="ai-suggestion-actions">
-                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'name', '${name}')">Accept</button>
-                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
-                        </div>
-                    </div>
-                    <div class="ai-suggestion">
-                        <span><strong>Difficulty:</strong> ${'⭐'.repeat(difficulty)} (${difficulty}/5)</span>
-                        <div class="ai-suggestion-actions">
-                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'difficulty', ${difficulty})">Accept</button>
-                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
-                        </div>
-                    </div>
-                    <div class="ai-suggestion">
-                        <span><strong>Tags:</strong> ${tagsDisplay}</span>
-                        <div class="ai-suggestion-actions">
-                            <button class="ai-accept" onclick="acceptSuggestion('${iconId}', 'tags', '${tagsStr}')">Accept</button>
-                            <button class="ai-reject" onclick="window.rejectSuggestion(this)">Reject</button>
-                        </div>
-                    </div>
-                    <div class="ai-result-actions">
-                        <button class="btn-primary" onclick="window.acceptAllForIcon('${iconId}', ${dataStr})">Accept All</button>
-                    </div>
-                </div>
-            </div>
-        `;
+      <div class="ai-result-item" data-icon-id="${escapeHTML(iconId)}">
+        <div class="ai-result-item-header" data-action="toggle">
+          <div class="result-icon-info">
+            ${icon ? `<img src="${icon.image || icon.data}" alt="${escapeHTML(iconName)}" style="width: 30px; height: 30px; object-fit: contain; margin-right: 10px;">` : ''}
+            <strong>${escapeHTML(iconName)}</strong>
+            <span class="confidence-badge">${confidence}% ${t('aiConfidence')}</span>
+          </div>
+          <span class="toggle-icon">▼</span>
+        </div>
+        <div class="ai-result-item-body">
+          ${renderSuggestionRow(iconId, 'category', 'aiResultCategory', escapeHTML(data.category_suggestion))}
+          ${renderSuggestionRow(iconId, 'name', 'aiResultName', escapeHTML(data.name_suggestion))}
+          ${nameDeRow}
+          ${renderSuggestionRow(iconId, 'difficulty', 'aiResultDifficulty', `${'⭐'.repeat(difficulty)} (${difficulty}/5)`)}
+          ${renderSuggestionRow(iconId, 'tags', 'aiResultTags', tagChips)}
+          <div class="ai-result-actions">
+            <button class="btn-primary" data-action="accept-all-icon" data-icon-id="${escapeHTML(iconId)}">${t('aiAcceptAll')}</button>
+          </div>
+        </div>
+      </div>`;
   }).join('');
 
-  resultsContent.innerHTML = resultsHTML;
-
-  // Add bulk actions footer
   const bulkActionsHTML = `
-        <div class="ai-bulk-actions">
-            <button class="btn-primary" onclick="window.acceptAllResults()">Accept All Suggestions</button>
-            <button class="btn-secondary" onclick="window.closeResultsPanel()">Close</button>
-        </div>
-    `;
+    <div class="ai-bulk-actions">
+      <button class="btn-primary" data-action="accept-all">${t('aiAcceptAll')}</button>
+      <button class="btn-secondary" data-action="close">${t('close')}</button>
+    </div>`;
 
-  resultsContent.insertAdjacentHTML('beforeend', bulkActionsHTML);
+  resultsContent.innerHTML = resultsHTML + bulkActionsHTML;
+
+  attachAIResultsHandler(resultsContent);
 
   // Show panel with smooth animation
   resultsPanel.style.display = 'block';
   resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Toggle collapsible result item
-function toggleResultItem(headerElement) {
-  const resultItem = headerElement.closest('.ai-result-item');
-  resultItem.classList.toggle('collapsed');
+// Attach the delegated click handler for the AI results panel (once)
+function attachAIResultsHandler(resultsContent) {
+  if (aiResultsHandlerAttached) {return;}
+  aiResultsHandlerAttached = true;
+  resultsContent.addEventListener('click', handleAIResultsClick);
 }
 
-// Reject suggestion (hide the row)
-function rejectSuggestion(buttonElement) {
-  const suggestionRow = buttonElement.closest('.ai-suggestion');
-  suggestionRow.style.display = 'none';
+// Delegated click handler for all interactions inside the AI results panel
+async function handleAIResultsClick(event) {
+  const tagChip = event.target.closest('.tag-chip');
+  if (tagChip) {
+    tagChip.classList.toggle('selected');
+    return;
+  }
+
+  const actionEl = event.target.closest('[data-action]');
+  if (!actionEl) {return;}
+
+  switch (actionEl.dataset.action) {
+    case 'toggle':
+      actionEl.closest('.ai-result-item')?.classList.toggle('collapsed');
+      break;
+    case 'reject': {
+      const row = actionEl.closest('.ai-suggestion');
+      if (row) {row.style.display = 'none';}
+      break;
+    }
+    case 'close':
+      closeResultsPanel();
+      break;
+    case 'accept':
+      await handleAcceptAction(actionEl);
+      break;
+    case 'accept-all-icon':
+      await acceptAllForIcon(actionEl.dataset.iconId);
+      break;
+    case 'accept-all':
+      await acceptAllResults();
+      break;
+    case 'delete-duplicates':
+      await deleteSelectedDuplicates(actionEl);
+      break;
+    case 'use-example':
+      useExampleForIconGen(actionEl.dataset.name);
+      break;
+  }
+}
+
+// Handle a single accept button click
+async function handleAcceptAction(button) {
+  const iconId = button.dataset.iconId;
+  const field = button.dataset.field;
+  const data = aiAnalysisResults.get(iconId);
+  if (!data) {return;}
+
+  const row = button.closest('.ai-suggestion');
+
+  if (field === 'name_de') {
+    await acceptGermanName(iconId, data.name_suggestion_de, row);
+    return;
+  }
+
+  let value;
+  if (field === 'tags') {
+    value = row
+      ? Array.from(row.querySelectorAll('.tag-chip.selected')).map(chip => chip.dataset.tag)
+      : normalizeTags(data.tags_suggestion);
+  } else if (field === 'category') {
+    value = data.category_suggestion;
+  } else if (field === 'name') {
+    value = data.name_suggestion;
+  } else if (field === 'difficulty') {
+    value = parseInt(data.difficulty_suggestion, 10);
+  } else {
+    return;
+  }
+
+  const success = await window.acceptSuggestion(iconId, field, value);
+  if (success) {markRowApplied(row);}
+}
+
+// Save the suggested German name as an icon translation
+async function acceptGermanName(iconId, nameDe, row) {
+  try {
+    const response = await fetch(`/api/icons/${iconId}/translations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ languageCode: 'de', translatedName: nameDe })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save translation: ${response.status}`);
+    }
+
+    window.notifications.show(t('aiApplied'), 'success');
+    markRowApplied(row);
+  } catch (error) {
+    console.error('Error saving German name:', {
+      operation: 'acceptGermanName',
+      error: error.message,
+      iconId
+    });
+    window.notifications.show('Failed to save translation: ' + error.message, 'error');
+  }
+}
+
+// Mark a suggestion row as applied
+function markRowApplied(row) {
+  if (!row) {return;}
+  row.classList.add('applied');
+  const actions = row.querySelector('.ai-suggestion-actions');
+  if (actions) {
+    actions.innerHTML = `<span class="completed-badge">✓ ${t('aiApplied')}</span>`;
+  }
 }
 
 // Close results panel
@@ -2394,14 +2659,17 @@ function closeResultsPanel() {
   }
 }
 
-// Accept all suggestions for one icon
-async function acceptAllForIcon(iconId, data) {
+// Accept all suggestions for one icon (reads from the stored analysis results)
+async function acceptAllForIcon(iconId) {
+  const data = aiAnalysisResults.get(iconId);
+  if (!data) {return false;}
+
   try {
     const updateData = {
       category: data.category_suggestion,
       name: data.name_suggestion,
       difficulty: data.difficulty_suggestion,
-      tags: data.tags_suggestion
+      tags: normalizeTags(data.tags_suggestion)
     };
 
     const response = await fetch(`/api/icons/${iconId}`, {
@@ -2410,24 +2678,49 @@ async function acceptAllForIcon(iconId, data) {
       body: JSON.stringify(updateData)
     });
 
-    if (response.ok) {
-      window.notifications.show('All suggestions applied for this icon', 'success');
-      // Mark this result item as completed
-      const resultItem = document.querySelector(`.ai-result-item[data-icon-id="${iconId}"]`);
-      if (resultItem) {
-        resultItem.classList.add('completed');
-        const header = resultItem.querySelector('.ai-result-item-header .result-icon-info');
-        if (header && !header.querySelector('.completed-badge')) {
-          header.insertAdjacentHTML('beforeend', ' <span class="completed-badge">✓ Applied</span>');
-        }
-      }
-      await loadIconsForTable();
-    } else {
+    if (!response.ok) {
       throw new Error('Failed to update icon');
     }
+
+    // Save the German name suggestion as a translation (best effort)
+    if (data.name_suggestion_de) {
+      try {
+        await fetch(`/api/icons/${iconId}/translations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ languageCode: 'de', translatedName: data.name_suggestion_de })
+        });
+      } catch (translationError) {
+        console.error('Error saving German translation:', {
+          operation: 'acceptAllForIcon',
+          error: translationError.message,
+          iconId
+        });
+      }
+    }
+
+    window.notifications.show(t('aiApplied'), 'success');
+
+    // Mark this result item as completed
+    const resultItem = document.querySelector(`.ai-result-item[data-icon-id="${iconId}"]`);
+    if (resultItem) {
+      resultItem.classList.add('completed');
+      const header = resultItem.querySelector('.ai-result-item-header .result-icon-info');
+      if (header && !header.querySelector('.completed-badge')) {
+        header.insertAdjacentHTML('beforeend', ` <span class="completed-badge">✓ ${t('aiApplied')}</span>`);
+      }
+    }
+
+    await loadIconsForTable();
+    return true;
   } catch (error) {
-    console.error('Error accepting all suggestions:', error);
+    console.error('Error accepting all suggestions:', {
+      operation: 'acceptAllForIcon',
+      error: error.message,
+      iconId
+    });
     window.notifications.show('Failed to apply suggestions', 'error');
+    return false;
   }
 }
 
@@ -2439,23 +2732,13 @@ async function acceptAllResults() {
 
   for (const item of resultItems) {
     const iconId = item.getAttribute('data-icon-id');
-    // Extract data from the "Accept All" button's onclick attribute
-    const acceptAllBtn = item.querySelector('[onclick*="acceptAllForIcon"]');
-    if (acceptAllBtn) {
-      const onclickAttr = acceptAllBtn.getAttribute('onclick');
-      // Extract the data object from the onclick string
-      const match = onclickAttr.match(/acceptAllForIcon\('([^']+)',\s*({[^}]+})\)/);
-      if (match) {
-        try {
-          const dataStr = match[2].replace(/&quot;/g, '"');
-          const data = JSON.parse(dataStr);
-          await acceptAllForIcon(iconId, data);
-          successCount++;
-        } catch (error) {
-          console.error('Error processing icon:', iconId, error);
-          failureCount++;
-        }
-      }
+    if (!aiAnalysisResults.has(iconId)) {continue;}
+
+    const success = await acceptAllForIcon(iconId);
+    if (success) {
+      successCount++;
+    } else {
+      failureCount++;
     }
   }
 
@@ -2468,28 +2751,187 @@ async function acceptAllResults() {
 }
 
 // Make functions globally accessible
-window.toggleResultItem = toggleResultItem;
-window.rejectSuggestion = rejectSuggestion;
 window.closeResultsPanel = closeResultsPanel;
 window.acceptAllForIcon = acceptAllForIcon;
 window.acceptAllResults = acceptAllResults;
 
-// Show duplicate results
+// Show duplicate detection results in the inline results panel
 function showDuplicateResults(results) {
   console.log('Duplicate results:', results);
-  window.notifications.show(`Found ${results.duplicates_found} potential duplicates`, 'info');
+
+  const resultsPanel = document.getElementById('aiResultsPanel');
+  const resultsContent = document.getElementById('aiResultsContent');
+  if (!resultsPanel || !resultsContent) {return;}
+
+  const groups = (results && results.groups) || [];
+
+  if (groups.length === 0) {
+    resultsContent.innerHTML = `<p class="no-results">${t('aiNoDuplicates')}</p>`;
+  } else {
+    const groupsHTML = groups.map((group) => {
+      const score = Math.round((group.similarity_score || 0) * 100);
+      const membersHTML = (group.members || []).map((member) => {
+        const icon = availableIcons.find(i => String(i.id) === String(member.id));
+        const imgSrc = icon ? (icon.image || icon.data) : '';
+        const name = icon ? icon.name : String(member.id);
+        return `
+          <label class="duplicate-member">
+            <input type="checkbox" class="duplicate-member-checkbox" data-icon-id="${escapeHTML(member.id)}">
+            ${imgSrc ? `<img src="${imgSrc}" alt="${escapeHTML(name)}" class="duplicate-member-img">` : ''}
+            <span class="duplicate-member-name">${escapeHTML(name)}</span>
+            <span class="duplicate-member-reason">${escapeHTML(member.reason || '')}</span>
+          </label>`;
+      }).join('');
+
+      return `
+        <div class="duplicate-group">
+          <div class="duplicate-group-header">
+            <strong>${score}%</strong>
+            <span class="duplicate-group-type">${escapeHTML(group.similarity_type || '')}</span>
+          </div>
+          <div class="duplicate-group-members">${membersHTML}</div>
+          <button class="btn-danger" data-action="delete-duplicates">${t('aiDeleteSelected')}</button>
+        </div>`;
+    }).join('');
+
+    resultsContent.innerHTML = `<h4>${t('aiDuplicatesFound', { count: groups.length })}</h4>${groupsHTML}`;
+  }
+
+  attachAIResultsHandler(resultsContent);
+  resultsPanel.style.display = 'block';
+  resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Show content suggestions
-function showContentSuggestions(suggestions) {
-  console.log('Content suggestions:', suggestions);
-  window.notifications.show('Content suggestions available in console', 'info');
+// Delete the checked icons of a duplicate group
+async function deleteSelectedDuplicates(button) {
+  const group = button.closest('.duplicate-group');
+  if (!group) {return;}
+
+  const checked = Array.from(group.querySelectorAll('.duplicate-member-checkbox:checked'));
+  if (checked.length === 0) {
+    window.notifications.show('Please select icons to delete', 'warning');
+    return;
+  }
+
+  let deletedCount = 0;
+  for (const checkbox of checked) {
+    try {
+      const response = await fetch(`/api/icons/${checkbox.dataset.iconId}`, { method: 'DELETE' });
+      if (!response.ok) {throw new Error(`Delete failed: ${response.status}`);}
+      deletedCount++;
+      checkbox.closest('.duplicate-member')?.classList.add('deleted');
+      checkbox.disabled = true;
+    } catch (error) {
+      console.error('Error deleting duplicate icon:', {
+        operation: 'deleteSelectedDuplicates',
+        error: error.message,
+        iconId: checkbox.dataset.iconId
+      });
+    }
+  }
+
+  if (deletedCount > 0) {
+    group.classList.add('completed');
+    button.disabled = true;
+    window.notifications.show(`Deleted ${deletedCount} icon(s)`, 'success');
+    await loadIconsForTable();
+  }
 }
 
-// Show smart set results
+// Show content suggestions in the inline results panel
+function showContentSuggestions(data) {
+  console.log('Content suggestions:', data);
+
+  const resultsPanel = document.getElementById('aiResultsPanel');
+  const resultsContent = document.getElementById('aiResultsContent');
+  if (!resultsPanel || !resultsContent) {return;}
+
+  const analysis = (data && data.analysis) || {};
+  const suggestions = (data && data.suggestions) || [];
+  const canGenerate = aiService.isImageConfigured();
+
+  const listBlock = (labelKey, items) => {
+    if (!items || items.length === 0) {return '';}
+    const listItems = items.map(item => `<li>${escapeHTML(item)}</li>`).join('');
+    return `<div class="ai-analysis-block"><h5>${t(labelKey)}</h5><ul>${listItems}</ul></div>`;
+  };
+
+  const suggestionsHTML = suggestions.map((suggestion) => {
+    const priority = String(suggestion.priority || 'medium').toLowerCase();
+    const examplesHTML = (suggestion.examples || []).map((example) => {
+      const genBtn = canGenerate
+        ? `<button class="example-gen-btn" data-action="use-example" data-name="${escapeHTML(example)}" title="${escapeHTML(t('generateIconImage'))}">🎨</button>`
+        : '';
+      return `<span class="example-chip">${escapeHTML(example)}${genBtn}</span>`;
+    }).join('');
+
+    return `
+      <div class="suggestion-card">
+        <div class="suggestion-card-header">
+          <strong>${escapeHTML(suggestion.category || '')}</strong>
+          <span class="priority-badge priority-${escapeHTML(priority)}">${escapeHTML(priority)}</span>
+        </div>
+        <p class="suggestion-reason">${escapeHTML(suggestion.reason || '')}</p>
+        <div class="suggestion-examples">${examplesHTML}</div>
+      </div>`;
+  }).join('');
+
+  resultsContent.innerHTML = `
+    <h4>${t('contentSuggestions')}</h4>
+    ${listBlock('aiStrengths', analysis.strengths)}
+    ${listBlock('aiGaps', analysis.gaps)}
+    ${listBlock('aiImbalances', analysis.imbalances)}
+    ${suggestionsHTML}`;
+
+  attachAIResultsHandler(resultsContent);
+  resultsPanel.style.display = 'block';
+  resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Show smart set generation results in the inline results panel
 function showSmartSetResults(setData) {
   console.log('Smart set data:', setData);
-  window.notifications.show(`Generated set: ${setData.name}`, 'info');
+
+  const resultsPanel = document.getElementById('aiResultsPanel');
+  const resultsContent = document.getElementById('aiResultsContent');
+  if (!resultsPanel || !resultsContent) {return;}
+
+  const icons = (setData && setData.icons) || [];
+  const canGenerate = aiService.isImageConfigured();
+
+  const rowsHTML = icons.map((icon) => {
+    const difficulty = Math.max(0, Math.min(5, parseInt(icon.difficulty, 10) || 0));
+    const genBtn = canGenerate
+      ? ` <button class="example-gen-btn" data-action="use-example" data-name="${escapeHTML(icon.name || '')}" title="${escapeHTML(t('generateIconImage'))}">🎨</button>`
+      : '';
+    return `
+      <tr>
+        <td>${escapeHTML(icon.name || '')}${genBtn}</td>
+        <td>${escapeHTML(icon.category || '')}</td>
+        <td>${'⭐'.repeat(difficulty)}</td>
+        <td>${escapeHTML(icon.description || '')}</td>
+      </tr>`;
+  }).join('');
+
+  resultsContent.innerHTML = `
+    <h4>${escapeHTML(setData.name || '')}</h4>
+    <p>${escapeHTML(setData.description || '')}</p>
+    <p><em>${escapeHTML(setData.theme || '')}</em></p>
+    <table class="smart-set-table">
+      <thead>
+        <tr>
+          <th>${t('name')}</th>
+          <th>${t('category')}</th>
+          <th>${t('difficulty')}</th>
+          <th>${t('setDescription')}</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>`;
+
+  attachAIResultsHandler(resultsContent);
+  resultsPanel.style.display = 'block';
+  resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Accept AI suggestion
@@ -2519,30 +2961,15 @@ window.acceptSuggestion = async function (iconId, field, value) {
     const result = await response.json();
     console.log('Update result:', result);
 
-    window.notifications.show('Suggestion applied', 'success');
+    window.notifications.show(t('aiApplied'), 'success');
     await loadIconsForTable(); // Refresh the icon list
+    return true;
   } catch (error) {
     console.error('Error accepting suggestion:', error);
     window.notifications.show('Failed to apply suggestion: ' + error.message, 'error');
+    return false;
   }
 };
-
-// Update AI usage display
-async function updateAIUsageDisplay() {
-  try {
-    const response = await fetch('/api/ai/usage/check');
-    if (response.ok) {
-      const usage = await response.json();
-      const display = document.getElementById('aiUsageDisplay');
-      if (display) {
-        display.textContent = `${usage.data.usage} / ${usage.data.limit}`;
-        display.style.color = usage.data.within_limits ? '#333' : '#dc3545';
-      }
-    }
-  } catch (error) {
-    console.error('Error updating usage display:', error);
-  }
-}
 
 // Helper function to get selected icons
 function getSelectedIcons() {
@@ -2709,8 +3136,7 @@ function applyIconManagerFilters() {
   // Apply search filter
   if (iconManagerFilters.search) {
     filteredIcons = filteredIcons.filter(icon =>
-      (icon.name || '').toLowerCase().includes(iconManagerFilters.search) ||
-            (icon.altText || '').toLowerCase().includes(iconManagerFilters.search)
+      (icon.name || '').toLowerCase().includes(iconManagerFilters.search)
     );
   }
 

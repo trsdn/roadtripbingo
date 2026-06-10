@@ -391,8 +391,6 @@ button:disabled {
     grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     gap: 10px;
     margin-top: 15px;
-    max-height: 200px;
-    overflow-y: auto;
     border: 1px solid #ddd;
     padding: 10px;
     background: white;
@@ -783,8 +781,6 @@ button:disabled {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 10px;
-    max-height: 300px;
-    overflow-y: auto;
     border: 1px solid #ddd;
     padding: 10px;
     border-radius: 4px;
@@ -2206,4 +2202,217 @@ button:disabled {
   font-weight: bold;
   color: #333;
   min-width: 30px;
+}
+/* ===== AI Revamp: tag chips, slider labels, duplicate groups, icon generation ===== */
+
+/* Clickable tag chips in AI analysis results */
+.tag-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  margin: 2px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  background-color: #eee;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: line-through;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.tag-chip.selected {
+  background-color: #e3f2fd;
+  border-color: #007bff;
+  color: #0056b3;
+  text-decoration: none;
+}
+
+/* Labels below the duplicate sensitivity slider */
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* Duplicate detection result groups */
+.duplicate-group {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0;
+  background-color: #fff;
+}
+
+.duplicate-group.completed {
+  opacity: 0.6;
+}
+
+.duplicate-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.duplicate-group-type {
+  font-size: 12px;
+  color: #888;
+}
+
+.duplicate-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.duplicate-member.deleted {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.duplicate-member-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  background-color: #fafafa;
+}
+
+.duplicate-member-reason {
+  font-size: 12px;
+  color: #888;
+}
+
+/* AI icon generation */
+.icon-gen-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#iconGenResult {
+  margin-top: 12px;
+}
+
+#iconGenPreview {
+  max-width: 128px;
+  max-height: 128px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%),
+    linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+/* Content suggestion priority badges */
+.priority-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.priority-badge.priority-high {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.priority-badge.priority-medium {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.priority-badge.priority-low {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* Content suggestion cards and example chips */
+.suggestion-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0;
+  background-color: #fff;
+}
+
+.suggestion-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.suggestion-reason {
+  font-size: 13px;
+  color: #555;
+  margin: 6px 0;
+}
+
+.example-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  margin: 2px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  background-color: #f5f5f5;
+  font-size: 12px;
+}
+
+.example-gen-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Smart set results table */
+.smart-set-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.smart-set-table th,
+.smart-set-table td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.smart-set-table th {
+  background-color: #f5f5f5;
+}
+
+/* Applied suggestion rows */
+.ai-suggestion.applied {
+  opacity: 0.7;
+}
+
+.ai-analysis-block h5 {
+  margin: 10px 0 4px;
+}
+
+.ai-analysis-block ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #555;
 }
