@@ -200,10 +200,22 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
         }
         pageCount++;
 
-        // Add a single discreet identifier (top-right) for sorting/cutting
+        // Identifier as a small license-plate badge (top-right) for sorting
+        const plateW = 8 + displayIdentifier.length * 3.1;
+        const plateH = 8;
+        const plateX = pageWidth - margin - plateW;
+        const plateY = margin;
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(plateX, plateY, plateW, plateH, 1.5, 1.5, 'F');
+        pdf.setDrawColor(120, 120, 120);
+        pdf.setLineWidth(0.5);
+        pdf.roundedRect(plateX, plateY, plateW, plateH, 1.5, 1.5, 'S');
+        pdf.setLineWidth(0.200025);
         pdf.setFontSize(11);
-        pdf.setTextColor(150, 150, 150);
-        pdf.text(displayIdentifier, pageWidth - margin, margin + 4, { align: 'right' });
+        pdf.setTextColor(40, 40, 40);
+        pdf.text(displayIdentifier, plateX + plateW / 2, plateY + plateH / 2,
+          { align: 'center', baseline: 'middle' });
+        pdf.setTextColor(0, 0, 0);
                 
         // Calculate position to center the card on the page for consistent rendering
         const availableWidth = pageWidth - (2 * margin);
@@ -472,17 +484,29 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
     gridSize: `${card.grid.length}x${card.grid[0].length}`
   });
     
-  // Draw card title
+  // Draw card title inside a highway-sign band (green panel, white inner
+  // border, white title) to match the app's Highway Signage look.
+  const bandH = Math.max(9, titleFontSize * 0.62);
+  const bandY = y - bandH - 2;
+  pdf.setFillColor(28, 122, 63);
+  pdf.roundedRect(x, bandY, cardWidth, bandH, 2.5, 2.5, 'F');
+  pdf.setDrawColor(255, 255, 255);
+  pdf.setLineWidth(0.5);
+  pdf.roundedRect(x + 1, bandY + 1, cardWidth - 2, bandH - 2, 1.8, 1.8, 'S');
+  pdf.setLineWidth(0.200025);
   pdf.setFontSize(titleFontSize);
-  pdf.setTextColor(0, 0, 0);
-  pdf.text(card.title || 'Road Trip Bingo', x + (cardWidth / 2), y - 5, { align: 'center' });
-    
+  pdf.setTextColor(255, 255, 255);
+  // Keep the original title string (tests match exact text); centre in band.
+  pdf.text(card.title || 'Road Trip Bingo', x + (cardWidth / 2), bandY + (bandH / 2),
+    { align: 'center', baseline: 'middle' });
+
   // Draw card identifier if present
   if (card.identifier) {
     pdf.setFontSize(titleFontSize * 0.8);
     pdf.setTextColor(100, 100, 100);
     pdf.text(card.identifier, x + cardWidth - 5, y - 5, { align: 'right' });
   }
+  pdf.setTextColor(0, 0, 0);
     
   // Draw game mode and difficulty information
   if (gameMode || gameDifficulty) {
@@ -627,14 +651,15 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
             textWidth = pdf.getTextWidth(cell.name);
           }
                     
-          // Skip background rectangle if setFillColor is not available in the mock
-          if (typeof pdf.setFillColor === 'function') {
+          // White pill behind the label so it stays legible over imagery
+          if (typeof pdf.setFillColor === 'function' && typeof pdf.roundedRect === 'function') {
             pdf.setFillColor(255, 255, 255);
-            pdf.rect(
+            pdf.roundedRect(
               textX - (textWidth / 2) - 1,
               textY - labelFontSize,
               textWidth + 2,
               labelFontSize + 1,
+              0.8, 0.8,
               'F'
             );
           }

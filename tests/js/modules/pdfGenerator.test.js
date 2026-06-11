@@ -46,6 +46,11 @@ class MockJsPDF {
       return this;
     });
     this.setLineWidth = jest.fn().mockReturnValue(this);
+    this.setFillColor = jest.fn().mockReturnValue(this);
+    this.roundedRect = jest.fn().mockImplementation((x, y, width, height, rx, ry, style) => {
+      this.elements.push({ type: 'roundedRect', x, y, width, height, style });
+      return this;
+    });
     this.addPage = jest.fn().mockReturnValue(this);
     this.text = jest.fn().mockImplementation((text, x, y, options = {}) => {
       this.elements.push({
