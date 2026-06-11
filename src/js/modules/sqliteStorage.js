@@ -139,6 +139,15 @@ class SQLiteStorage {
         }
       }
 
+      // Force the bulk-inserted rows out of the WAL into the main database
+      // file immediately, so the seed is durable even if the -wal file is
+      // later lost (e.g. removed by tooling) before an automatic checkpoint.
+      try {
+        this.db.pragma('wal_checkpoint(TRUNCATE)');
+      } catch (error) {
+        console.error('WAL checkpoint after seeding failed:', error.message);
+      }
+
       console.log(`Seeded ${seeded} default icons into empty database`);
       return seeded;
     } catch (error) {
