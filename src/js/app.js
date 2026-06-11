@@ -1455,13 +1455,15 @@ async function downloadPDF() {
           }
         }
       }
-      let gameModeLabel = 'Standard Mode';
+      // Only label the card face for the modes that change how you play.
+      // Classic stays clean (no subtitle), and the internal difficulty is
+      // never printed on the card — it only steers icon selection.
+      let gameModeLabel = '';
       if (isMultiHit) {
-        gameModeLabel = `Multi-Hit Mode (${multiHitDifficulty})`;
+        gameModeLabel = getTranslatedText('multihitMode');
       } else if (selectedGameMode === 'scoring') {
-        gameModeLabel = 'Scoring Mode';
+        gameModeLabel = getTranslatedText('scoringMode');
       }
-      const gameDifficultyValue = gameDifficulty ? gameDifficulty.value : 'MEDIUM';
       const includeRulesPage = Boolean(includeRulesToggle && includeRulesToggle.checked);
 
       // Generate the PDF
@@ -1473,12 +1475,13 @@ async function downloadPDF() {
         showLabels, // include toggle state
         gameMode: selectedGameMode,
         gameModeLabel,
-        gameDifficulty: gameDifficultyValue,
+        gameDifficulty: '',
         includeRulesPage,
         rulesContent: includeRulesPage
           ? buildRulesContent(selectedGameMode, multiHitDifficulty)
           : null,
-        scoreLabels: selectedGameMode === 'scoring' ? buildScoreLabels() : null
+        scoreLabels: selectedGameMode === 'scoring' ? buildScoreLabels() : null,
+        footerHint: getTranslatedText('pdfFooterHint')
       });
 
       // Download the PDF
@@ -4702,20 +4705,43 @@ function updateSelectedIconsPreview() {
   console.log(`Found ${selectedIconsData.length} selected icons from ${selectedIconIds.length} selected IDs`);
 
   if (selectedIconsData.length === 0) {
-    selectedIconsPreview.innerHTML = '<p>No icons selected. Click "Select Icons" to choose icons for generation.</p>';
+    selectedIconsPreview.innerHTML =
+      `<p class="selection-empty">${getTranslatedText('noIconsSelected')}</p>`;
     return;
   }
 
-  selectedIconsData.forEach(icon => {
+  // Compact summary + a capped thumbnail strip, so a large library does not
+  // turn into an alarming wall of remove buttons.
+  const total = availableIcons.length;
+  const summary = document.createElement('div');
+  summary.className = 'selection-summary';
+  summary.innerHTML =
+    `<span class="selection-count-badge">${selectedIconsData.length}</span>` +
+    `<span>${getTranslatedText('iconsSelectedSummary')
+      .replace('{count}', selectedIconsData.length)
+      .replace('{total}', total)}</span>`;
+  selectedIconsPreview.appendChild(summary);
+
+  const CAP = 18;
+  const strip = document.createElement('div');
+  strip.className = 'selection-strip';
+  selectedIconsData.slice(0, CAP).forEach(icon => {
     const iconDiv = document.createElement('div');
     iconDiv.className = 'selected-icon-item';
+    iconDiv.title = icon.name;
     iconDiv.innerHTML = `
-            <img src="${icon.image || icon.data}" alt="${icon.name}" title="${icon.name}">
-            <span>${icon.name}</span>
-            <button class="remove-icon-btn" onclick="removeIconFromSelection('${icon.id}')">&times;</button>
+            <img src="${icon.image || icon.data}" alt="${icon.name}">
+            <button class="remove-icon-btn" title="${getTranslatedText('remove')}" onclick="removeIconFromSelection('${icon.id}')">&times;</button>
         `;
-    selectedIconsPreview.appendChild(iconDiv);
+    strip.appendChild(iconDiv);
   });
+  if (selectedIconsData.length > CAP) {
+    const more = document.createElement('div');
+    more.className = 'selection-more';
+    more.textContent = `+${selectedIconsData.length - CAP}`;
+    strip.appendChild(more);
+  }
+  selectedIconsPreview.appendChild(strip);
 
   console.log('✅ Selected icons preview updated');
 }
