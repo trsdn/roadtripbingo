@@ -104,23 +104,29 @@ function checkRateLimit(clientIP, isAIEndpoint = false) {
   const now = Date.now();
   const maxRequests = isAIEndpoint ? RATE_LIMIT_AI_MAX_REQUESTS : RATE_LIMIT_MAX_REQUESTS;
 
+  // Track AI and general traffic in separate buckets per IP, otherwise a
+  // burst of general requests (e.g. loading the icon table) would exhaust
+  // the much smaller AI budget and 429 the AI endpoints.
+  const bucketKey = isAIEndpoint ? 'ai' : 'general';
+
   if (!rateLimitMap.has(clientIP)) {
-    rateLimitMap.set(clientIP, []);
+    rateLimitMap.set(clientIP, { ai: [], general: [] });
   }
 
-  const requests = rateLimitMap.get(clientIP);
+  const buckets = rateLimitMap.get(clientIP);
 
   // Remove requests outside the time window
-  const recentRequests = requests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+  const recentRequests = buckets[bucketKey].filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
 
   // Check if rate limit exceeded
   if (recentRequests.length >= maxRequests) {
+    buckets[bucketKey] = recentRequests;
     return true; // Rate limit exceeded
   }
 
   // Add current request
   recentRequests.push(now);
-  rateLimitMap.set(clientIP, recentRequests);
+  buckets[bucketKey] = recentRequests;
 
   return false; // Within rate limit
 }
@@ -130,12 +136,11 @@ function checkRateLimit(clientIP, isAIEndpoint = false) {
  */
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, requests] of rateLimitMap.entries()) {
-    const recentRequests = requests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
-    if (recentRequests.length === 0) {
+  for (const [ip, buckets] of rateLimitMap.entries()) {
+    buckets.ai = buckets.ai.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+    buckets.general = buckets.general.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+    if (buckets.ai.length === 0 && buckets.general.length === 0) {
       rateLimitMap.delete(ip);
-    } else {
-      rateLimitMap.set(ip, recentRequests);
     }
   }
 }, RATE_LIMIT_WINDOW);
@@ -207,15 +212,27 @@ async function handleAPIRequest(req, res) {
     if (pathname === '/api/icons') {
       if (method === 'GET') {
         // Validate query parameters
-        const allowedParams = ['search', 'category'];
+        const allowedParams = ['search', 'category', 'details'];
         const queryValidation = validation.validateQueryParams(parsedUrl.query, allowedParams);
         if (!queryValidation.valid) {
           sendJSON(res, { success: false, errors: queryValidation.errors }, 400);
           return true;
         }
 
-        const { search, category } = parsedUrl.query;
+        const { search, category, details } = parsedUrl.query;
         const icons = await storage.loadIcons(search || '', category || '');
+
+        // Optionally attach sets and translations in bulk so the icon table
+        // loads in a single request instead of 2 requests per icon (N+1).
+        if (details === 'true' && icons.length > 0) {
+          const setsByIcon = await storage.getAllIconSetMemberships();
+          const translationsByIcon = await storage.getAllIconTranslations();
+          for (const icon of icons) {
+            icon.sets = setsByIcon[icon.id] || [];
+            icon.translations = translationsByIcon[icon.id] || {};
+          }
+        }
+
         sendJSON(res, { success: true, data: icons });
         return true;
       } else if (method === 'POST') {
@@ -847,7 +864,13 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
-  console.log('Press Ctrl+C to stop the server');
-});
+// Only start listening when run directly, so tests can import the rate
+// limiter and other helpers without spinning up a real server.
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}/`);
+    console.log('Press Ctrl+C to stop the server');
+  });
+}
+
+module.exports = { checkRateLimit, rateLimitMap, RATE_LIMIT_AI_MAX_REQUESTS, RATE_LIMIT_MAX_REQUESTS };

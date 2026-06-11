@@ -2176,25 +2176,17 @@ function updateSetFilter() {
 // Load icons for table view
 async function loadIconsForTable() {
   try {
-    // Load icons with extended information
-    const response = await fetch('/api/icons');
+    // Load icons with sets + translations attached in one request (avoids
+    // a per-icon N+1 that would otherwise fire 2 requests per icon).
+    const response = await fetch('/api/icons?details=true');
     const result = await response.json();
 
     if (result.success) {
-      availableIcons = result.data;
-
-      // Load additional information for each icon
-      for (const icon of availableIcons) {
-        // Load sets containing this icon
-        const setsResponse = await fetch(`/api/icons/${icon.id}/sets`);
-        const setsResult = await setsResponse.json();
-        icon.sets = setsResult.success ? setsResult.data : [];
-
-        // Load translations for this icon
-        const translationsResponse = await fetch(`/api/icons/${icon.id}/translations`);
-        const translationsResult = await translationsResponse.json();
-        icon.translations = translationsResult.success ? translationsResult.data : {};
-      }
+      availableIcons = result.data.map(icon => ({
+        ...icon,
+        sets: icon.sets || [],
+        translations: icon.translations || {}
+      }));
 
       renderIconTable();
     } else {
