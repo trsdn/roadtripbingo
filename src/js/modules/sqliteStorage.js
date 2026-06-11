@@ -1215,7 +1215,65 @@ class SQLiteStorage {
       throw new Error(`Failed to load sets containing icon: ${error.message}`);
     }
   }
-  
+
+  /**
+   * Bulk: map every icon id to the sets it belongs to (single query).
+   * Avoids the per-icon N+1 when rendering the icon table.
+   * @returns {Promise<Object>} { [iconId]: [{id, name, description, addedAt}] }
+   */
+  async getAllIconSetMemberships() {
+    if (!this.isInitialized) await this.init();
+
+    const stmt = this.db.prepare(`
+      SELECT m.icon_id, s.id, s.name, s.description, m.added_at
+      FROM icon_set_members m
+      JOIN icon_sets s ON s.id = m.set_id
+      ORDER BY s.name ASC
+    `);
+
+    const result = {};
+    try {
+      for (const row of stmt.all()) {
+        if (!result[row.icon_id]) {result[row.icon_id] = [];}
+        result[row.icon_id].push({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          addedAt: row.added_at
+        });
+      }
+      return result;
+    } catch (error) {
+      console.error('Error loading icon set memberships:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Bulk: map every icon id to its translations (single query).
+   * @returns {Promise<Object>} { [iconId]: { [languageCode]: translatedName } }
+   */
+  async getAllIconTranslations() {
+    if (!this.isInitialized) await this.init();
+
+    const stmt = this.db.prepare(`
+      SELECT icon_id, language_code, translated_name
+      FROM icon_translations
+    `);
+
+    const result = {};
+    try {
+      for (const row of stmt.all()) {
+        if (!result[row.icon_id]) {result[row.icon_id] = {};}
+        result[row.icon_id][row.language_code] = row.translated_name;
+      }
+      return result;
+    } catch (error) {
+      console.error('Error loading icon translations:', error);
+      return {};
+    }
+  }
+
   // Migrate existing icons to ensure they're all in the "All Icons" set
   async migrateExistingIconsToDefaultSet() {
     if (!this.isInitialized) await this.init();

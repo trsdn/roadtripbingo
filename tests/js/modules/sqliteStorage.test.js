@@ -641,4 +641,34 @@ describe('SQLiteStorage', () => {
       expect(icons).toHaveLength(1);
     });
   });
+
+  describe('Bulk detail loaders', () => {
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB' +
+      'CAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    it('returns set memberships keyed by icon id', async () => {
+      const a = await storage.saveIcon({ name: 'A', image: PNG, category: 'Nature' });
+      const b = await storage.saveIcon({ name: 'B', image: PNG, category: 'Nature' });
+      const set = await storage.createIconSet({ name: 'Trip', description: '' });
+      await storage.addIconToSet(a.data.id, set.id);
+
+      const map = await storage.getAllIconSetMemberships();
+      expect(map[a.data.id].map(s => s.name)).toContain('Trip');
+      expect(map[b.data.id]).toBeUndefined();
+    });
+
+    it('returns translations keyed by icon id', async () => {
+      const a = await storage.saveIcon({ name: 'Cow', image: PNG, category: 'Animals' });
+      await storage.saveIconTranslation(a.data.id, 'de', 'Kuh');
+      await storage.saveIconTranslation(a.data.id, 'fr', 'Vache');
+
+      const map = await storage.getAllIconTranslations();
+      expect(map[a.data.id]).toEqual({ de: 'Kuh', fr: 'Vache' });
+    });
+
+    it('returns empty objects when there is nothing to attach', async () => {
+      expect(await storage.getAllIconSetMemberships()).toEqual({});
+      expect(await storage.getAllIconTranslations()).toEqual({});
+    });
+  });
 });
