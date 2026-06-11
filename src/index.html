@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Road Trip Bingo Generator</title>
   <meta name="description" content="Generate customizable bingo cards for road trips">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- The hashed stylesheet is injected here automatically by HtmlWebpackPlugin -->
 </head>
 <body>
@@ -14,11 +17,14 @@
   <div id="notificationContainer" class="notification-container"></div>
   
   <div class="toolbar">
+    <div class="plate-logo">
+      <small data-translate="plateRegion">ROAD TRIP</small>RT&middot;BINGO
+    </div>
     <nav class="main-nav">
       <button id="navGenerator" class="nav-btn active" data-translate="navGenerator">Generator</button>
       <button id="navIconManager" class="nav-btn" data-translate="navIconManager">Icon Manager</button>
     </nav>
-    <div>
+    <div class="lang-wrap">
       <select id="languageSelect">
         <option value="en">English</option>
         <option value="de">Deutsch</option>
@@ -28,7 +34,12 @@
   
   <!-- Generator Page -->
   <div id="generatorPage" class="page-container active">
-    <div class="container">
+    <div class="hero-sign">
+      <span class="exit-badge">EXIT 0</span>
+      <h1 class="hero-headline" data-translate="heroHeadline">Build your road trip board</h1>
+      <p class="hero-subline" data-translate="heroSubline">// pick a size, hit generate, print &amp; play</p>
+    </div>
+    <div class="container generator-grid">
       <div class="settings-panel">
       <div class="form-group">
         <label for="title" data-translate="bingoCardTitle">Bingo Card Title:</label>
@@ -160,32 +171,32 @@
             <p id="iconAvailability"></p>
             
             <button id="generateBtn" data-translate="generateBtn">Generate Bingo Cards</button>
-            
-            <!-- Preview Section moved here -->
-            <div class="preview-section">
-                <h2 data-translate="preview">Preview</h2>
-                <div id="cardPreview"></div>
-                
-                <div class="generate-section">
-                    <p id="identifier"></p>
-                    <div class="form-group">
-                        <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
-                        <select id="pdfCompression">
-                            <option value="NONE" data-translate="compressionNone">None (Largest file)</option>
-                            <option value="FAST" data-translate="compressionFast">Light (Smaller file)</option>
-                            <option value="MEDIUM" selected data-translate="compressionMedium">Medium (Recommended)</option>
-                            <option value="SLOW" data-translate="compressionSlow">High (Smallest file)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                      <label for="pdfLayout" data-translate="pdfLayout">PDF Layout:</label>
-                      <select id="pdfLayout">
-                        <option value="one-per-page" selected data-translate="layoutOnePerPage">One card per page</option>
-                        <option value="two-per-page" data-translate="layoutTwoPerPage">Two cards per page</option>
-                      </select>
-                    </div>
-                    <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
+        </div>
+
+        <!-- Preview Section (right column, sticky) -->
+        <div class="preview-section">
+            <h2 data-translate="preview">Preview</h2>
+            <div id="cardPreview"></div>
+
+            <div class="generate-section">
+                <p id="identifier"></p>
+                <div class="form-group">
+                    <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
+                    <select id="pdfCompression">
+                        <option value="NONE" data-translate="compressionNone">None (Largest file)</option>
+                        <option value="FAST" data-translate="compressionFast">Light (Smaller file)</option>
+                        <option value="MEDIUM" selected data-translate="compressionMedium">Medium (Recommended)</option>
+                        <option value="SLOW" data-translate="compressionSlow">High (Smallest file)</option>
+                    </select>
                 </div>
+                <div class="form-group">
+                  <label for="pdfLayout" data-translate="pdfLayout">PDF Layout:</label>
+                  <select id="pdfLayout">
+                    <option value="one-per-page" selected data-translate="layoutOnePerPage">One card per page</option>
+                    <option value="two-per-page" data-translate="layoutTwoPerPage">Two cards per page</option>
+                  </select>
+                </div>
+                <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
             </div>
         </div>
     </div>

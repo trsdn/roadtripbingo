@@ -43,6 +43,9 @@ const languages = {
         // New translations for enhanced UI
         navGenerator: "Generator",
         navIconManager: "Icon Manager",
+        heroHeadline: "Build your road trip board",
+        heroSubline: "// pick a size, hit generate, print & play",
+        plateRegion: "ROAD TRIP",
         iconManagerDescription: "Manage your icon collection, organize them into sets, and add translations.",
         iconSets: "Icon Sets",
         createSet: "Create New Set",
@@ -319,6 +322,9 @@ const languages = {
         // New translations for enhanced UI
         navGenerator: "Generator",
         navIconManager: "Icon Manager",
+        heroHeadline: "Bau dein Road-Trip-Board",
+        heroSubline: "// Größe wählen, generieren, drucken & spielen",
+        plateRegion: "ROAD TRIP",
         iconManagerDescription: "Verwalten Sie Ihre Icon-Sammlung, organisieren Sie sie in Sets und fügen Sie Übersetzungen hinzu.",
         iconSets: "Icon Sets",
         createSet: "Neues Set erstellen",
