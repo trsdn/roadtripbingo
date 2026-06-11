@@ -12,7 +12,8 @@ const plugins = [
     inject: 'body'
   }),
   new MiniCssExtractPlugin({
-    filename: 'css/[name].css',
+    // Content hash busts the browser cache whenever the CSS changes
+    filename: 'css/[name].[contenthash].css',
   })
 ];
 
@@ -49,7 +50,8 @@ module.exports = {
     main: ['./src/js/app.js', './src/css/styles.css']
   },
   output: {
-    filename: 'js/bundle.js',
+    // Content hash busts the browser cache whenever the bundle changes
+    filename: 'js/[name].[contenthash].js',
     // __dirname is the config/ folder, so resolve to the repo-root dist/ that
     // server.js and devServer.static expect.
     path: path.resolve(__dirname, '..', 'dist'),
