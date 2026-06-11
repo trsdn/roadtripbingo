@@ -2,6 +2,16 @@
 
 A customizable bingo card generator for road trips. Create, customize, and print bingo cards for your next adventure!
 
+![Road Trip Bingo Generator main page](docs/screenshots/generator.png)
+
+## Game Rules
+
+How to actually play in the car — including variants (Blackout, Multi-Hit) and
+fairness tips for families:
+
+- English: [docs/GAME_RULES.md](docs/GAME_RULES.md)
+- Deutsch: [docs/SPIELREGELN.md](docs/SPIELREGELN.md)
+
 ## Features
 
 - Generate custom bingo cards with different grid sizes (3x3, 4x4, 5x5, 6x6, 7x7, 8x8)
@@ -13,6 +23,10 @@ A customizable bingo card generator for road trips. Create, customize, and print
   - Three difficulty levels: Light (20-30% tiles), Medium (40-50% tiles), Hard (60-70% tiles)
   - Smart hit count assignment (2-5 hits per multi-hit tile)
   - Visual counters in both preview and PDF output
+- **Game difficulty setting** (Easy–Expert): controls the mix of easy/medium/hard
+  icons selected for each card
+- **Identical or unique cards**: generate one shared card for all players or a
+  unique card per player
 - PDF download with adjustable compression
 - Multi-language support (English, German)
 - Data backup and restore
@@ -20,6 +34,31 @@ A customizable bingo card generator for road trips. Create, customize, and print
 - RESTful API for data operations
 - Automatic storage optimization and quota management
 - Mobile-friendly responsive design
+
+### AI Features
+
+The Icon Manager includes an AI panel (configurable OpenAI-compatible backend
+via `OPENAI_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_MODEL_DEFAULT`; image
+generation uses `OPENAI_IMAGE_API_KEY` / `OPENAI_IMAGE_BASE_URL` /
+`OPENAI_IMAGE_MODEL`):
+
+- **AI Icon Image Generation**: generate new icon images from a name and
+  optional description, and add them directly to your library
+- **AI Analysis**: suggest categories, tags, and difficulty ratings for icons
+- **Duplicate Detection**: find semantically similar or duplicate icons with an
+  adjustable sensitivity slider
+- **Content Suggestions**: get suggestions for missing icons that fit your sets
+- **Smart Set Generation**: generate complete themed icon sets with AI
+
+## Screenshots
+
+| Generator | Generated card preview |
+|-----------|------------------------|
+| ![Generator settings page with grid size, multi-hit mode, and difficulty options](docs/screenshots/generator.png) | ![Preview of a generated bingo card with selected icons](docs/screenshots/generator-preview.png) |
+
+| Icon Manager | AI Features panel |
+|--------------|-------------------|
+| ![Icon Manager with icon sets, filters, and management actions](docs/screenshots/icon-manager.png) | ![AI Features panel with icon generation, analysis, and duplicate detection](docs/screenshots/ai-panel.png) |
 
 ## Project Structure
 
@@ -204,6 +243,19 @@ The generator offers four levels of PDF compression:
 Currently supported languages:
 - English
 - German
+
+## Deployment
+
+For deploying to a Proxmox LXC container (or any Debian/Ubuntu host), use the
+idempotent installer/updater script:
+
+```bash
+# inside the container, as root
+bash deploy/setup-lxc.sh                  # install or update
+APP_REF=v1.2.0 bash deploy/setup-lxc.sh   # pin to a tag/branch/commit
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for details.
 
 ## License
 

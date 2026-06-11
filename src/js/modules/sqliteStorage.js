@@ -168,8 +168,15 @@ class SQLiteStorage {
       throw new Error('Icon name is required');
     }
     
-    // Generate ID if not provided
-    const iconId = iconData.id || Date.now().toString();
+    // Generate a short, readable ID if not provided (e.g. icon_mbqx3k9f2)
+    const iconId = iconData.id ||
+      `icon_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+
+    // Keep the managed category list in sync with free-text categories
+    if (iconData.category && iconData.category.trim()) {
+      this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)')
+        .run(iconData.category.trim());
+    }
     
     let blobData;
     let mimeType;
@@ -309,27 +316,99 @@ class SQLiteStorage {
     }
   }
 
-  // Get all categories
+  // Get all categories (managed list joined with icon usage counts)
   async getCategories() {
     if (!this.isInitialized) await this.init();
-    
+
     const stmt = this.db.prepare(`
-      SELECT DISTINCT category, COUNT(*) as count
-      FROM icons
-      GROUP BY category
-      ORDER BY category ASC
+      SELECT c.id, c.name, COUNT(i.id) as count
+      FROM categories c
+      LEFT JOIN icons i ON i.category = c.name
+      GROUP BY c.id, c.name
+      ORDER BY c.name ASC
     `);
-    
+
     try {
-      const rows = stmt.all();
-      return rows.map(row => ({
-        name: row.category,
-        count: row.count
-      }));
+      return stmt.all();
     } catch (error) {
       console.error('Error loading categories:', error);
       return [];
     }
+  }
+
+  async createCategory(name) {
+    if (!this.isInitialized) await this.init();
+
+    const trimmed = (name || '').trim();
+    if (!trimmed) {
+      throw new Error('Category name is required');
+    }
+
+    const stmt = this.db.prepare('INSERT INTO categories (name) VALUES (?)');
+    try {
+      const result = stmt.run(trimmed);
+      return { success: true, data: { id: result.lastInsertRowid, name: trimmed } };
+    } catch (error) {
+      if (String(error.message).includes('UNIQUE')) {
+        throw new Error(`Category "${trimmed}" already exists`);
+      }
+      throw error;
+    }
+  }
+
+  async renameCategory(categoryId, newName) {
+    if (!this.isInitialized) await this.init();
+
+    const trimmed = (newName || '').trim();
+    if (!trimmed) {
+      throw new Error('Category name is required');
+    }
+
+    const existing = this.db.prepare('SELECT * FROM categories WHERE id = ?').get(categoryId);
+    if (!existing) {
+      throw new Error(`Category ${categoryId} not found`);
+    }
+    if (existing.name === 'Uncategorized') {
+      throw new Error('The "Uncategorized" category cannot be renamed');
+    }
+
+    const rename = this.db.transaction(() => {
+      this.db.prepare('UPDATE categories SET name = ? WHERE id = ?').run(trimmed, categoryId);
+      this.db.prepare('UPDATE icons SET category = ? WHERE category = ?').run(trimmed, existing.name);
+    });
+
+    try {
+      rename();
+      return { success: true, data: { id: categoryId, name: trimmed, previous: existing.name } };
+    } catch (error) {
+      if (String(error.message).includes('UNIQUE')) {
+        throw new Error(`Category "${trimmed}" already exists`);
+      }
+      throw error;
+    }
+  }
+
+  async deleteCategory(categoryId) {
+    if (!this.isInitialized) await this.init();
+
+    const existing = this.db.prepare('SELECT * FROM categories WHERE id = ?').get(categoryId);
+    if (!existing) {
+      throw new Error(`Category ${categoryId} not found`);
+    }
+    if (existing.name === 'Uncategorized') {
+      throw new Error('The "Uncategorized" category cannot be deleted');
+    }
+
+    const remove = this.db.transaction(() => {
+      const moved = this.db.prepare(
+        "UPDATE icons SET category = 'Uncategorized' WHERE category = ?"
+      ).run(existing.name);
+      this.db.prepare('DELETE FROM categories WHERE id = ?').run(categoryId);
+      return moved.changes;
+    });
+
+    const movedIcons = remove();
+    return { success: true, data: { id: categoryId, name: existing.name, movedIcons } };
   }
 
   async deleteIcon(iconId) {
@@ -649,6 +728,10 @@ class SQLiteStorage {
     if (iconData.category !== undefined) {
       updates.push('category = ?');
       values.push(iconData.category);
+      if (iconData.category && iconData.category.trim()) {
+        this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)')
+          .run(iconData.category.trim());
+      }
     }
     
     if (iconData.name !== undefined) {

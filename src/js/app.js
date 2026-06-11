@@ -101,8 +101,10 @@ let filteredIcons = [];
 let searchTerm = '';
 let selectedCategory = '';
 let selectedDifficulty = '';
-let categories = [];
+let categoriesData = []; // Cached /api/categories result: [{id, name, count}]
 let currentEditingIcon = null;
+let categorySectionInitialized = false;
+let inlineEditingInitialized = false;
 
 // Icon Manager state
 let iconSets = [];
@@ -267,6 +269,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Save language preference
       storage.saveSettings({ language });
       updateUI();
+      // Re-render dynamic dropdowns/lists so translated labels update
+      populateCategorySelect(categoryFilter, { allOption: true, keepValue: true });
+      populateCategorySelect(iconSelectionCategoryFilter, { allOption: true, keepValue: true });
+      renderCategoriesList();
     }, settings.language || 'en');
     console.log('Language selector initialized');
 
@@ -678,6 +684,9 @@ async function initializeIconManager() {
   try {
     // Load icon sets
     await loadIconSets();
+
+    // Load categories for management section and dropdowns
+    await refreshCategoryDropdowns();
 
     // Load icons for table view
     await loadIconsForTable();
@@ -1494,53 +1503,292 @@ function filterIcons() {
   console.log(`Filtered ${filteredIcons.length} icons from ${availableIcons.length} total`);
 }
 
-// Load categories from available icons
+// Load categories (kept as alias for the central refresh function)
 async function loadCategories() {
+  await refreshCategoryDropdowns();
+}
+
+/**
+ * Load categories once from the API and populate all category dropdowns
+ * plus the categories management list.
+ */
+async function refreshCategoryDropdowns() {
   try {
-    // Extract unique categories from available icons
-    const categorySet = new Set();
-    availableIcons.forEach(icon => {
-      if (icon.category) {
-        categorySet.add(icon.category);
-      } else {
-        categorySet.add('Uncategorized');
-      }
-    });
+    const response = await fetch('/api/categories');
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to load categories');
+    }
 
-    categories = Array.from(categorySet).sort();
-    console.log('Categories loaded:', categories);
+    categoriesData = result.data || [];
 
-    // Update the category filter dropdown
-    updateCategoryFilter();
+    populateCategorySelect(categoryFilter, { allOption: true, keepValue: true });
+    populateCategorySelect(iconSelectionCategoryFilter, { allOption: true, keepValue: true });
+    populateCategorySelect(editIconCategory, { keepValue: true });
+    renderCategoriesList();
   } catch (error) {
-    console.error('Error loading categories:', error);
-    categories = [];
+    console.error('Failed to refresh categories:', {
+      operation: 'refreshCategoryDropdowns',
+      error: error.message
+    });
   }
 }
 
-// Update category filter dropdown
-function updateCategoryFilter() {
-  if (!categoryFilter) {return;}
+/**
+ * Fill a select element with the cached category list
+ * @param {HTMLSelectElement} select - Target select element
+ * @param {Object} options - allOption: prepend "All Categories"; keepValue: restore selection
+ */
+function populateCategorySelect(select, { allOption = false, keepValue = false } = {}) {
+  if (!select) {return;}
 
-  // Clear existing options
-  categoryFilter.innerHTML = '';
+  const previousValue = select.value;
+  select.innerHTML = '';
 
-  // Add default "All Categories" option
-  const defaultOption = document.createElement('option');
-  defaultOption.value = '';
-  defaultOption.textContent = 'All Categories';
-  categoryFilter.appendChild(defaultOption);
+  if (allOption) {
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all';
+    allOpt.textContent = t('allCategories');
+    select.appendChild(allOpt);
+  }
 
-  // Add category options
-  categories.forEach(category => {
+  categoriesData.forEach(category => {
     const option = document.createElement('option');
-    option.value = category;
-    option.textContent = category;
-    categoryFilter.appendChild(option);
+    option.value = category.name;
+    option.textContent = category.name;
+    select.appendChild(option);
   });
 
-  // Set selected value
-  categoryFilter.value = selectedCategory;
+  if (keepValue && previousValue) {
+    select.value = previousValue;
+    if (select.value !== previousValue && allOption) {
+      select.value = 'all';
+    }
+  }
+}
+
+/**
+ * Make sure a select contains an option with the given value (adds it if missing)
+ * @param {HTMLSelectElement} select - Target select element
+ * @param {string} value - Option value to ensure
+ */
+function ensureCategoryOption(select, value) {
+  if (!select || !value) {return;}
+  const exists = Array.from(select.options).some(option => option.value === value);
+  if (!exists) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  }
+}
+
+// ===== Categories management section (#55) =====
+
+// Render the categories list in the Icon Manager
+function renderCategoriesList() {
+  const list = document.getElementById('categoriesList');
+  if (!list) {return;}
+
+  list.innerHTML = '';
+
+  categoriesData.forEach(category => {
+    const item = document.createElement('li');
+    item.className = 'category-item';
+    item.dataset.categoryId = category.id;
+    item.dataset.categoryName = category.name;
+
+    const isProtected = category.name === 'Uncategorized';
+    const actionsHTML = isProtected ? '' : `
+      <span class="category-actions">
+        <button class="category-rename-btn" data-action="rename" title="${escapeHTML(t('renameCategory'))}">✏️</button>
+        <button class="category-delete-btn" data-action="delete" title="${escapeHTML(t('deleteCategory'))}">🗑</button>
+      </span>`;
+
+    item.innerHTML = `
+      <span class="category-label">
+        <span class="category-name">${escapeHTML(category.name)}</span>
+        <span class="category-count-badge">${category.count}</span>
+      </span>
+      ${actionsHTML}`;
+
+    list.appendChild(item);
+  });
+}
+
+// Delegated click handler for the categories list (rename/delete)
+async function handleCategoriesListClick(event) {
+  const actionEl = event.target.closest('[data-action]');
+  if (!actionEl) {return;}
+
+  const item = actionEl.closest('.category-item');
+  if (!item) {return;}
+
+  const categoryId = item.dataset.categoryId;
+  const categoryName = item.dataset.categoryName;
+
+  switch (actionEl.dataset.action) {
+    case 'rename':
+      startCategoryRename(item);
+      break;
+    case 'cancel-rename':
+      renderCategoriesList();
+      break;
+    case 'save-rename':
+      await saveCategoryRename(item, categoryId);
+      break;
+    case 'delete':
+      await deleteCategory(categoryId, categoryName);
+      break;
+  }
+}
+
+// Replace the category name with an inline rename input
+function startCategoryRename(item) {
+  if (item.querySelector('.category-rename-input')) {return;}
+
+  const label = item.querySelector('.category-label');
+  const actions = item.querySelector('.category-actions');
+  if (label) {label.style.display = 'none';}
+  if (actions) {actions.style.display = 'none';}
+
+  const editor = document.createElement('span');
+  editor.className = 'category-rename-editor';
+  editor.innerHTML = `
+    <input type="text" class="category-rename-input" value="${escapeHTML(item.dataset.categoryName)}">
+    <button class="btn-primary category-save-btn" data-action="save-rename">${escapeHTML(t('save'))}</button>
+    <button class="btn-secondary category-cancel-btn" data-action="cancel-rename">${escapeHTML(t('cancel'))}</button>`;
+  item.appendChild(editor);
+
+  const input = editor.querySelector('.category-rename-input');
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      saveCategoryRename(item, item.dataset.categoryId);
+    } else if (e.key === 'Escape') {
+      renderCategoriesList();
+    }
+  });
+}
+
+// Persist a category rename via the API
+async function saveCategoryRename(item, categoryId) {
+  const input = item.querySelector('.category-rename-input');
+  const newName = input ? input.value.trim() : '';
+
+  if (!newName) {
+    window.notifications.warning(t('categoryNameRequired'));
+    return;
+  }
+  if (newName === item.dataset.categoryName) {
+    renderCategoriesList();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/categories/${categoryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    window.notifications.success(t('categoryRenamed', { name: newName }));
+    await onCategoriesChanged();
+  } catch (error) {
+    console.error('Failed to rename category:', {
+      operation: 'renameCategory',
+      error: error.message,
+      categoryId
+    });
+    window.notifications.error(t('categoryOpFailed', { error: error.message }));
+  }
+}
+
+// Delete a category via the API (icons fall back to 'Uncategorized')
+async function deleteCategory(categoryId, categoryName) {
+  if (!confirm(t('categoryDeleteConfirm', { name: categoryName }))) {return;}
+
+  try {
+    const response = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    window.notifications.success(t('categoryDeleted', { name: categoryName }));
+    await onCategoriesChanged();
+  } catch (error) {
+    console.error('Failed to delete category:', {
+      operation: 'deleteCategory',
+      error: error.message,
+      categoryId
+    });
+    window.notifications.error(t('categoryOpFailed', { error: error.message }));
+  }
+}
+
+// Create a new category from the add-category input
+async function addCategoryFromInput() {
+  const input = document.getElementById('newCategoryName');
+  const name = input ? input.value.trim() : '';
+
+  if (!name) {
+    window.notifications.warning(t('categoryNameRequired'));
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    if (input) {input.value = '';}
+    window.notifications.success(t('categoryAdded', { name }));
+    await refreshCategoryDropdowns();
+  } catch (error) {
+    console.error('Failed to add category:', {
+      operation: 'addCategory',
+      error: error.message
+    });
+    window.notifications.error(t('categoryOpFailed', { error: error.message }));
+  }
+}
+
+// Refresh categories and icon data after a category rename/delete cascaded to icons
+async function onCategoriesChanged() {
+  await refreshCategoryDropdowns();
+  await loadIconsForTable();
+}
+
+// Attach listeners for the categories management section (once)
+function setupCategorySectionListeners() {
+  if (categorySectionInitialized) {return;}
+
+  const list = document.getElementById('categoriesList');
+  const addBtn = document.getElementById('addCategoryBtn');
+  const nameInput = document.getElementById('newCategoryName');
+  if (!list || !addBtn) {return;}
+
+  categorySectionInitialized = true;
+
+  list.addEventListener('click', handleCategoriesListClick);
+  addBtn.addEventListener('click', addCategoryFromInput);
+  if (nameInput) {
+    nameInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {addCategoryFromInput();}
+    });
+  }
 }
 
 // Handle search input
@@ -1619,7 +1867,13 @@ function openEditModal(iconId) {
 
   // Populate modal fields
   if (editIconName) {editIconName.value = icon.name || '';}
-  if (editIconCategory) {editIconCategory.value = icon.category || 'default';}
+  if (editIconCategory) {
+    // Make sure dropdown options are present and the icon's category is selectable
+    populateCategorySelect(editIconCategory);
+    const currentCategory = icon.category || 'Uncategorized';
+    ensureCategoryOption(editIconCategory, currentCategory);
+    editIconCategory.value = currentCategory;
+  }
   if (editIconTags) {editIconTags.value = (icon.tags || []).join(', ');}
   if (editIconDifficulty) {editIconDifficulty.value = icon.difficulty || 3;}
   if (editIconExcludeFromMultiHit) {editIconExcludeFromMultiHit.checked = icon.excludeFromMultiHit || false;}
@@ -1643,7 +1897,7 @@ function closeEditModal() {
 
   // Clear form fields
   if (editIconName) {editIconName.value = '';}
-  if (editIconCategory) {editIconCategory.value = 'default';}
+  if (editIconCategory && editIconCategory.options.length > 0) {editIconCategory.selectedIndex = 0;}
   if (editIconTags) {editIconTags.value = '';}
   if (editIconDifficulty) {editIconDifficulty.value = '3';}
   if (editIconExcludeFromMultiHit) {editIconExcludeFromMultiHit.checked = false;}
@@ -1668,7 +1922,7 @@ async function saveIconChanges() {
       availableIcons[iconIndex] = {
         ...availableIcons[iconIndex],
         name: newName || 'Unnamed',
-        category: newCategory || 'default',
+        category: newCategory || 'Uncategorized',
         tags: newTags || [],
         difficulty: newDifficulty || 3,
         excludeFromMultiHit: newExcludeFromMultiHit || false
@@ -1678,7 +1932,7 @@ async function saveIconChanges() {
     // Save to storage using the new updateIcon method
     await storage.updateIcon(currentEditingIcon.id, {
       name: newName || 'Unnamed',
-      category: newCategory || 'default',
+      category: newCategory || 'Uncategorized',
       tags: newTags || [],
       difficulty: newDifficulty || 3,
       excludeFromMultiHit: newExcludeFromMultiHit || false
@@ -1823,11 +2077,8 @@ function renderIconTable() {
     // Convert difficulty to stars
     const difficultyStars = '⭐'.repeat(icon.difficulty || 3);
 
-    // Format multi-hit exclusion status
+    // Multi-hit exclusion as directly togglable checkbox
     const excludeFromMultiHit = icon.excludeFromMultiHit || false;
-    const exclusionHtml = excludeFromMultiHit ?
-      '<span class="exclusion-badge excluded">Excluded</span>' :
-      '<span class="exclusion-badge included">Included</span>';
 
     // Format sets
     const setsHtml = (icon.sets || []).map(set =>
@@ -1845,12 +2096,15 @@ function renderIconTable() {
                        onchange="toggleIconSelection('${icon.id}')">
             </td>
             <td class="icon-preview-cell">
-                <img src="${icon.image || icon.data}" alt="${icon.name}">
+                <img src="${icon.image || icon.data}" alt="${escapeHTML(icon.name)}">
             </td>
-            <td class="icon-name-cell">${icon.name || 'Unnamed'}</td>
-            <td class="icon-category-cell">${icon.category || 'default'}</td>
-            <td class="icon-difficulty-cell">${difficultyStars}</td>
-            <td class="icon-exclusion-cell">${exclusionHtml}</td>
+            <td class="icon-name-cell editable-cell" data-field="name" data-icon-id="${escapeHTML(icon.id)}">${escapeHTML(icon.name || 'Unnamed')}</td>
+            <td class="icon-category-cell editable-cell" data-field="category" data-icon-id="${escapeHTML(icon.id)}">${escapeHTML(icon.category || 'Uncategorized')}</td>
+            <td class="icon-difficulty-cell editable-cell" data-field="difficulty" data-icon-id="${escapeHTML(icon.id)}">${difficultyStars}</td>
+            <td class="icon-exclusion-cell">
+                <input type="checkbox" class="exclusion-toggle" data-icon-id="${escapeHTML(icon.id)}" ${excludeFromMultiHit ? 'checked' : ''}
+                       title="${escapeHTML(t('excludeFromMultiHitToggle'))}">
+            </td>
             <td class="icon-sets-cell">${setsHtml}</td>
             <td class="icon-translations-cell">${translationsHtml}</td>
             <td class="icon-actions-cell">
@@ -1864,6 +2118,189 @@ function renderIconTable() {
   });
 
   updateBulkOperationsVisibility();
+}
+
+// ===== Inline editing in the icon table (#66) =====
+
+// Attach delegated handlers for inline cell editing (once)
+function setupInlineTableEditing() {
+  if (inlineEditingInitialized || !iconTableBody) {return;}
+  inlineEditingInitialized = true;
+
+  iconTableBody.addEventListener('click', (event) => {
+    const cell = event.target.closest('.editable-cell');
+    if (!cell || cell.classList.contains('editing')) {return;}
+    startInlineCellEdit(cell);
+  });
+
+  iconTableBody.addEventListener('change', (event) => {
+    if (event.target.classList.contains('exclusion-toggle')) {
+      handleExclusionToggle(event.target);
+    }
+  });
+}
+
+// Replace a table cell's content with an inline editor
+function startInlineCellEdit(cell) {
+  const iconId = cell.dataset.iconId;
+  const field = cell.dataset.field;
+  const icon = availableIcons.find(i => String(i.id) === String(iconId));
+  if (!icon) {return;}
+
+  cell.classList.add('editing');
+
+  let editor;
+  if (field === 'name') {
+    editor = document.createElement('input');
+    editor.type = 'text';
+    editor.value = icon.name || '';
+  } else if (field === 'category') {
+    editor = document.createElement('select');
+    categoriesData.forEach(category => {
+      const option = document.createElement('option');
+      option.value = category.name;
+      option.textContent = category.name;
+      editor.appendChild(option);
+    });
+    ensureCategoryOption(editor, icon.category || 'Uncategorized');
+    editor.value = icon.category || 'Uncategorized';
+  } else if (field === 'difficulty') {
+    editor = document.createElement('select');
+    for (let level = 1; level <= 5; level++) {
+      const option = document.createElement('option');
+      option.value = String(level);
+      option.textContent = t(`difficulty${level}`);
+      editor.appendChild(option);
+    }
+    editor.value = String(icon.difficulty || 3);
+  } else {
+    cell.classList.remove('editing');
+    return;
+  }
+
+  editor.className = 'inline-cell-editor';
+  cell.textContent = '';
+  cell.appendChild(editor);
+  editor.focus();
+  if (editor.select) {editor.select();}
+
+  let finished = false;
+  const finish = (save) => {
+    if (finished) {return;}
+    finished = true;
+    if (save) {
+      saveInlineEdit(cell, icon, field, editor.value);
+    } else {
+      restoreCellDisplay(cell, icon, field);
+    }
+  };
+
+  editor.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      finish(false);
+    }
+  });
+  editor.addEventListener('blur', () => finish(true));
+}
+
+// Restore the plain display content of a cell from the icon data
+function restoreCellDisplay(cell, icon, field) {
+  cell.classList.remove('editing');
+  if (field === 'name') {
+    cell.textContent = icon.name || 'Unnamed';
+  } else if (field === 'category') {
+    cell.textContent = icon.category || 'Uncategorized';
+  } else if (field === 'difficulty') {
+    cell.textContent = '⭐'.repeat(icon.difficulty || 3);
+  }
+}
+
+// Persist a single inline-edited field and update the row locally
+async function saveInlineEdit(cell, icon, field, rawValue) {
+  const value = field === 'difficulty' ? parseInt(rawValue, 10) : rawValue.trim();
+  const currentValue = field === 'difficulty' ? (icon.difficulty || 3) : (icon[field] || '');
+
+  // Nothing changed (or empty name) -> just restore the display
+  if (value === currentValue || (field === 'name' && !value)) {
+    restoreCellDisplay(cell, icon, field);
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/icons/${icon.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    // Update local data without reloading the whole table
+    const updatedIcon = availableIcons.find(i => String(i.id) === String(icon.id)) || icon;
+    updatedIcon[field] = value;
+
+    restoreCellDisplay(cell, updatedIcon, field);
+    flashCellSaved(cell);
+    window.notifications.success(t('iconUpdated'));
+
+    // Category counts may have changed
+    if (field === 'category') {
+      await refreshCategoryDropdowns();
+    }
+  } catch (error) {
+    console.error('Inline edit failed:', {
+      operation: 'saveInlineEdit',
+      error: error.message,
+      iconId: icon.id,
+      field
+    });
+    restoreCellDisplay(cell, icon, field);
+    window.notifications.error(t('iconUpdateFailed', { error: error.message }));
+  }
+}
+
+// Toggle multi-hit exclusion directly from the table checkbox
+async function handleExclusionToggle(checkbox) {
+  const iconId = checkbox.dataset.iconId;
+  const icon = availableIcons.find(i => String(i.id) === String(iconId));
+  const newValue = checkbox.checked;
+
+  try {
+    const response = await fetch(`/api/icons/${iconId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ excludeFromMultiHit: newValue })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    if (icon) {icon.excludeFromMultiHit = newValue;}
+    flashCellSaved(checkbox.closest('td'));
+    window.notifications.success(t('iconUpdated'));
+  } catch (error) {
+    console.error('Exclusion toggle failed:', {
+      operation: 'handleExclusionToggle',
+      error: error.message,
+      iconId
+    });
+    const box = iconTableBody?.querySelector(`.exclusion-toggle[data-icon-id="${iconId}"]`);
+    if (box) {box.checked = !newValue;}
+    window.notifications.error(t('iconUpdateFailed', { error: error.message }));
+  }
+}
+
+// Brief green fade as save feedback
+function flashCellSaved(cell) {
+  if (!cell) {return;}
+  cell.classList.add('cell-saved');
+  setTimeout(() => cell.classList.remove('cell-saved'), 1200);
 }
 
 // Toggle icon selection
@@ -1903,6 +2340,12 @@ function setupIconManagerEventListeners() {
   if (createSetBtn) {
     createSetBtn.addEventListener('click', openCreateSetModal);
   }
+
+  // Inline editing in the icon table
+  setupInlineTableEditing();
+
+  // Categories management section
+  setupCategorySectionListeners();
 
   // Search and filter controls
   if (iconSearch) {
@@ -2060,6 +2503,84 @@ function getSelectedAIModel() {
   return sel && sel.value ? sel.value : undefined;
 }
 
+// ===== AI progress indicator (#60) =====
+
+const AI_OPERATION_BUTTON_IDS = [
+  'analyzeSelectedIcons',
+  'analyzeAllIcons',
+  'detectDuplicates',
+  'getContentSuggestions',
+  'generateSmartSet',
+  'generateIconImageBtn'
+];
+
+// Disable/enable all AI operation buttons while an operation is running
+function setAIOperationButtonsDisabled(disabled) {
+  AI_OPERATION_BUTTON_IDS.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {btn.disabled = disabled;}
+  });
+
+  if (!disabled) {
+    // Restore state-dependent disabled flags
+    const analyzeSelectedBtn = document.getElementById('analyzeSelectedIcons');
+    if (analyzeSelectedBtn) {
+      analyzeSelectedBtn.disabled = getSelectedIcons().length === 0;
+    }
+    updateIconGenAvailability();
+  }
+}
+
+/**
+ * Show the AI progress bar (indeterminate spinner, optionally with n/m progress)
+ * @param {string} messageKey - i18n key for the progress text
+ * @param {number} [current] - Current item (batch mode)
+ * @param {number} [total] - Total items (batch mode)
+ */
+function showAIProgress(messageKey, current, total) {
+  const bar = document.getElementById('aiProgressBar');
+  if (!bar) {return;}
+
+  const text = document.getElementById('aiProgressText');
+  const count = document.getElementById('aiProgressCount');
+  const track = document.getElementById('aiProgressTrack');
+
+  if (text) {text.textContent = t(messageKey);}
+  if (count) {count.textContent = '';}
+  if (track) {track.style.display = 'none';}
+
+  bar.style.display = 'flex';
+  setAIOperationButtonsDisabled(true);
+
+  if (Number.isFinite(current) && Number.isFinite(total)) {
+    updateAIProgress(current, total);
+  }
+}
+
+/**
+ * Update the batch progress display (n/m plus bar)
+ * @param {number} current - Completed items
+ * @param {number} total - Total items
+ */
+function updateAIProgress(current, total) {
+  const count = document.getElementById('aiProgressCount');
+  const track = document.getElementById('aiProgressTrack');
+  const fill = document.getElementById('aiProgressFill');
+
+  if (count) {count.textContent = `${current}/${total}`;}
+  if (track) {track.style.display = 'block';}
+  if (fill && total > 0) {fill.style.width = `${Math.round((current / total) * 100)}%`;}
+}
+
+// Hide the AI progress bar and re-enable the AI buttons
+function hideAIProgress() {
+  const bar = document.getElementById('aiProgressBar');
+  if (bar) {bar.style.display = 'none';}
+  const fill = document.getElementById('aiProgressFill');
+  if (fill) {fill.style.width = '0%';}
+  setAIOperationButtonsDisabled(false);
+}
+
 // Initialize AI features
 function initializeAIFeatures() {
   const openAIFeaturesBtn = document.getElementById('openAIFeatures');
@@ -2182,9 +2703,9 @@ async function handleGenerateIconImage() {
   const originalText = generateIconBtn ? generateIconBtn.textContent : '';
 
   if (generateIconBtn) {
-    generateIconBtn.disabled = true;
     generateIconBtn.textContent = t('generating');
   }
+  showAIProgress('imageGenTakesLong');
 
   try {
     const data = await aiService.generateIcon(name, description, style);
@@ -2199,8 +2720,8 @@ async function handleGenerateIconImage() {
     });
     window.notifications.show('Failed to generate icon: ' + error.message, 'error');
   } finally {
+    hideAIProgress();
     if (generateIconBtn) {
-      generateIconBtn.disabled = false;
       generateIconBtn.textContent = originalText;
     }
   }
@@ -2264,44 +2785,61 @@ function closeAIPanel() {
   if (overlay) {overlay.remove();}
 }
 
+/**
+ * Analyze icons one by one so real n/m progress can be shown
+ * @param {Array<string>} iconIds - IDs of the icons to analyze
+ */
+async function runIconAnalysis(iconIds) {
+  const results = [];
+  const model = getSelectedAIModel();
+
+  showAIProgress('aiAnalyzingIcons', 0, iconIds.length);
+  try {
+    for (let i = 0; i < iconIds.length; i++) {
+      try {
+        const response = await fetch('/api/ai/analyze-icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ iconId: iconIds[i], model })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+        results.push({ success: true, data: result.data });
+      } catch (error) {
+        console.error('Icon analysis failed:', {
+          operation: 'runIconAnalysis',
+          error: error.message,
+          iconId: iconIds[i]
+        });
+        results.push({ success: false, error: error.message });
+      }
+      updateAIProgress(i + 1, iconIds.length);
+    }
+  } finally {
+    hideAIProgress();
+  }
+
+  showAIAnalysisResults(results);
+
+  const failures = results.filter(result => !result.success).length;
+  if (failures === results.length) {
+    window.notifications.show(t('aiAnalysisFailed', { error: `${failures}/${results.length}` }), 'error');
+  } else {
+    window.notifications.show(t('aiAnalysisComplete'), 'success');
+  }
+}
+
 // Analyze selected icons
 async function analyzeSelectedIcons() {
-  console.log('analyzeSelectedIcons called');
-  const selectedIcons = getSelectedIcons();
-  console.log('Selected icons:', selectedIcons);
-
-  if (selectedIcons.length === 0) {
-    window.notifications.show('Please select icons to analyze', 'warning');
+  const selected = getSelectedIcons();
+  if (selected.length === 0) {
+    window.notifications.show(t('selectIconsToAnalyze'), 'warning');
     return;
   }
 
-  try {
-    window.notifications.show('Analyzing icons with AI...', 'info');
-    const iconIds = selectedIcons.map(icon => icon.id);
-    console.log('Icon IDs to analyze:', iconIds);
-
-    const response = await fetch('/api/ai/analyze-batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ iconIds, model: getSelectedAIModel() })
-    });
-
-    console.log('API response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error('Failed to analyze icons');
-    }
-
-    const result = await response.json();
-    console.log('Analysis result:', result);
-    showAIAnalysisResults(result.data);
-    window.notifications.show('AI analysis complete', 'success');
-  } catch (error) {
-    console.error('Error analyzing icons:', error);
-    window.notifications.show('Failed to analyze icons: ' + error.message, 'error');
-  }
+  await runIconAnalysis(selected.map(icon => icon.id));
 }
 
 // Analyze all icons
@@ -2309,35 +2847,21 @@ async function analyzeAllIcons() {
   try {
     const icons = await storage.loadIcons();
     if (icons.length === 0) {
-      window.notifications.show('No icons to analyze', 'warning');
+      window.notifications.show(t('noIconsToAnalyze'), 'warning');
       return;
     }
 
-    window.notifications.show('Analyzing all icons with AI...', 'info');
-    const iconIds = icons.map(icon => icon.id);
-    const response = await fetch('/api/ai/analyze-batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ iconIds, model: getSelectedAIModel() })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to analyze icons');
-    }
-
-    const result = await response.json();
-    showAIAnalysisResults(result.data);
-    window.notifications.show('AI analysis complete', 'success');
+    await runIconAnalysis(icons.map(icon => icon.id));
   } catch (error) {
     console.error('Error analyzing icons:', error);
-    window.notifications.show('Failed to analyze icons: ' + error.message, 'error');
+    window.notifications.show(t('aiAnalysisFailed', { error: error.message }), 'error');
   }
 }
 
 // Detect duplicates
 async function detectDuplicates() {
+  showAIProgress('aiDetectingDuplicates');
   try {
-    window.notifications.show('Detecting duplicates with AI...', 'info');
     const response = await fetch('/api/ai/detect-duplicates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2353,22 +2877,26 @@ async function detectDuplicates() {
 
     const result = await response.json();
     showDuplicateResults(result.data);
-    window.notifications.show('Duplicate detection complete', 'success');
+    window.notifications.show(t('aiDuplicateScanComplete'), 'success');
   } catch (error) {
     console.error('Error detecting duplicates:', error);
-    window.notifications.show('Failed to detect duplicates: ' + error.message, 'error');
+    window.notifications.show(t('aiDuplicateScanFailed', { error: error.message }), 'error');
+  } finally {
+    hideAIProgress();
   }
 }
 
 // Get content suggestions
 async function getContentSuggestions() {
+  showAIProgress('aiGettingSuggestions');
   try {
     const targetSet = document.getElementById('targetSetSelect').value;
-    window.notifications.show('Getting AI content suggestions...', 'info');
+    const tripContext = document.getElementById('tripContextInput')?.value.trim() || '';
 
     const model = getSelectedAIModel();
     const params = new URLSearchParams({ targetSet });
     if (model) {params.set('model', model);}
+    if (tripContext) {params.set('tripContext', tripContext);}
 
     const response = await fetch(`/api/ai/content-suggestions?${params.toString()}`);
 
@@ -2377,24 +2905,26 @@ async function getContentSuggestions() {
     }
 
     const result = await response.json();
-    showContentSuggestions(result.data);
-    window.notifications.show('Content suggestions ready', 'success');
+    showContentSuggestions(result.data, tripContext);
+    window.notifications.show(t('aiSuggestionsReady'), 'success');
   } catch (error) {
     console.error('Error getting content suggestions:', error);
-    window.notifications.show('Failed to get suggestions: ' + error.message, 'error');
+    window.notifications.show(t('aiSuggestionsFailed', { error: error.message }), 'error');
+  } finally {
+    hideAIProgress();
   }
 }
 
 // Generate smart set
 async function generateSmartSet() {
-  try {
-    const theme = document.getElementById('setThemeInput').value.trim();
-    if (!theme) {
-      window.notifications.show('Please enter a theme for the set', 'warning');
-      return;
-    }
+  const theme = document.getElementById('setThemeInput').value.trim();
+  if (!theme) {
+    window.notifications.show(t('setThemeRequired'), 'warning');
+    return;
+  }
 
-    window.notifications.show('Generating smart set with AI...', 'info');
+  showAIProgress('aiGeneratingSet');
+  try {
     const response = await fetch('/api/ai/generate-set', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2407,10 +2937,12 @@ async function generateSmartSet() {
 
     const result = await response.json();
     showSmartSetResults(result.data);
-    window.notifications.show('Smart set generated', 'success');
+    window.notifications.show(t('aiSetGenerated'), 'success');
   } catch (error) {
     console.error('Error generating smart set:', error);
-    window.notifications.show('Failed to generate set: ' + error.message, 'error');
+    window.notifications.show(t('aiSetGenerationFailed', { error: error.message }), 'error');
+  } finally {
+    hideAIProgress();
   }
 }
 
@@ -2712,6 +3244,7 @@ async function acceptAllForIcon(iconId) {
     }
 
     await loadIconsForTable();
+    await refreshCategoryDropdowns(); // Accepted category may be new
     return true;
   } catch (error) {
     console.error('Error accepting all suggestions:', {
@@ -2839,7 +3372,7 @@ async function deleteSelectedDuplicates(button) {
 }
 
 // Show content suggestions in the inline results panel
-function showContentSuggestions(data) {
+function showContentSuggestions(data, tripContext = '') {
   console.log('Content suggestions:', data);
 
   const resultsPanel = document.getElementById('aiResultsPanel');
@@ -2876,8 +3409,13 @@ function showContentSuggestions(data) {
       </div>`;
   }).join('');
 
+  const tripContextHTML = tripContext
+    ? `<p class="trip-context-line"><strong>${t('tripContextLabel')}:</strong> ${escapeHTML(tripContext)}</p>`
+    : '';
+
   resultsContent.innerHTML = `
     <h4>${t('contentSuggestions')}</h4>
+    ${tripContextHTML}
     ${listBlock('aiStrengths', analysis.strengths)}
     ${listBlock('aiGaps', analysis.gaps)}
     ${listBlock('aiImbalances', analysis.imbalances)}
@@ -2963,6 +3501,9 @@ window.acceptSuggestion = async function (iconId, field, value) {
 
     window.notifications.show(t('aiApplied'), 'success');
     await loadIconsForTable(); // Refresh the icon list
+    if (field === 'category') {
+      await refreshCategoryDropdowns(); // Accepted category may be new
+    }
     return true;
   } catch (error) {
     console.error('Error accepting suggestion:', error);
@@ -3901,27 +4442,16 @@ async function loadIconsForSelection() {
     if (result.success) {
       filteredIconsForSelection = result.data;
 
-      // Also populate category filter
-      const categories = [...new Set(result.data.map(icon => icon.category))];
-      populateIconSelectionCategoryFilter(categories);
+      // Also refresh the category filter from the central category cache
+      if (categoriesData.length === 0) {
+        await refreshCategoryDropdowns();
+      } else {
+        populateCategorySelect(iconSelectionCategoryFilter, { allOption: true, keepValue: true });
+      }
     }
   } catch (error) {
     console.error('Error loading icons for selection:', error);
   }
-}
-
-// Populate category filter in selection modal
-function populateIconSelectionCategoryFilter(categories) {
-  if (!iconSelectionCategoryFilter) {return;}
-
-  iconSelectionCategoryFilter.innerHTML = '<option value="all">All Categories</option>';
-
-  categories.forEach(category => {
-    const option = document.createElement('option');
-    option.value = category;
-    option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
-    iconSelectionCategoryFilter.appendChild(option);
-  });
 }
 
 // Render icon selection grid
@@ -3997,7 +4527,7 @@ function deselectAllIconsForGeneration() {
 function updateSelectionCount() {
   if (selectionCountText) {
     const count = selectedIconsForGeneration.size;
-    selectionCountText.textContent = `${count} icons selected`;
+    selectionCountText.textContent = t('iconsSelectedCount', { count });
   }
 }
 

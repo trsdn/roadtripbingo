@@ -158,9 +158,12 @@ class ServerAIService {
     }
   }
 
-  async suggestMissingContent(icons, targetSet = 'general', model = null) {
+  async suggestMissingContent(icons, targetSet = 'general', model = null, tripContext = '') {
     const selectedModel = model || this.defaultModel;
     const iconSummary = this.summarizeIconSet(icons);
+    const contextBlock = tripContext && String(tripContext).trim()
+      ? `\n    Trip context (tailor suggestions to this specific trip): ${String(tripContext).trim().slice(0, 500)}\n`
+      : '';
 
     const prompt = `Analyze this icon set and suggest missing content for a balanced road trip bingo game:
 
@@ -168,6 +171,7 @@ class ServerAIService {
     ${JSON.stringify(iconSummary, null, 2)}
 
     Target set type: ${targetSet}
+    ${contextBlock}
 
     Please provide JSON with this structure:
     {
