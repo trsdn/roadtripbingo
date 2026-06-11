@@ -842,7 +842,7 @@ const server = http.createServer(async (req, res) => {
               res.writeHead(404);
               res.end('404 Not Found');
             } else {
-              res.writeHead(200, { 'Content-Type': 'text/html' });
+              res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
               res.end(indexContent, 'utf-8');
             }
           });
@@ -857,8 +857,14 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${error.code}`);
       }
     } else {
-      // Success - serve the file
-      res.writeHead(200, { 'Content-Type': contentType });
+      // Hashed assets (js/css/images) are safe to cache long-term; HTML must
+      // always revalidate so new hashed asset names are picked up after a deploy.
+      const isHashedAsset = /\.(js|css)$/.test(extname) || extname === '.png' ||
+        extname === '.jpg' || extname === '.jpeg' || extname === '.gif' || extname === '.svg';
+      const cacheControl = extname === '.html'
+        ? 'no-cache'
+        : (isHashedAsset ? 'public, max-age=31536000, immutable' : 'no-cache');
+      res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': cacheControl });
       res.end(content, 'utf-8');
     }
   });

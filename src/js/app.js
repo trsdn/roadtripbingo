@@ -2041,7 +2041,7 @@ function openEditModal(iconId) {
   console.log('🎯 Opening edit modal for:', icon.name, 'Difficulty:', icon.difficulty);
 
   // Show modal
-  editIconModal.style.display = 'block';
+  editIconModal.style.display = 'flex';
 }
 
 // Close edit modal
@@ -3889,7 +3889,7 @@ function openCreateSetModal() {
   if (setDescriptionInput) {setDescriptionInput.value = '';}
 
   // Show modal
-  setModal.style.display = 'block';
+  setModal.style.display = 'flex';
 
   // Focus on name input
   if (setNameInput) {setNameInput.focus();}
@@ -3971,7 +3971,7 @@ function editSet(setId) {
   if (setDescriptionInput) {setDescriptionInput.value = set.description || '';}
 
   // Show modal
-  setModal.style.display = 'block';
+  setModal.style.display = 'flex';
 
   // Focus on name input
   if (setNameInput) {setNameInput.focus();}
@@ -4106,7 +4106,7 @@ function openTranslationModal(iconId) {
   loadTranslationsForIcon(iconId, translationsList);
 
   // Show modal
-  translationModal.style.display = 'block';
+  translationModal.style.display = 'flex';
 
   const handleAddTranslation = async () => {
     const language = languageSelect?.value;
@@ -4277,7 +4277,7 @@ function openBulkAddToSetModal() {
   });
 
   // Show modal
-  addToSetModal.style.display = 'block';
+  addToSetModal.style.display = 'flex';
 
   // Setup modal buttons
   const confirmBtn = document.getElementById('confirmAddToSet');
@@ -4575,7 +4575,7 @@ async function openIconSelectionModal() {
   await loadIconsForSelection();
 
   // Show modal
-  modal.style.display = 'block';
+  modal.style.display = 'flex';
 
   // Render icons
   renderIconSelectionGrid();
@@ -4722,7 +4722,12 @@ function updateSelectedIconsPreview() {
       .replace('{total}', total)}</span>`;
   selectedIconsPreview.appendChild(summary);
 
-  const CAP = 18;
+  const hint = document.createElement('p');
+  hint.className = 'selection-hint';
+  hint.textContent = getTranslatedText('selectionHint');
+  selectedIconsPreview.appendChild(hint);
+
+  const CAP = 12;
   const strip = document.createElement('div');
   strip.className = 'selection-strip';
   selectedIconsData.slice(0, CAP).forEach(icon => {
