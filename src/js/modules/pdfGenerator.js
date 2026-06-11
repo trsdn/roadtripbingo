@@ -43,7 +43,8 @@ async function generatePDF(options) {
       gameDifficulty = '',
       includeRulesPage = false,
       rulesContent = null,
-      scoreLabels = null
+      scoreLabels = null,
+      footerHint = ''
     } = options;
 
     // Backwards compatible card header text: prefer the explicit label, fall back
@@ -113,7 +114,7 @@ async function generatePDF(options) {
       await generateTwoPerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, cardHeaderMode, gameDifficulty);
     } else {
       // Default to one-per-page layout for any other value
-      await generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, cardHeaderMode, gameDifficulty);
+      await generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, cardHeaderMode, gameDifficulty, footerHint);
     }
 
     // Append optional extra pages: rules first, then the score sheet
@@ -140,7 +141,7 @@ async function generatePDF(options) {
  * @param {boolean} showLabels - Whether to show labels
  * @returns {Promise<Object>} - The jsPDF instance with rendered cards
  */
-async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, gameMode = '', gameDifficulty = '') {
+async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, showLabels, compressionLevel, gameMode = '', gameDifficulty = '', footerHint = '') {
   try {
     // Detect if we're in a test environment to handle layout differently
     const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -199,13 +200,10 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
         }
         pageCount++;
 
-        // Add identifier on each page - display without "ID:" prefix
-        pdf.setFontSize(16);
-        pdf.setTextColor(100, 100, 100);
-        // Right side identifier
-        pdf.text(displayIdentifier, pageWidth - margin, margin + 5, { align: 'right' });
-        // Left side identifier
-        pdf.text(displayIdentifier, margin, margin + 5, { align: 'left' });
+        // Add a single discreet identifier (top-right) for sorting/cutting
+        pdf.setFontSize(11);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(displayIdentifier, pageWidth - margin, margin + 4, { align: 'right' });
                 
         // Calculate position to center the card on the page for consistent rendering
         const availableWidth = pageWidth - (2 * margin);
@@ -226,9 +224,16 @@ async function generateOnePerPageLayout(pdf, cardSets, identifier, imgQuality, s
           gameMode,
           gameDifficulty
         );
+
+        // Friendly footer hint centered near the bottom of the page
+        if (footerHint) {
+          pdf.setFontSize(11);
+          pdf.setTextColor(150, 150, 150);
+          pdf.text(footerHint, pageWidth / 2, pageHeight - margin - 2, { align: 'center' });
+        }
       }
     }
-        
+
     console.log(`PDF generation completed: ${pageCount} pages total`);
     return pdf;
   } catch (error) {
