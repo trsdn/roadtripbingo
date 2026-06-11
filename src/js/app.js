@@ -1367,7 +1367,7 @@ function displayCardPreview(card) {
       const cell = card.grid[row][col];
       const cellDiv = document.createElement('div');
       cellDiv.className = 'bingo-cell';
-      cellDiv.style.background = cell.isFreeSpace ? '#f5f5f5' : '#fff';
+      if (!cell.isFreeSpace) {cellDiv.style.background = '#fff';}
       cellDiv.style.display = 'flex';
       cellDiv.style.flexDirection = 'column';
       cellDiv.style.alignItems = 'center';
@@ -1521,10 +1521,9 @@ function buildRulesContent(mode, multiHitDifficulty) {
     }
   ];
 
-  // Center blank is only applied by the card generator on 5x5 and 7x7 grids
+  // Center blank is applied by the card generator on all odd grid sizes
   const currentGridSize = parseInt(gridSizeSelect ? gridSizeSelect.value : '5', 10);
-  if (centerBlankToggle && centerBlankToggle.checked &&
-      (currentGridSize === 5 || currentGridSize === 7)) {
+  if (centerBlankToggle && centerBlankToggle.checked && currentGridSize % 2 === 1) {
     sections.push({
       heading: t('rulesFreeSquareTitle'),
       lines: [t('rulesFreeSquare1'), t('rulesFreeSquare2')]

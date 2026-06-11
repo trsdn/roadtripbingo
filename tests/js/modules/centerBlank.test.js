@@ -164,8 +164,8 @@ describe('Center Blank Toggle Feature', () => {
       expect(nonFreeSpaceCells).toBe(16);
     });
 
-    it('should NOT leave center cell blank for 3x3 grid when leaveCenterBlank is true (only works for 5x5, 7x7, 9x9)', () => {
-      // Generate enough icons for a 3x3 grid (9 icons needed)
+    it('should leave center cell blank for 3x3 grid when leaveCenterBlank is true', () => {
+      // 3x3 needs only 8 icons when the center is blank
       const mockIcons = Array.from({ length: 9 }, (_, i) => ({
         id: i + 1,
         data: `data:image/png;base64,test${i + 1}`,
@@ -178,14 +178,15 @@ describe('Center Blank Toggle Feature', () => {
         setCount: 1,
         cardsPerSet: 1,
         title: 'Test Bingo',
-        leaveCenterBlank: true // Should not affect 3x3 grids
+        leaveCenterBlank: true
       };
 
       const result = generateBingoCards(options);
       
       const card = result.cardSets[0].cards[0];
       
-      // All cells should have content (feature only applies to 5x5, 7x7, 9x9)
+      // Center cell is a free space, all other cells have content
+      expect(card.grid[1][1].isFreeSpace).toBe(true);
       let nonFreeSpaceCells = 0;
       for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 3; col++) {
@@ -194,7 +195,7 @@ describe('Center Blank Toggle Feature', () => {
           }
         }
       }
-      expect(nonFreeSpaceCells).toBe(9);
+      expect(nonFreeSpaceCells).toBe(8);
     });
   });
 });

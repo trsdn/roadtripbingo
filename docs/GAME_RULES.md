@@ -26,8 +26,8 @@ your bingo card — and call **"Bingo!"**
 
 ### Free Square (Center Blank)
 
-If the cards were generated with the **center blank** option (available for 5x5
-and 7x7 grids), the middle square is a free square: it counts as already
+If the cards were generated with the **center blank** option (available for all odd grid sizes:
+3x3, 5x5 and 7x7), the middle square is crossed out and counts as already
 marked for every player.
 
 ## Variants

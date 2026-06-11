@@ -45,6 +45,7 @@ class MockJsPDF {
       this.drawColor = { r, g, b };
       return this;
     });
+    this.setLineWidth = jest.fn().mockReturnValue(this);
     this.addPage = jest.fn().mockReturnValue(this);
     this.text = jest.fn().mockImplementation((text, x, y, options = {}) => {
       this.elements.push({
