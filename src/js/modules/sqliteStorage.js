@@ -36,10 +36,17 @@ class SQLiteStorage {
       
       // Run migrations
       await this.runMigrations();
-      
+
       this.isInitialized = true;
+
+      // Seed the default icon set on a fresh (empty) database.
+      // Skipped under test runners so fixtures start from a clean slate.
+      if (process.env.NODE_ENV !== 'test' && process.env.RTB_DISABLE_SEED !== '1') {
+        await this.seedDefaultIconsIfEmpty();
+      }
+
       console.log('SQLite database initialized successfully');
-      
+
       return true;
     } catch (error) {
       console.error('Error initializing SQLite database:', error);
@@ -83,6 +90,61 @@ class SQLiteStorage {
       // If migrations fail due to I/O issues, fall back to initial schema
       console.warn('Migration failed, using fallback schema:', error.message);
       await this.createInitialSchema();
+    }
+  }
+
+  /**
+   * Seed the bundled default icon set when the database has no icons yet.
+   * The seed file is produced offline (see data/seed/default-icons.json) with
+   * AI-derived categories, tags, difficulty and German names, so this runs
+   * fully deterministically and needs no network access at startup.
+   * @returns {Promise<number>} number of icons seeded (0 if skipped)
+   */
+  async seedDefaultIconsIfEmpty() {
+    try {
+      const count = this.db.prepare('SELECT COUNT(*) AS c FROM icons').get().c;
+      if (count > 0) {
+        return 0;
+      }
+
+      const seedPath = path.join(__dirname, '../../../data/seed/default-icons.json');
+      if (!fs.existsSync(seedPath)) {
+        return 0;
+      }
+
+      const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      if (!Array.isArray(seed) || seed.length === 0) {
+        return 0;
+      }
+
+      let seeded = 0;
+      for (const entry of seed) {
+        if (!entry.name || !entry.image) {
+          continue;
+        }
+        try {
+          const result = await this.saveIcon({
+            name: entry.name,
+            image: entry.image,
+            category: entry.category || 'Uncategorized',
+            tags: Array.isArray(entry.tags) ? entry.tags : [],
+            difficulty: entry.difficulty || 3
+          });
+          if (entry.name_de && result.data && result.data.id) {
+            await this.saveIconTranslation(result.data.id, 'de', entry.name_de);
+          }
+          seeded++;
+        } catch (error) {
+          console.error(`Failed to seed icon "${entry.name}":`, error.message);
+        }
+      }
+
+      console.log(`Seeded ${seeded} default icons into empty database`);
+      return seeded;
+    } catch (error) {
+      // Seeding is best-effort; never block startup on it
+      console.error('Default icon seeding skipped due to error:', error.message);
+      return 0;
     }
   }
 

@@ -71,7 +71,7 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npm start',
+    command: 'RTB_DISABLE_SEED=1 npm start',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
   },
