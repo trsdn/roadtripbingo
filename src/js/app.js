@@ -6,7 +6,7 @@ import storage from './modules/apiStorage.js';
 import { getTranslatedText, initLanguageSelector } from './modules/i18n.js';
 import { convertBlobToBase64Icon } from './modules/imageUtils.js';
 import { generateBingoCards, calculateExpectedMultiHitCount } from './modules/cardGenerator.js';
-import { generatePDF, downloadPDFBlob } from './modules/pdfGenerator.js';
+import { generatePDF, downloadPDFBlob, DEFAULT_SCORING } from './modules/pdfGenerator.js';
 import aiService from './modules/aiService.js';
 
 // DOM elements
@@ -34,7 +34,9 @@ let centerBlankToggle;
 let sameCardToggle;
 let showLabelsToggle;
 let gameDifficulty;
-let multiHitToggle;
+let gameModeSelect;
+let gameModeHelp;
+let includeRulesToggle;
 let difficultyRadios;
 let multiHitOptions;
 let multiHitPreview;
@@ -235,6 +237,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const multiHitMode = settings.multiHitMode || false; // default false
     const multiHitDifficulty = settings.multiHitDifficulty || 'MEDIUM'; // default MEDIUM
     const iconDistribution = settings.iconDistribution || 'same-icons'; // default same-icons
+    // Saved gameMode setting wins; fall back to legacy multiHitMode flag
+    const savedGameMode = settings.gameMode || (multiHitMode ? 'multihit' : 'classic');
+    const includeRulesPage = settings.includeRulesPage || false; // default false
 
     // Initialize DOM elements
     initializeDOMElements();
@@ -244,11 +249,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (centerBlankToggle) {centerBlankToggle.checked = centerBlank;}
     if (sameCardToggle) {sameCardToggle.checked = sameCard;}
 
-    if (multiHitToggle) {
-      multiHitToggle.checked = multiHitMode;
-      if (multiHitOptions) {
-        multiHitOptions.style.display = multiHitMode ? 'block' : 'none';
-      }
+    if (gameModeSelect) {
+      gameModeSelect.value = savedGameMode;
+      applyGameModeSelection(savedGameMode, { persist: false });
+    }
+    if (includeRulesToggle) {
+      includeRulesToggle.checked = includeRulesPage;
     }
     if (difficultyRadios) {
       difficultyRadios.forEach(radio => {
@@ -345,7 +351,9 @@ function initializeDOMElements() {
   sameCardToggle = document.getElementById('sameCardToggle');
   showLabelsToggle = document.getElementById('showLabelsToggle');
   gameDifficulty = document.getElementById('gameDifficulty');
-  multiHitToggle = document.getElementById('multiHitToggle');
+  gameModeSelect = document.getElementById('gameMode');
+  gameModeHelp = document.getElementById('gameModeHelp');
+  includeRulesToggle = document.getElementById('includeRulesToggle');
   multiHitOptions = document.getElementById('multiHitOptions');
   multiHitPreview = document.getElementById('multiHitPreview');
   difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
@@ -562,19 +570,21 @@ function setupEventListeners() {
     });
   }
 
-  // Multi-hit mode toggle
-  if (multiHitToggle) {
-    multiHitToggle.addEventListener('change', () => {
-      const isEnabled = multiHitToggle.checked;
-      if (multiHitOptions) {
-        multiHitOptions.style.display = isEnabled ? 'block' : 'none';
-      }
-      storage.saveSettings({ multiHitMode: isEnabled });
-      updateMultiHitPreview();
+  // Game mode select (classic / multihit / scoring)
+  if (gameModeSelect) {
+    gameModeSelect.addEventListener('change', () => {
+      applyGameModeSelection(gameModeSelect.value, { autoEnableRules: true });
     });
 
     // Mark that event listeners are ready for testing
-    multiHitToggle._hasEventListeners = true;
+    gameModeSelect._hasEventListeners = true;
+  }
+
+  // Include rules page toggle
+  if (includeRulesToggle) {
+    includeRulesToggle.addEventListener('change', () => {
+      storage.saveSettings({ includeRulesPage: includeRulesToggle.checked });
+    });
   }
 
   // Difficulty radio buttons
@@ -1149,11 +1159,61 @@ function updateRequiredIconCount() {
   document.getElementById('iconAvailability').textContent = availabilityText;
 }
 
+/**
+ * Check whether the multi-hit game mode is currently selected
+ * @returns {boolean} - True when the game mode select is set to 'multihit'
+ */
+function isMultiHitMode() {
+  return Boolean(gameModeSelect && gameModeSelect.value === 'multihit');
+}
+
+/**
+ * Update the game mode help text for the selected mode
+ * @param {string} mode - Selected game mode ('classic'|'multihit'|'scoring')
+ */
+function updateGameModeHelp(mode) {
+  if (!gameModeHelp) {return;}
+  const helpKeys = {
+    classic: 'classicModeHelp',
+    multihit: 'multihitModeHelp',
+    scoring: 'scoringModeHelp'
+  };
+  const key = helpKeys[mode] || 'classicModeHelp';
+  gameModeHelp.setAttribute('data-translate', key);
+  gameModeHelp.textContent = t(key);
+}
+
+/**
+ * Apply a game mode selection to the UI and persist related settings
+ * @param {string} mode - Selected game mode ('classic'|'multihit'|'scoring')
+ * @param {Object} options - Behavior flags
+ * @param {boolean} options.persist - Whether to save settings to storage
+ * @param {boolean} options.autoEnableRules - Auto-check the rules toggle for scoring mode
+ */
+function applyGameModeSelection(mode, { persist = true, autoEnableRules = false } = {}) {
+  const multiHitMode = mode === 'multihit';
+  if (multiHitOptions) {
+    multiHitOptions.style.display = multiHitMode ? 'block' : 'none';
+  }
+  updateGameModeHelp(mode);
+
+  // Auto-check the rules page once when scoring mode is chosen (user may uncheck again)
+  if (autoEnableRules && mode === 'scoring' && includeRulesToggle && !includeRulesToggle.checked) {
+    includeRulesToggle.checked = true;
+    storage.saveSettings({ includeRulesPage: true });
+  }
+
+  if (persist) {
+    storage.saveSettings({ gameMode: mode, multiHitMode });
+  }
+  updateMultiHitPreview();
+}
+
 // Update multi-hit preview display
 function updateMultiHitPreview() {
-  if (!multiHitToggle || !multiHitPreview) {return;}
+  if (!multiHitPreview) {return;}
 
-  if (!multiHitToggle.checked) {
+  if (!isMultiHitMode()) {
     multiHitPreview.textContent = '';
     return;
   }
@@ -1190,7 +1250,7 @@ function generateCards() {
   const sameCard = sameCardToggle && sameCardToggle.checked;
 
   // Get multi-hit settings
-  const multiHitMode = multiHitToggle && multiHitToggle.checked;
+  const multiHitMode = isMultiHitMode();
   let difficulty = 'MEDIUM';
   if (difficultyRadios) {
     for (const radio of difficultyRadios) {
@@ -1384,7 +1444,8 @@ async function downloadPDF() {
       const layout = pdfLayout.value;
 
       // Get game mode and difficulty information
-      const isMultiHit = multiHitToggle && multiHitToggle.checked;
+      const selectedGameMode = gameModeSelect ? gameModeSelect.value : 'classic';
+      const isMultiHit = selectedGameMode === 'multihit';
       let multiHitDifficulty = 'MEDIUM';
       if (difficultyRadios) {
         for (const radio of difficultyRadios) {
@@ -1394,8 +1455,14 @@ async function downloadPDF() {
           }
         }
       }
-      const gameMode = isMultiHit ? `Multi-Hit Mode (${multiHitDifficulty})` : 'Standard Mode';
+      let gameModeLabel = 'Standard Mode';
+      if (isMultiHit) {
+        gameModeLabel = `Multi-Hit Mode (${multiHitDifficulty})`;
+      } else if (selectedGameMode === 'scoring') {
+        gameModeLabel = 'Scoring Mode';
+      }
       const gameDifficultyValue = gameDifficulty ? gameDifficulty.value : 'MEDIUM';
+      const includeRulesPage = Boolean(includeRulesToggle && includeRulesToggle.checked);
 
       // Generate the PDF
       const pdfBlob = await generatePDF({
@@ -1404,8 +1471,14 @@ async function downloadPDF() {
         compressionLevel,
         layout,
         showLabels, // include toggle state
-        gameMode,
-        gameDifficulty: gameDifficultyValue
+        gameMode: selectedGameMode,
+        gameModeLabel,
+        gameDifficulty: gameDifficultyValue,
+        includeRulesPage,
+        rulesContent: includeRulesPage
+          ? buildRulesContent(selectedGameMode, multiHitDifficulty)
+          : null,
+        scoreLabels: selectedGameMode === 'scoring' ? buildScoreLabels() : null
       });
 
       // Download the PDF
@@ -1423,6 +1496,87 @@ async function downloadPDF() {
       downloadBtn.disabled = false;
     }
   }, 100);
+}
+
+/**
+ * Build the localized rules page content for the PDF
+ * @param {string} mode - Selected game mode ('classic'|'multihit'|'scoring')
+ * @param {string} multiHitDifficulty - Selected multi-hit difficulty (LIGHT|MEDIUM|HARD)
+ * @returns {Object} - Rules content ({ title, sections: [{ heading, lines }] })
+ */
+function buildRulesContent(mode, multiHitDifficulty) {
+  const sections = [
+    {
+      heading: t('rulesObjectiveTitle'),
+      lines: [t('rulesObjective1'), t('rulesObjective2')]
+    },
+    {
+      heading: t('rulesStandardTitle'),
+      lines: [
+        t('rulesStandard1'),
+        t('rulesStandard2'),
+        t('rulesStandard3'),
+        t('rulesStandard4')
+      ]
+    }
+  ];
+
+  // Center blank is only applied by the card generator on 5x5 and 7x7 grids
+  const currentGridSize = parseInt(gridSizeSelect ? gridSizeSelect.value : '5', 10);
+  if (centerBlankToggle && centerBlankToggle.checked &&
+      (currentGridSize === 5 || currentGridSize === 7)) {
+    sections.push({
+      heading: t('rulesFreeSquareTitle'),
+      lines: [t('rulesFreeSquare1'), t('rulesFreeSquare2')]
+    });
+  }
+
+  if (mode === 'multihit') {
+    sections.push({
+      heading: t('rulesMultiHitTitle'),
+      lines: [
+        t('rulesMultiHit1'),
+        t('rulesMultiHit2'),
+        t('rulesMultiHitDifficulty', { difficulty: multiHitDifficulty })
+      ]
+    });
+  }
+
+  if (mode === 'scoring') {
+    sections.push({
+      heading: t('rulesScoringTitle'),
+      lines: [
+        t('rulesScoring1'),
+        t('rulesScoring2', {
+          row: DEFAULT_SCORING.row,
+          column: DEFAULT_SCORING.column,
+          diagonal: DEFAULT_SCORING.diagonal
+        }),
+        t('rulesScoring3', { fullHouse: DEFAULT_SCORING.fullHouse }),
+        t('rulesScoring4')
+      ]
+    });
+  }
+
+  return { title: t('rulesTitle'), sections };
+}
+
+/**
+ * Build the localized labels for the printable score sheet
+ * @returns {Object} - Score sheet labels for the PDF generator
+ */
+function buildScoreLabels() {
+  return {
+    title: t('scoreSheetTitle'),
+    achievement: t('scoreAchievement'),
+    points: t('scorePoints'),
+    player: t('scorePlayer'),
+    row: t('scoreRow'),
+    column: t('scoreColumn'),
+    diagonal: t('scoreDiagonal'),
+    fullHouse: t('scoreFullHouse'),
+    total: t('scoreTotal')
+  };
 }
 
 // Backup data

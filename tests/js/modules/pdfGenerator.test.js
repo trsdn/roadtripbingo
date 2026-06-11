@@ -7,7 +7,7 @@ jest.mock('@/js/modules/imageUtils.js', () => ({
   createImageFromBase64: jest.fn(() => ({ width: 50, height: 50, complete: true }))
 }));
 
-import { generatePDF, downloadPDFBlob } from '@/js/modules/pdfGenerator.js';
+import { generatePDF, downloadPDFBlob, DEFAULT_SCORING } from '@/js/modules/pdfGenerator.js';
 
 // Mock imageUtils module  
 jest.mock('@/js/modules/imageUtils.js', () => ({
@@ -85,6 +85,18 @@ class MockJsPDF {
       });
       return this;
     });
+    this.line = jest.fn().mockImplementation((x1, y1, x2, y2) => {
+      this.elements.push({
+        type: 'line',
+        x1,
+        y1,
+        x2,
+        y2,
+        drawColor: { ...this.drawColor }
+      });
+      return this;
+    });
+    this.setFont = jest.fn().mockReturnValue(this);
     this.output = jest.fn().mockImplementation((type) => {
       if (type === 'blob') {
         // Create a proper Blob object for testing
@@ -602,6 +614,130 @@ describe('PDF Generator', () => {
 
       const set2Ids = mockPDFInstance.elements.filter(el => el.type === 'text' && el.text === 'SET2');
       expect(set2Ids.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Rules page and score sheet', () => {
+    const sampleRulesContent = {
+      title: 'Game Rules',
+      sections: [
+        { heading: 'Objective', lines: ['Spot objects to complete lines.', 'First full line wins.'] },
+        { heading: 'Standard Rules', lines: ['Mark spotted squares.'] }
+      ]
+    };
+
+    const sampleScoreLabels = {
+      title: 'Score Sheet',
+      achievement: 'Achievement',
+      points: 'Points',
+      player: 'Player',
+      row: 'Row',
+      column: 'Column',
+      diagonal: 'Diagonal',
+      fullHouse: 'Full House (all squares)',
+      total: 'Total'
+    };
+
+    const getTexts = () => mockPDFInstance.elements
+      .filter(el => el.type === 'text')
+      .map(el => el.text);
+
+    it('should append a rules page when includeRulesPage is true', async () => {
+      const options = {
+        cardSets: sampleCardSets,
+        identifier: 'TEST-001',
+        includeRulesPage: true,
+        rulesContent: sampleRulesContent
+      };
+
+      const result = await generatePDF(options);
+
+      expect(result).toBeInstanceOf(Blob);
+      // 1 page break for the second card + 1 extra page for the rules
+      expect(mockPDFInstance.addPage).toHaveBeenCalledTimes(2);
+
+      const texts = getTexts();
+      expect(texts).toContain('Game Rules');
+      expect(texts).toContain('Objective');
+      expect(texts).toContain('Standard Rules');
+      expect(texts).toContain('Spot objects to complete lines.');
+    });
+
+    it('should append a score sheet for the scoring game mode', async () => {
+      const options = {
+        cardSets: sampleCardSets,
+        identifier: 'TEST-001',
+        gameMode: 'scoring',
+        scoreLabels: sampleScoreLabels
+      };
+
+      const result = await generatePDF(options);
+
+      expect(result).toBeInstanceOf(Blob);
+      // 1 page break for the second card + 1 extra page for the score sheet
+      expect(mockPDFInstance.addPage).toHaveBeenCalledTimes(2);
+
+      const texts = getTexts();
+      expect(texts).toContain('Score Sheet');
+      expect(texts).toContain('Achievement');
+      expect(texts).toContain('Player 1');
+      expect(texts).toContain('Player 4');
+      expect(texts).toContain('Row');
+      expect(texts).toContain('Full House (all squares)');
+      expect(texts).toContain('Total');
+      expect(texts).toContain(String(DEFAULT_SCORING.diagonal));
+      expect(texts).toContain(String(DEFAULT_SCORING.fullHouse));
+
+      // Table grid should be drawn with lines
+      const lineElements = mockPDFInstance.elements.filter(el => el.type === 'line');
+      expect(lineElements.length).toBeGreaterThan(0);
+    });
+
+    it('should render the rules page before the score sheet', async () => {
+      const options = {
+        cardSets: sampleCardSets,
+        identifier: 'TEST-001',
+        gameMode: 'scoring',
+        includeRulesPage: true,
+        rulesContent: sampleRulesContent,
+        scoreLabels: sampleScoreLabels
+      };
+
+      await generatePDF(options);
+
+      // 1 card page break + rules page + score page
+      expect(mockPDFInstance.addPage).toHaveBeenCalledTimes(3);
+
+      const texts = getTexts();
+      expect(texts.indexOf('Game Rules')).toBeGreaterThanOrEqual(0);
+      expect(texts.indexOf('Game Rules')).toBeLessThan(texts.indexOf('Score Sheet'));
+    });
+
+    it('should not add extra pages for classic mode without options', async () => {
+      const options = {
+        cardSets: sampleCardSets,
+        identifier: 'TEST-001',
+        gameMode: 'classic'
+      };
+
+      const result = await generatePDF(options);
+
+      expect(result).toBeInstanceOf(Blob);
+      // Only the page break for the second card, as before
+      expect(mockPDFInstance.addPage).toHaveBeenCalledTimes(1);
+
+      const texts = getTexts();
+      expect(texts).not.toContain('Score Sheet');
+      expect(texts).not.toContain('Game Rules');
+    });
+
+    it('should export the expected DEFAULT_SCORING values', () => {
+      expect(DEFAULT_SCORING).toEqual({
+        row: 10,
+        column: 10,
+        diagonal: 15,
+        fullHouse: 50
+      });
     });
   });
 
