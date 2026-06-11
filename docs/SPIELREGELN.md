@@ -26,8 +26,8 @@ Bingo-Karte zu vervollständigen, ruft **„Bingo!"** — und gewinnt.
 
 ### Freifeld (Center Blank)
 
-Wurden die Karten mit der Option **Center Blank** erstellt (verfügbar bei 5x5
-und 7x7), ist das mittlere Feld ein Freifeld: Es gilt für alle Spieler als
+Wurden die Karten mit der Option **Center Blank** erstellt (verfügbar bei allen ungeraden Größen:
+3x3, 5x5 und 7x7), ist das mittlere Feld durchgekreuzt und gilt für alle Spieler als
 bereits abgehakt.
 
 ## Varianten

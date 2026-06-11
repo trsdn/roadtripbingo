@@ -36,7 +36,7 @@ function generateBingoCards(options) {
     }
     
     let cellsPerCard = gridSize * gridSize;
-    if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
+    if (leaveCenterBlank && gridSize % 2 === 1) {
         cellsPerCard -= 1;
     }
     
@@ -343,7 +343,7 @@ function calculateExpectedMultiHitCount(gridSize, leaveCenterBlank, difficulty) 
     let totalCells = gridSize * gridSize;
     
     // Subtract center cell if it's blank
-    if (leaveCenterBlank && (gridSize === 5 || gridSize === 7 || gridSize === 9)) {
+    if (leaveCenterBlank && gridSize % 2 === 1) {
         totalCells -= 1;
     }
     
@@ -395,7 +395,7 @@ function buildGrid(icons, gridSize, leaveCenterBlank) {
         for (let col = 0; col < gridSize; col++) {
             if (
                 leaveCenterBlank &&
-                (gridSize === 5 || gridSize === 7 || gridSize === 9) &&
+                gridSize % 2 === 1 &&
                 row === Math.floor(gridSize / 2) &&
                 col === Math.floor(gridSize / 2)
             ) {

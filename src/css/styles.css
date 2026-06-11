@@ -331,24 +331,22 @@ button:disabled {
     border: 1px dashed #bbb;
     position: relative;
 }
+/* Render the free square as an already crossed-off cell (X corner to corner) */
 .free-space::before,
 .free-space::after {
     content: '';
     position: absolute;
-    top: 10%;
-    left: 10%;
-    width: 80%;
-    height: 80%;
+    top: 50%;
+    left: 9%;
+    width: 82%;
+    height: 0;
+    border-top: 2.5px solid #9e9e9e;
     pointer-events: none;
 }
 .free-space::before {
-    border-top: 2px solid #bdbdbd;
-    border-right: 2px solid #bdbdbd;
     transform: rotate(45deg);
 }
 .free-space::after {
-    border-top: 2px solid #bdbdbd;
-    border-left: 2px solid #bdbdbd;
     transform: rotate(-45deg);
 }
 

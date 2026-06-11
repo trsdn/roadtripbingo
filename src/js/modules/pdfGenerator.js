@@ -512,21 +512,16 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
       pdf.rect(cellX, cellY, cellSize, cellSize, 'S');
             
       if (cell.isFreeSpace) {
-        // Center "FREE" text for free space
-        pdf.setFontSize(labelFontSize * 1.5);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text('FREE', cellX + (cellSize / 2), cellY + (cellSize / 2), { 
-          align: 'center',
-          baseline: 'middle'
-        });
-                
-        if (cell.hitCount && cell.hitCount > 1) {
-          // For multi-hit free spaces, show hit count
-          pdf.setFontSize(labelFontSize);
-          pdf.text(`(${cell.hitCount})`, cellX + (cellSize / 2), cellY + (cellSize * 0.7), {
-            align: 'center'
-          });
-        }
+        // Free square: render as an already crossed-off cell (X across the cell)
+        const inset = cellSize * 0.18;
+        pdf.setDrawColor(140, 140, 140);
+        pdf.setLineWidth(1.1);
+        pdf.line(cellX + inset, cellY + inset,
+          cellX + cellSize - inset, cellY + cellSize - inset);
+        pdf.line(cellX + cellSize - inset, cellY + inset,
+          cellX + inset, cellY + cellSize - inset);
+        pdf.setLineWidth(0.200025);
+        pdf.setDrawColor(0, 0, 0);
       } else if (cell.data) {
         // Calculate padding and maximum image size
         const padding = cellSize * 0.1;
