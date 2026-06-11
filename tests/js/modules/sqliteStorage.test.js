@@ -593,4 +593,52 @@ describe('SQLiteStorage', () => {
       expect(saved.data.id).toMatch(/^icon_[a-z0-9]{8,}$/);
     });
   });
+
+  describe('Default icon seeding', () => {
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB' +
+      'CAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    it('does not auto-seed under the test runner', async () => {
+      // init() ran in beforeEach with NODE_ENV=test → DB must be empty
+      const icons = await storage.loadIcons();
+      expect(icons).toHaveLength(0);
+    });
+
+    it('seeds icons, categories and German translations when empty', async () => {
+      const before = await storage.loadIcons();
+      expect(before).toHaveLength(0);
+
+      // Inject a tiny seed file the method reads from disk
+      const seedPath = path.join(__dirname, '../../../data/seed/default-icons.json');
+      const realSeed = fs.existsSync(seedPath) ? fs.readFileSync(seedPath) : null;
+      fs.mkdirSync(path.dirname(seedPath), { recursive: true });
+      fs.writeFileSync(seedPath, JSON.stringify([
+        { name: 'Cow', file: 'cow.png', image: PNG, category: 'Animals', tags: ['farm'], difficulty: 2, name_de: 'Kuh' },
+        { name: 'Tractor', file: 'tractor.png', image: PNG, category: 'Transport', tags: ['farm'], difficulty: 3, name_de: 'Traktor' }
+      ]));
+
+      try {
+        const seeded = await storage.seedDefaultIconsIfEmpty();
+        expect(seeded).toBe(2);
+
+        const icons = await storage.loadIcons();
+        expect(icons).toHaveLength(2);
+        expect(icons.map(i => i.category).sort()).toEqual(['Animals', 'Transport']);
+
+        const cow = icons.find(i => i.name === 'Cow');
+        const translations = await storage.getIconTranslations(cow.id);
+        expect(translations.de).toBe('Kuh');
+      } finally {
+        if (realSeed) {fs.writeFileSync(seedPath, realSeed);}
+      }
+    });
+
+    it('does not re-seed when icons already exist', async () => {
+      await storage.saveIcon({ name: 'Existing', image: PNG, category: 'Nature' });
+      const seeded = await storage.seedDefaultIconsIfEmpty();
+      expect(seeded).toBe(0);
+      const icons = await storage.loadIcons();
+      expect(icons).toHaveLength(1);
+    });
+  });
 });
