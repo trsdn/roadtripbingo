@@ -162,7 +162,76 @@ const languages = {
         aiNoDuplicates: "No duplicates found — your icon library looks good!",
         aiStrengths: "Strengths",
         aiGaps: "Gaps",
-        aiImbalances: "Imbalances"
+        aiImbalances: "Imbalances",
+        // Additional AI-related translations for icon name translations
+        suggestedName: "Suggested name:",
+        suggestedCategory: "Suggested category:",
+        suggestedDifficulty: "Suggested difficulty:",
+        suggestedTags: "Suggested tags:",
+        acceptSuggestion: "Accept suggestion",
+        rejectSuggestion: "Reject suggestion",
+        applyingSuggestion: "Applying suggestion...",
+        suggestionApplied: "Suggestion applied",
+        suggestionFailed: "Suggestion failed",
+        // Categories management
+        categories: "Categories",
+        addCategory: "Add category",
+        newCategoryPlaceholder: "New category name",
+        renameCategory: "Rename category",
+        deleteCategory: "Delete category",
+        save: "Save",
+        categoryAdded: "Category \"{name}\" added",
+        categoryRenamed: "Category renamed to \"{name}\"",
+        categoryDeleted: "Category \"{name}\" deleted",
+        categoryDeleteConfirm: "Delete category \"{name}\"? Icons in this category will be moved to \"Uncategorized\".",
+        categoryNameRequired: "Please enter a category name",
+        categoryOpFailed: "Category operation failed: {error}",
+        // Select options and help texts
+        allDifficulties: "All Difficulties",
+        difficulty1: "⭐ Very Easy",
+        difficulty2: "⭐⭐ Easy",
+        difficulty3: "⭐⭐⭐ Medium",
+        difficulty4: "⭐⭐⭐⭐ Hard",
+        difficulty5: "⭐⭐⭐⭐⭐ Very Hard",
+        difficultyHelpText: "Rate how difficult this icon is to spot during gameplay",
+        gameDifficultyEasy: "Easy (More easy icons, balanced cards)",
+        gameDifficultyMedium: "Medium (Balanced mix of all difficulties)",
+        gameDifficultyHard: "Hard (More hard icons, challenging cards)",
+        gameDifficultyExpert: "Expert (Mostly hard icons, very challenging)",
+        gameDifficultyHelp: "Controls the overall difficulty of icon selection and card balance",
+        compressionNone: "None (Largest file)",
+        compressionFast: "Light (Smaller file)",
+        compressionMedium: "Medium (Recommended)",
+        compressionSlow: "High (Smallest file)",
+        layoutOnePerPage: "One card per page",
+        layoutTwoPerPage: "Two cards per page",
+        optimizeStorage: "Optimize Storage",
+        iconsSelectedCount: "{count} icons selected",
+        // AI progress and results
+        aiResultsTitle: "AI Analysis Results",
+        collapse: "Collapse",
+        aiAnalyzingIcons: "Analyzing icons with AI…",
+        aiDetectingDuplicates: "Scanning for duplicates…",
+        aiGettingSuggestions: "Getting content suggestions…",
+        aiGeneratingSet: "Generating smart set…",
+        imageGenTakesLong: "Generating icon image – this can take up to 90 seconds…",
+        aiAnalysisComplete: "AI analysis complete",
+        aiAnalysisFailed: "Failed to analyze icons: {error}",
+        aiDuplicateScanComplete: "Duplicate detection complete",
+        aiDuplicateScanFailed: "Failed to detect duplicates: {error}",
+        aiSuggestionsReady: "Content suggestions ready",
+        aiSuggestionsFailed: "Failed to get suggestions: {error}",
+        aiSetGenerated: "Smart set generated",
+        aiSetGenerationFailed: "Failed to generate set: {error}",
+        setThemeRequired: "Please enter a theme for the set",
+        setThemePlaceholder: "Enter theme (e.g., Winter Road Trip)",
+        noIconsToAnalyze: "No icons to analyze",
+        selectIconsToAnalyze: "Please select icons to analyze",
+        tripContextPlaceholder: "e.g. highway trip Munich to the Baltic Sea in winter, 2 kids",
+        tripContextLabel: "Trip context",
+        // Inline editing
+        iconUpdated: "Icon updated",
+        iconUpdateFailed: "Failed to update icon: {error}"
     },
     de: {
         title: "Auto Bingo Generator",
@@ -333,7 +402,66 @@ const languages = {
         rejectSuggestion: "Vorschlag ablehnen",
         applyingSuggestion: "Vorschlag wird angewendet...",
         suggestionApplied: "Vorschlag angewendet",
-        suggestionFailed: "Vorschlag fehlgeschlagen"
+        suggestionFailed: "Vorschlag fehlgeschlagen",
+        // Categories management
+        categories: "Kategorien",
+        addCategory: "Kategorie hinzufügen",
+        newCategoryPlaceholder: "Neuer Kategoriename",
+        renameCategory: "Kategorie umbenennen",
+        deleteCategory: "Kategorie löschen",
+        save: "Speichern",
+        categoryAdded: "Kategorie \"{name}\" hinzugefügt",
+        categoryRenamed: "Kategorie umbenannt in \"{name}\"",
+        categoryDeleted: "Kategorie \"{name}\" gelöscht",
+        categoryDeleteConfirm: "Kategorie \"{name}\" löschen? Icons dieser Kategorie werden nach \"Uncategorized\" verschoben.",
+        categoryNameRequired: "Bitte einen Kategorienamen eingeben",
+        categoryOpFailed: "Kategorie-Aktion fehlgeschlagen: {error}",
+        // Select options and help texts
+        allDifficulties: "Alle Schwierigkeitsgrade",
+        difficulty1: "⭐ Sehr leicht",
+        difficulty2: "⭐⭐ Leicht",
+        difficulty3: "⭐⭐⭐ Mittel",
+        difficulty4: "⭐⭐⭐⭐ Schwer",
+        difficulty5: "⭐⭐⭐⭐⭐ Sehr schwer",
+        difficultyHelpText: "Bewerten Sie, wie schwer dieses Icon unterwegs zu entdecken ist",
+        gameDifficultyEasy: "Leicht (mehr leichte Icons, ausgewogene Karten)",
+        gameDifficultyMedium: "Mittel (ausgewogene Mischung aller Schwierigkeiten)",
+        gameDifficultyHard: "Schwer (mehr schwere Icons, anspruchsvolle Karten)",
+        gameDifficultyExpert: "Experte (überwiegend schwere Icons, sehr anspruchsvoll)",
+        gameDifficultyHelp: "Steuert die Gesamtschwierigkeit der Icon-Auswahl und Kartenbalance",
+        compressionNone: "Keine (größte Datei)",
+        compressionFast: "Leicht (kleinere Datei)",
+        compressionMedium: "Mittel (empfohlen)",
+        compressionSlow: "Hoch (kleinste Datei)",
+        layoutOnePerPage: "Eine Karte pro Seite",
+        layoutTwoPerPage: "Zwei Karten pro Seite",
+        optimizeStorage: "Speicher optimieren",
+        iconsSelectedCount: "{count} Icons ausgewählt",
+        // AI progress and results
+        aiResultsTitle: "KI-Analyseergebnisse",
+        collapse: "Einklappen",
+        aiAnalyzingIcons: "Icons werden mit KI analysiert…",
+        aiDetectingDuplicates: "Suche nach Duplikaten…",
+        aiGettingSuggestions: "Inhaltsvorschläge werden geladen…",
+        aiGeneratingSet: "Intelligentes Set wird generiert…",
+        imageGenTakesLong: "Icon-Bild wird generiert – das kann bis zu 90 Sekunden dauern…",
+        aiAnalysisComplete: "KI-Analyse abgeschlossen",
+        aiAnalysisFailed: "Icon-Analyse fehlgeschlagen: {error}",
+        aiDuplicateScanComplete: "Duplikaterkennung abgeschlossen",
+        aiDuplicateScanFailed: "Duplikaterkennung fehlgeschlagen: {error}",
+        aiSuggestionsReady: "Inhaltsvorschläge sind bereit",
+        aiSuggestionsFailed: "Vorschläge konnten nicht geladen werden: {error}",
+        aiSetGenerated: "Intelligentes Set generiert",
+        aiSetGenerationFailed: "Set-Generierung fehlgeschlagen: {error}",
+        setThemeRequired: "Bitte ein Thema für das Set eingeben",
+        setThemePlaceholder: "Thema eingeben (z. B. Winter-Roadtrip)",
+        noIconsToAnalyze: "Keine Icons zum Analysieren vorhanden",
+        selectIconsToAnalyze: "Bitte Icons zum Analysieren auswählen",
+        tripContextPlaceholder: "z. B. Autobahnfahrt München→Ostsee im Winter, 2 Kinder",
+        tripContextLabel: "Reisekontext",
+        // Inline editing
+        iconUpdated: "Icon aktualisiert",
+        iconUpdateFailed: "Icon konnte nicht aktualisiert werden: {error}"
     }
 };
 
@@ -361,7 +489,29 @@ function setLanguage(lang) {
             console.warn(`⚠️ Translation missing for key: ${key} in language: ${lang}`);
         }
     });
-    
+
+    // Translate placeholder attributes
+    document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-translate-placeholder');
+        const translation = languages[lang][key];
+        if (translation) {
+            el.placeholder = translation;
+        } else {
+            console.warn(`⚠️ Placeholder translation missing for key: ${key} in language: ${lang}`);
+        }
+    });
+
+    // Translate title attributes
+    document.querySelectorAll('[data-translate-title]').forEach(el => {
+        const key = el.getAttribute('data-translate-title');
+        const translation = languages[lang][key];
+        if (translation) {
+            el.title = translation;
+        } else {
+            console.warn(`⚠️ Title translation missing for key: ${key} in language: ${lang}`);
+        }
+    });
+
     console.log('✅ Language set successfully');
 }
 

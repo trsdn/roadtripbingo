@@ -251,6 +251,39 @@ async function handleAPIRequest(req, res) {
       return true;
     }
 
+    if (pathname === '/api/categories' && method === 'POST') {
+      const body = await parseRequestBody(req);
+      try {
+        const result = await storage.createCategory(body.name);
+        sendJSON(res, result, 201);
+      } catch (error) {
+        sendJSON(res, { success: false, error: error.message }, 400);
+      }
+      return true;
+    }
+
+    if (pathname.startsWith('/api/categories/') && (method === 'PUT' || method === 'DELETE')) {
+      const categoryId = parseInt(pathname.split('/')[3], 10);
+      if (!Number.isInteger(categoryId)) {
+        sendJSON(res, { success: false, error: 'Invalid category ID' }, 400);
+        return true;
+      }
+      try {
+        if (method === 'PUT') {
+          const body = await parseRequestBody(req);
+          const result = await storage.renameCategory(categoryId, body.name);
+          sendJSON(res, result);
+        } else {
+          const result = await storage.deleteCategory(categoryId);
+          sendJSON(res, result);
+        }
+      } catch (error) {
+        const status = error.message.includes('not found') ? 404 : 400;
+        sendJSON(res, { success: false, error: error.message }, status);
+      }
+      return true;
+    }
+
     // Clear all icons API
     if (pathname === '/api/icons/clear' && method === 'DELETE') {
       const result = await storage.clearIcons();
@@ -647,11 +680,11 @@ async function handleAPIRequest(req, res) {
         return true;
       }
 
-      const { targetSet, model } = parsedUrl.query;
+      const { targetSet, model, tripContext } = parsedUrl.query;
       const icons = await storage.db.prepare('SELECT * FROM icons').all();
 
       try {
-        const result = await aiService.suggestMissingContent(icons, targetSet, model);
+        const result = await aiService.suggestMissingContent(icons, targetSet, model, tripContext);
         await storage.trackAIUsage({ operation: 'suggest_content', model: result.ai_model });
         sendJSON(res, { success: true, data: result });
       } catch (error) {

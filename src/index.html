@@ -82,12 +82,12 @@
             <div class="form-group">
                 <label for="gameDifficulty" data-translate="gameDifficulty">Game Difficulty:</label>
                 <select id="gameDifficulty">
-                    <option value="EASY">Easy (More easy icons, balanced cards)</option>
-                    <option value="MEDIUM" selected>Medium (Balanced mix of all difficulties)</option>
-                    <option value="HARD">Hard (More hard icons, challenging cards)</option>
-                    <option value="EXPERT">Expert (Mostly hard icons, very challenging)</option>
+                    <option value="EASY" data-translate="gameDifficultyEasy">Easy (More easy icons, balanced cards)</option>
+                    <option value="MEDIUM" selected data-translate="gameDifficultyMedium">Medium (Balanced mix of all difficulties)</option>
+                    <option value="HARD" data-translate="gameDifficultyHard">Hard (More hard icons, challenging cards)</option>
+                    <option value="EXPERT" data-translate="gameDifficultyExpert">Expert (Mostly hard icons, very challenging)</option>
                 </select>
-                <small class="help-text">Controls the overall difficulty of icon selection and card balance</small>
+                <small class="help-text" data-translate="gameDifficultyHelp">Controls the overall difficulty of icon selection and card balance</small>
             </div>
             
             <div class="form-group">
@@ -161,17 +161,17 @@
                     <div class="form-group">
                         <label for="pdfCompression" data-translate="pdfCompression">PDF Compression:</label>
                         <select id="pdfCompression">
-                            <option value="NONE">None (Largest file)</option>
-                            <option value="FAST">Light (Smaller file)</option>
-                            <option value="MEDIUM" selected>Medium (Recommended)</option>
-                            <option value="SLOW">High (Smallest file)</option>
+                            <option value="NONE" data-translate="compressionNone">None (Largest file)</option>
+                            <option value="FAST" data-translate="compressionFast">Light (Smaller file)</option>
+                            <option value="MEDIUM" selected data-translate="compressionMedium">Medium (Recommended)</option>
+                            <option value="SLOW" data-translate="compressionSlow">High (Smallest file)</option>
                         </select>
                     </div>
                     <div class="form-group">
                       <label for="pdfLayout" data-translate="pdfLayout">PDF Layout:</label>
                       <select id="pdfLayout">
-                        <option value="one-per-page">One card per page</option>
-                        <option value="two-per-page" selected>Two cards per page</option>
+                        <option value="one-per-page" data-translate="layoutOnePerPage">One card per page</option>
+                        <option value="two-per-page" selected data-translate="layoutTwoPerPage">Two cards per page</option>
                       </select>
                     </div>
                     <button id="downloadBtn" data-translate="downloadPDF" disabled>Download PDF</button>
@@ -203,6 +203,20 @@
         </div>
       </div>
 
+      <!-- Categories Management -->
+      <div class="categories-management">
+        <div class="section-header">
+          <h3 data-translate="categories">Categories</h3>
+        </div>
+        <ul id="categoriesList" class="categories-list">
+          <!-- Categories will be loaded here -->
+        </ul>
+        <div class="add-category-controls">
+          <input type="text" id="newCategoryName" placeholder="New category name" data-translate-placeholder="newCategoryPlaceholder">
+          <button id="addCategoryBtn" class="btn-primary" data-translate="addCategory">Add category</button>
+        </div>
+      </div>
+
       <!-- Icon Management Section -->
       <div class="icons-management">
         <div class="section-header">
@@ -221,12 +235,12 @@
               <option value="all" data-translate="allCategories">All Categories</option>
             </select>
             <select id="difficultyFilter">
-              <option value="all">All Difficulties</option>
-              <option value="1">⭐ Very Easy</option>
-              <option value="2">⭐⭐ Easy</option>
-              <option value="3">⭐⭐⭐ Medium</option>
-              <option value="4">⭐⭐⭐⭐ Hard</option>
-              <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
+              <option value="all" data-translate="allDifficulties">All Difficulties</option>
+              <option value="1" data-translate="difficulty1">⭐ Very Easy</option>
+              <option value="2" data-translate="difficulty2">⭐⭐ Easy</option>
+              <option value="3" data-translate="difficulty3">⭐⭐⭐ Medium</option>
+              <option value="4" data-translate="difficulty4">⭐⭐⭐⭐ Hard</option>
+              <option value="5" data-translate="difficulty5">⭐⭐⭐⭐⭐ Very Hard</option>
             </select>
             <select id="setFilter">
               <option value="all" data-translate="allSets">All Sets</option>
@@ -239,7 +253,7 @@
               <input type="file" id="iconUpload" accept="image/*" multiple>
             </div>
             <button id="clearIconsBtn" data-translate="clearIcons">Clear All Icons</button>
-            <button id="optimizeStorage" class="storage-btn" style="display: none;">Optimize Storage</button>
+            <button id="optimizeStorage" class="storage-btn" style="display: none;" data-translate="optimizeStorage">Optimize Storage</button>
             <button id="openAIFeatures" class="btn-ai" data-translate="aiFeatures">AI Features</button>
             <span class="icon-count">
               <span data-translate="currentlyUsing">Currently using</span> 
@@ -332,6 +346,9 @@
               <h4 data-translate="contentSuggestions">Content Suggestions</h4>
               <p class="ai-description" data-translate="contentSuggestionsDesc">Get AI recommendations for missing icons to improve your sets</p>
               <div class="ai-actions">
+                <textarea id="tripContextInput" class="ai-input trip-context-input" rows="2"
+                  placeholder="e.g. highway trip Munich to the Baltic Sea in winter, 2 kids"
+                  data-translate-placeholder="tripContextPlaceholder"></textarea>
                 <button id="getContentSuggestions" class="btn-primary">
                   <span data-translate="getSuggestions">Get Suggestions</span>
                 </button>
@@ -349,7 +366,7 @@
               <h4 data-translate="smartSetGeneration">Smart Set Generation</h4>
               <p class="ai-description" data-translate="smartSetDesc">Generate complete themed icon sets with AI</p>
               <div class="ai-actions">
-                <input type="text" id="setThemeInput" placeholder="Enter theme (e.g., Winter Road Trip)" class="ai-input">
+                <input type="text" id="setThemeInput" placeholder="Enter theme (e.g., Winter Road Trip)" data-translate-placeholder="setThemePlaceholder" class="ai-input">
                 <button id="generateSmartSet" class="btn-primary">
                   <span data-translate="generateSet">Generate Set</span>
                 </button>
@@ -389,13 +406,25 @@
           </div>
         </div>
 
+        <!-- AI Progress Bar -->
+        <div id="aiProgressBar" class="ai-progress" style="display: none;">
+          <div class="ai-progress-spinner"></div>
+          <div class="ai-progress-info">
+            <span id="aiProgressText"></span>
+            <span id="aiProgressCount" class="ai-progress-count"></span>
+          </div>
+          <div id="aiProgressTrack" class="ai-progress-track" style="display: none;">
+            <div id="aiProgressFill" class="ai-progress-fill"></div>
+          </div>
+        </div>
+
         <!-- AI Results Panel (inline, not a popup) -->
         <div id="aiResultsPanel" class="ai-results-panel" style="display: none;">
           <div class="ai-results-header">
-            <h3>AI Analysis Results</h3>
+            <h3 data-translate="aiResultsTitle">AI Analysis Results</h3>
             <div class="ai-results-header-buttons">
-              <button id="collapseResultsPanel" class="btn-collapse" title="Collapse">−</button>
-              <button id="closeResultsPanel" class="btn-close" title="Close">&times;</button>
+              <button id="collapseResultsPanel" class="btn-collapse" title="Collapse" data-translate-title="collapse">−</button>
+              <button id="closeResultsPanel" class="btn-close" title="Close" data-translate-title="close">&times;</button>
             </div>
           </div>
           <div id="aiResultsContent" class="ai-results-content">
@@ -580,13 +609,7 @@
         <div class="form-group">
           <label for="editIconCategory" data-translate="category">Category:</label>
           <select id="editIconCategory">
-            <option value="default">Default</option>
-            <option value="transport">Transport</option>
-            <option value="animals">Animals</option>
-            <option value="buildings">Buildings</option>
-            <option value="nature">Nature</option>
-            <option value="food">Food</option>
-            <option value="other">Other</option>
+            <!-- Categories are populated dynamically from the API -->
           </select>
         </div>
         <div class="form-group">
@@ -596,13 +619,13 @@
         <div class="form-group">
           <label for="editIconDifficulty" data-translate="difficulty">Difficulty:</label>
           <select id="editIconDifficulty">
-            <option value="1">⭐ Very Easy</option>
-            <option value="2">⭐⭐ Easy</option>
-            <option value="3" selected>⭐⭐⭐ Medium</option>
-            <option value="4">⭐⭐⭐⭐ Hard</option>
-            <option value="5">⭐⭐⭐⭐⭐ Very Hard</option>
+            <option value="1" data-translate="difficulty1">⭐ Very Easy</option>
+            <option value="2" data-translate="difficulty2">⭐⭐ Easy</option>
+            <option value="3" selected data-translate="difficulty3">⭐⭐⭐ Medium</option>
+            <option value="4" data-translate="difficulty4">⭐⭐⭐⭐ Hard</option>
+            <option value="5" data-translate="difficulty5">⭐⭐⭐⭐⭐ Very Hard</option>
           </select>
-          <small class="help-text">Rate how difficult this icon is to spot during gameplay</small>
+          <small class="help-text" data-translate="difficultyHelpText">Rate how difficult this icon is to spot during gameplay</small>
         </div>
         <div class="form-group">
           <label for="editIconExcludeFromMultiHit" class="checkbox-label">

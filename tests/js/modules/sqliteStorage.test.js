@@ -537,4 +537,60 @@ describe('SQLiteStorage', () => {
       expect(uniqueIds).toHaveLength(10);
     });
   });
+
+  describe('Category operations', () => {
+    it('seeds default categories via migration', async () => {
+      const categories = await storage.getCategories();
+      const names = categories.map(c => c.name);
+      expect(names).toContain('Uncategorized');
+      expect(names).toContain('Transport');
+    });
+
+    it('creates a category and rejects duplicates', async () => {
+      const result = await storage.createCategory('Wassersport');
+      expect(result.success).toBe(true);
+      await expect(storage.createCategory('Wassersport')).rejects.toThrow('already exists');
+      await expect(storage.createCategory('   ')).rejects.toThrow('required');
+    });
+
+    it('renames a category and cascades to icons', async () => {
+      await storage.saveIcon({ ...testIcon, id: 'cat-icon-1', category: 'Altname' });
+      const categories = await storage.getCategories();
+      const cat = categories.find(c => c.name === 'Altname');
+      expect(cat).toBeDefined();
+
+      await storage.renameCategory(cat.id, 'Neuname');
+      const icons = await storage.loadIcons();
+      expect(icons.find(i => i.id === 'cat-icon-1').category).toBe('Neuname');
+    });
+
+    it('deletes a category and moves icons to Uncategorized', async () => {
+      await storage.saveIcon({ ...testIcon, id: 'cat-icon-2', category: 'Wegwerf' });
+      const cat = (await storage.getCategories()).find(c => c.name === 'Wegwerf');
+
+      const result = await storage.deleteCategory(cat.id);
+      expect(result.data.movedIcons).toBe(1);
+
+      const icons = await storage.loadIcons();
+      expect(icons.find(i => i.id === 'cat-icon-2').category).toBe('Uncategorized');
+      const names = (await storage.getCategories()).map(c => c.name);
+      expect(names).not.toContain('Wegwerf');
+    });
+
+    it('protects the Uncategorized category', async () => {
+      const cat = (await storage.getCategories()).find(c => c.name === 'Uncategorized');
+      await expect(storage.deleteCategory(cat.id)).rejects.toThrow('cannot be deleted');
+      await expect(storage.renameCategory(cat.id, 'Sonstiges')).rejects.toThrow('cannot be renamed');
+    });
+
+    it('generates short readable icon IDs when none provided', async () => {
+      const saved = await storage.saveIcon({
+        name: 'Auto-ID Icon',
+        data: Buffer.from('fake'),
+        type: 'image/png',
+        size: 4
+      });
+      expect(saved.data.id).toMatch(/^icon_[a-z0-9]{8,}$/);
+    });
+  });
 });

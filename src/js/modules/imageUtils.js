@@ -112,7 +112,7 @@ function convertBlobToBase64Icon(blob, name) {
                 const base64data = e.target.result;
                 const iconName = name.replace(/\.[^/.]+$/, ""); // Remove file extension
                 resolve({
-                    id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    id: `icon_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
                     name: iconName,
                     image: base64data,
                     data: base64data  // Keep for backward compatibility
