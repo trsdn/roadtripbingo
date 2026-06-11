@@ -23,6 +23,8 @@ coverage/
 
 # Data directory - exclude database files but keep structure
 data/*.db
+data/*.db-wal
+data/*.db-shm
 data/backups/*.sql
 data/backups/*.json
 !data/README.md
