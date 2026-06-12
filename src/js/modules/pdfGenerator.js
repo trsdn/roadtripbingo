@@ -552,9 +552,12 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
         pdf.setLineWidth(0.200025);
         pdf.setDrawColor(0, 0, 0);
       } else if (cell.data) {
-        // Calculate padding and maximum image size
+        // Reserve a label strip at the bottom so the icon never overlaps the
+        // text; the icon is drawn only in the area above it.
         const padding = cellSize * 0.1;
-        const maxSize = cellSize - (padding * 2);
+        const labelArea = (showLabels && cell.name) ? cellSize * 0.22 : 0;
+        const imgAreaH = cellSize - labelArea;
+        const maxSize = Math.min(cellSize - (padding * 2), imgAreaH - padding);
 
         // Draw image with preserved aspect ratio
         try {
@@ -587,7 +590,7 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
           }
 
           const offsetX = cellX + ((cellSize - drawWidth) / 2);
-          const offsetY = cellY + ((cellSize - drawHeight) / 2);
+          const offsetY = cellY + ((imgAreaH - drawHeight) / 2);
 
           // Add image to PDF
           pdf.addImage(
@@ -636,39 +639,16 @@ async function renderCard(pdf, card, x, y, availableWidth, titleFontSize, labelF
           );
         }
                 
-        // Show label if enabled - moved outside the try/catch to ensure labels appear
+        // Label sits in the reserved bottom strip, so no background bar is
+        // needed and it never covers the icon.
         if (showLabels && cell.name) {
           pdf.setFontSize(labelFontSize);
           pdf.setTextColor(0, 0, 0);
-                    
-          // Draw with white background for readability
-          const textX = cellX + (cellSize / 2);
-          const textY = cellY + cellSize - (padding / 2);
-                    
-          // Check if getTextWidth is available (it might not be in test mocks)
-          let textWidth = cell.name.length * (labelFontSize * 0.6); // Fallback calculation
-          if (typeof pdf.getTextWidth === 'function') {
-            textWidth = pdf.getTextWidth(cell.name);
-          }
-                    
-          // White pill behind the label so it stays legible over imagery
-          if (typeof pdf.setFillColor === 'function' && typeof pdf.roundedRect === 'function') {
-            pdf.setFillColor(255, 255, 255);
-            pdf.roundedRect(
-              textX - (textWidth / 2) - 1,
-              textY - labelFontSize,
-              textWidth + 2,
-              labelFontSize + 1,
-              0.8, 0.8,
-              'F'
-            );
-          }
-                    
           pdf.text(
             cell.name,
-            textX,
-            textY,
-            { align: 'center' }
+            cellX + (cellSize / 2),
+            cellY + cellSize - (labelArea / 2),
+            { align: 'center', baseline: 'middle' }
           );
         }
       }

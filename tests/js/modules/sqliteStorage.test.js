@@ -212,6 +212,27 @@ describe('SQLiteStorage', () => {
       });
     });
 
+    describe('updateIcon image replacement', () => {
+      const PNG1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB' +
+        'CAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+      test('replaces the icon image while keeping other fields', async () => {
+        await storage.saveIcon({ id: 'img-upd', name: 'Cow', image: PNG1, category: 'Animals', difficulty: 4 });
+        const before = (await storage.loadIcons()).find(i => i.id === 'img-upd');
+
+        // A different 1x1 png (red) to force a new blob
+        const PNG2 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB' +
+          'CAYAAAAfFcSJAAAADklEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        await storage.updateIcon('img-upd', { imageData: PNG2 });
+
+        const after = (await storage.loadIcons()).find(i => i.id === 'img-upd');
+        expect(after.name).toBe('Cow');
+        expect(after.category).toBe('Animals');
+        expect(after.difficulty).toBe(4);
+        expect(after.image).not.toBe(before.image); // blob changed
+      });
+    });
+
     describe('clearIcons', () => {
       test('should delete all icons', async () => {
         const testIcons = [

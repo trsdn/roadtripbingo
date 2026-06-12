@@ -829,7 +829,21 @@ class SQLiteStorage {
       updates.push('exclude_from_multi_hit = ?');
       values.push(iconData.excludeFromMultiHit ? 1 : 0);
     }
-    
+
+    // Allow replacing the icon image (base64 data URL) in place
+    const newImage = iconData.imageData || iconData.image;
+    if (typeof newImage === 'string' && newImage.startsWith('data:')) {
+      const [mimePrefix, base64String] = newImage.split(',');
+      const mimeType = mimePrefix.match(/data:(.*?);/)[1];
+      const blobData = Buffer.from(base64String, 'base64');
+      updates.push('data = ?');
+      values.push(blobData);
+      updates.push('type = ?');
+      values.push(mimeType);
+      updates.push('size = ?');
+      values.push(blobData.length);
+    }
+
     if (updates.length === 0) {
       throw new Error('No fields to update');
     }
