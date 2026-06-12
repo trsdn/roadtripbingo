@@ -431,7 +431,7 @@ function initializeDOMElements() {
 
   if (missingElements.length > 0) {
     console.error('Missing DOM elements:', missingElements);
-    window.notifications.error('Some buttons are not working. Missing elements: ' + missingElements.join(', '));
+    window.notifications.error(`Some buttons are not working. Missing elements: ${ missingElements.join(', ')}`);
   }
 }
 
@@ -1780,8 +1780,8 @@ async function handleCategoriesListClick(event) {
   const item = actionEl.closest('.category-item');
   if (!item) {return;}
 
-  const categoryId = item.dataset.categoryId;
-  const categoryName = item.dataset.categoryName;
+  const { categoryId } = item.dataset;
+  const { categoryName } = item.dataset;
 
   switch (actionEl.dataset.action) {
     case 'rename':
@@ -2005,7 +2005,7 @@ function setupDragAndDrop() {
 
   function handleDrop(e) {
     const dt = e.dataTransfer;
-    const files = dt.files;
+    const { files } = dt;
 
     if (files.length > 0) {
       uploadIcons(files);
@@ -2290,8 +2290,8 @@ function setupInlineTableEditing() {
 
 // Replace a table cell's content with an inline editor
 function startInlineCellEdit(cell) {
-  const iconId = cell.dataset.iconId;
-  const field = cell.dataset.field;
+  const { iconId } = cell.dataset;
+  const { field } = cell.dataset;
   const icon = availableIcons.find(i => String(i.id) === String(iconId));
   if (!icon) {return;}
 
@@ -2414,7 +2414,7 @@ async function saveInlineEdit(cell, icon, field, rawValue) {
 
 // Toggle multi-hit exclusion directly from the table checkbox
 async function handleExclusionToggle(checkbox) {
-  const iconId = checkbox.dataset.iconId;
+  const { iconId } = checkbox.dataset;
   const icon = availableIcons.find(i => String(i.id) === String(iconId));
   const newValue = checkbox.checked;
 
@@ -2546,7 +2546,7 @@ function setupIconManagerEventListeners() {
       // Add active class to clicked button
       e.target.classList.add('active');
 
-      const view = e.target.dataset.view;
+      const { view } = e.target.dataset;
       console.log('🔄 Switching to view:', view);
       switchView(view);
     });
@@ -2866,7 +2866,7 @@ async function handleGenerateIconImage() {
       operation: 'generateIconImage',
       error: error.message
     });
-    window.notifications.show('Failed to generate icon: ' + error.message, 'error');
+    window.notifications.show(`Failed to generate icon: ${ error.message}`, 'error');
   } finally {
     hideAIProgress();
     if (generateIconBtn) {
@@ -2881,7 +2881,7 @@ async function addGeneratedIconToLibrary() {
 
   try {
     await storage.saveIcon({
-      id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+      id: `${Date.now() }-${ Math.floor(Math.random() * 1000)}`,
       name: lastIconGeneration.name,
       image: lastIconGeneration.imageData,
       data: lastIconGeneration.imageData,
@@ -2897,7 +2897,7 @@ async function addGeneratedIconToLibrary() {
       operation: 'addGeneratedIcon',
       error: error.message
     });
-    window.notifications.error('Failed to add icon: ' + error.message);
+    window.notifications.error(`Failed to add icon: ${ error.message}`);
   }
 }
 
@@ -3114,23 +3114,54 @@ async function updateAIStatusDisplay() {
   }
 }
 
-// Normalize an AI tags suggestion into an array of strings
+// Normalize an AI tags suggestion into an array of strings.
+// Handles arrays, JSON-encoded strings ('["a","b"]') and plain CSV.
 function normalizeTags(tags) {
   if (Array.isArray(tags)) {return tags.map(tag => String(tag).trim()).filter(Boolean);}
-  if (typeof tags === 'string') {return tags.split(',').map(tag => tag.trim()).filter(Boolean);}
+  if (typeof tags === 'string') {
+    const s = tags.trim();
+    if (s.startsWith('[')) {
+      try {
+        const arr = JSON.parse(s);
+        if (Array.isArray(arr)) {return arr.map(tag => String(tag).trim()).filter(Boolean);}
+      } catch (e) { /* fall through to CSV parsing */ }
+    }
+    return s.split(',')
+      .map(tag => tag.trim().replace(/^["'[\]]+|["'[\]]+$/g, '').trim())
+      .filter(Boolean);
+  }
   return [];
 }
 
-// Build a single accept/reject suggestion row
-function renderSuggestionRow(iconId, field, labelKey, valueHTML) {
+// Build a single editable suggestion row (control can be edited before accept)
+function renderSuggestionRow(iconId, field, labelKey, controlHTML) {
   return `
     <div class="ai-suggestion" data-field="${field}">
-      <span><strong>${t(labelKey)}:</strong> ${valueHTML}</span>
+      <span class="ai-sug-label"><strong>${t(labelKey)}:</strong></span>
+      <span class="ai-sug-control">${controlHTML}</span>
       <div class="ai-suggestion-actions">
         <button class="ai-accept" data-action="accept" data-icon-id="${escapeHTML(iconId)}" data-field="${field}">${t('aiAccept')}</button>
         <button class="ai-reject" data-action="reject">${t('aiReject')}</button>
       </div>
     </div>`;
+}
+
+// <option> list of categories for the editable category dropdown
+function buildCategoryOptions(selected) {
+  const names = categoriesData.map(c => c.name);
+  if (selected && !names.includes(selected)) {names.unshift(selected);}
+  return names.map(n =>
+    `<option value="${escapeHTML(n)}"${n === selected ? ' selected' : ''}>${escapeHTML(n)}</option>`
+  ).join('');
+}
+
+// <option> list 1–5 for the editable difficulty dropdown
+function buildDifficultyOptions(selected) {
+  let html = '';
+  for (let d = 1; d <= 5; d++) {
+    html += `<option value="${d}"${d === selected ? ' selected' : ''}>${'⭐'.repeat(d)} (${d}/5)</option>`;
+  }
+  return html;
 }
 
 // Show AI analysis results in inline panel (not popup)
@@ -3172,9 +3203,13 @@ function showAIAnalysisResults(results) {
     const tagChips = tags.map(tag =>
       `<span class="tag-chip selected" data-tag="${escapeHTML(tag)}">${escapeHTML(tag)}</span>`
     ).join('');
+    const tagsControl = `<span class="tag-chip-list">${tagChips}</span>` +
+      `<input class="ai-edit ai-tag-input" data-edit="tag-new" type="text" placeholder="${t('addTag')}">` +
+      '<button class="ai-tag-add-btn" data-action="add-tag">+</button>';
 
     const nameDeRow = data.name_suggestion_de
-      ? renderSuggestionRow(iconId, 'name_de', 'aiResultNameDe', escapeHTML(data.name_suggestion_de))
+      ? renderSuggestionRow(iconId, 'name_de', 'aiResultNameDe',
+        `<input class="ai-edit" data-edit="name_de" type="text" value="${escapeHTML(data.name_suggestion_de)}">`)
       : '';
 
     return `
@@ -3188,11 +3223,11 @@ function showAIAnalysisResults(results) {
           <span class="toggle-icon">▼</span>
         </div>
         <div class="ai-result-item-body">
-          ${renderSuggestionRow(iconId, 'category', 'aiResultCategory', escapeHTML(data.category_suggestion))}
-          ${renderSuggestionRow(iconId, 'name', 'aiResultName', escapeHTML(data.name_suggestion))}
+          ${renderSuggestionRow(iconId, 'category', 'aiResultCategory', `<select class="ai-edit" data-edit="category">${buildCategoryOptions(data.category_suggestion)}</select>`)}
+          ${renderSuggestionRow(iconId, 'name', 'aiResultName', `<input class="ai-edit" data-edit="name" type="text" value="${escapeHTML(data.name_suggestion || '')}">`)}
           ${nameDeRow}
-          ${renderSuggestionRow(iconId, 'difficulty', 'aiResultDifficulty', `${'⭐'.repeat(difficulty)} (${difficulty}/5)`)}
-          ${renderSuggestionRow(iconId, 'tags', 'aiResultTags', tagChips)}
+          ${renderSuggestionRow(iconId, 'difficulty', 'aiResultDifficulty', `<select class="ai-edit" data-edit="difficulty">${buildDifficultyOptions(difficulty)}</select>`)}
+          ${renderSuggestionRow(iconId, 'tags', 'aiResultTags', tagsControl)}
           <div class="ai-result-actions">
             <button class="btn-primary" data-action="accept-all-icon" data-icon-id="${escapeHTML(iconId)}">${t('aiAcceptAll')}</button>
           </div>
@@ -3233,6 +3268,18 @@ async function handleAIResultsClick(event) {
   const actionEl = event.target.closest('[data-action]');
   if (!actionEl) {return;}
 
+  if (actionEl.dataset.action === 'add-tag') {
+    const input = actionEl.parentElement.querySelector('.ai-tag-input');
+    const list = actionEl.parentElement.querySelector('.tag-chip-list');
+    const val = input && input.value.trim();
+    if (val && list) {
+      list.insertAdjacentHTML('beforeend',
+        `<span class="tag-chip selected" data-tag="${escapeHTML(val)}">${escapeHTML(val)}</span>`);
+      input.value = '';
+    }
+    return;
+  }
+
   switch (actionEl.dataset.action) {
     case 'toggle':
       actionEl.closest('.ai-result-item')?.classList.toggle('collapsed');
@@ -3265,29 +3312,32 @@ async function handleAIResultsClick(event) {
 
 // Handle a single accept button click
 async function handleAcceptAction(button) {
-  const iconId = button.dataset.iconId;
-  const field = button.dataset.field;
+  const { iconId } = button.dataset;
+  const { field } = button.dataset;
   const data = aiAnalysisResults.get(iconId);
   if (!data) {return;}
 
   const row = button.closest('.ai-suggestion');
 
   if (field === 'name_de') {
-    await acceptGermanName(iconId, data.name_suggestion_de, row);
+    const edited = row?.querySelector('[data-edit="name_de"]')?.value.trim();
+    await acceptGermanName(iconId, edited || data.name_suggestion_de, row);
     return;
   }
 
+  // Read the (possibly edited) value from the row's control
   let value;
   if (field === 'tags') {
     value = row
       ? Array.from(row.querySelectorAll('.tag-chip.selected')).map(chip => chip.dataset.tag)
       : normalizeTags(data.tags_suggestion);
   } else if (field === 'category') {
-    value = data.category_suggestion;
+    value = row?.querySelector('[data-edit="category"]')?.value || data.category_suggestion;
   } else if (field === 'name') {
-    value = data.name_suggestion;
+    value = (row?.querySelector('[data-edit="name"]')?.value || '').trim() || data.name_suggestion;
   } else if (field === 'difficulty') {
-    value = parseInt(data.difficulty_suggestion, 10);
+    value = parseInt(row?.querySelector('[data-edit="difficulty"]')?.value, 10) ||
+      parseInt(data.difficulty_suggestion, 10);
   } else {
     return;
   }
@@ -3317,7 +3367,7 @@ async function acceptGermanName(iconId, nameDe, row) {
       error: error.message,
       iconId
     });
-    window.notifications.show('Failed to save translation: ' + error.message, 'error');
+    window.notifications.show(`Failed to save translation: ${ error.message}`, 'error');
   }
 }
 
@@ -3345,12 +3395,21 @@ async function acceptAllForIcon(iconId) {
   if (!data) {return false;}
 
   try {
+    // Prefer the (possibly edited) values from the row controls
+    const item = document.querySelector(`.ai-result-item[data-icon-id="${iconId}"]`);
+    const ctrl = field => item?.querySelector(`[data-edit="${field}"]`)?.value;
+    const editedTags = item
+      ? Array.from(item.querySelectorAll('.ai-suggestion[data-field="tags"] .tag-chip.selected'))
+        .map(c => c.dataset.tag)
+      : null;
+
     const updateData = {
-      category: data.category_suggestion,
-      name: data.name_suggestion,
-      difficulty: data.difficulty_suggestion,
-      tags: normalizeTags(data.tags_suggestion)
+      category: ctrl('category') || data.category_suggestion,
+      name: (ctrl('name') || '').trim() || data.name_suggestion,
+      difficulty: parseInt(ctrl('difficulty'), 10) || data.difficulty_suggestion,
+      tags: editedTags && editedTags.length ? editedTags : normalizeTags(data.tags_suggestion)
     };
+    const nameDe = (ctrl('name_de') || '').trim() || data.name_suggestion_de;
 
     const response = await fetch(`/api/icons/${iconId}`, {
       method: 'PUT',
@@ -3362,13 +3421,13 @@ async function acceptAllForIcon(iconId) {
       throw new Error('Failed to update icon');
     }
 
-    // Save the German name suggestion as a translation (best effort)
-    if (data.name_suggestion_de) {
+    // Save the German name (edited or suggested) as a translation (best effort)
+    if (nameDe) {
       try {
         await fetch(`/api/icons/${iconId}/translations`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ languageCode: 'de', translatedName: data.name_suggestion_de })
+          body: JSON.stringify({ languageCode: 'de', translatedName: nameDe })
         });
       } catch (translationError) {
         console.error('Error saving German translation:', {
@@ -3655,7 +3714,7 @@ window.acceptSuggestion = async function (iconId, field, value) {
     return true;
   } catch (error) {
     console.error('Error accepting suggestion:', error);
-    window.notifications.show('Failed to apply suggestion: ' + error.message, 'error');
+    window.notifications.show(`Failed to apply suggestion: ${ error.message}`, 'error');
     return false;
   }
 };
@@ -3924,7 +3983,7 @@ function openCreateSetModal() {
         window.notifications.success('Icon set created successfully');
         closeModal();
       } else {
-        window.notifications.error('Failed to create icon set: ' + (result.error || 'Unknown error'));
+        window.notifications.error(`Failed to create icon set: ${ result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating icon set:', error);
@@ -4006,7 +4065,7 @@ function editSet(setId) {
         window.notifications.success('Icon set updated successfully');
         closeModal();
       } else {
-        window.notifications.error('Failed to update icon set: ' + (result.error || 'Unknown error'));
+        window.notifications.error(`Failed to update icon set: ${ result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating icon set:', error);
@@ -4058,7 +4117,7 @@ async function deleteSet(setId) {
 
         window.notifications.success('Icon set deleted successfully');
       } else {
-        window.notifications.error('Failed to delete icon set: ' + (result.error || 'Unknown error'));
+        window.notifications.error(`Failed to delete icon set: ${ result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting icon set:', error);
@@ -4143,7 +4202,7 @@ function openTranslationModal(iconId) {
 
         window.notifications.success('Translation added successfully');
       } else {
-        window.notifications.error('Failed to add translation: ' + (result.error || 'Unknown error'));
+        window.notifications.error(`Failed to add translation: ${ result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding translation:', error);
