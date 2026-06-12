@@ -3319,3 +3319,29 @@ button#generateBtn::before { content: "\27F6  "; }
   .preview-section { position: static; }
   .toolbar { flex-wrap: wrap; }
 }
+
+/* --- AI results: readable on the white panel + editable controls --- */
+.ai-results-panel, .ai-results-content { color: #1d2733; }
+.ai-results-content strong { color: #1d2733; }
+.ai-results-content .no-results { color: #69748a; }
+.ai-suggestion {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 0; border-bottom: 1px solid #eef1f5;
+}
+.ai-sug-label { min-width: 110px; color: #1d2733; }
+.ai-sug-control { flex: 1 1 200px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ai-results-content .ai-edit {
+  background: #fff; color: #1d2733;
+  border: 1px solid #cfd6e2; border-radius: 6px;
+  padding: 6px 8px; font-size: 13px; width: auto;
+}
+.ai-results-content select.ai-edit { min-width: 150px; }
+.ai-results-content input.ai-edit[data-edit="name"],
+.ai-results-content input.ai-edit[data-edit="name_de"] { flex: 1 1 160px; }
+.ai-tag-input { width: 100px; }
+.ai-tag-add-btn {
+  padding: 4px 10px; border: 1px solid #cfd6e2; background: #f7f9fc;
+  color: #1d2733; border-radius: 6px; cursor: pointer; font-weight: 700;
+}
+.ai-tag-add-btn:hover { background: #eef1f5; }
+.tag-chip-list { display: inline-flex; flex-wrap: wrap; gap: 4px; }
