@@ -75,3 +75,7 @@ test-*.html
 
 # Other
 .history/
+
+# Cypress run artefacts
+cypress/downloads/
+cypress/videos/
